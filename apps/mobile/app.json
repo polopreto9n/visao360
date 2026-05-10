@@ -1,7 +1,8 @@
 ﻿{
   "expo": {
-    "name": "Visão360",
+    "name": "Visao360",
     "slug": "visao360",
+    "owner": "ronaldoxvs-organization",
     "version": "1.0.0",
     "orientation": "portrait",
     "userInterfaceStyle": "light",
@@ -30,10 +31,6 @@
         "android.permission.READ_MEDIA_VIDEO",
         "android.permission.VIBRATE"
       ]
-    },
-    "web": {
-      "bundler": "metro",
-      "output": "static"
     },
     "plugins": [
       "expo-router",
