@@ -1,0 +1,36 @@
+import type { Metadata, Viewport } from 'next';
+import { Inter } from 'next/font/google';
+import './globals.css';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
+  display: 'swap',
+});
+
+export const metadata: Metadata = {
+  title: {
+    default: 'Visão360 — Gestão Predial Inteligente',
+    template: '%s | Visão360',
+  },
+  description:
+    'Plataforma SaaS de inteligência operacional para gestão predial. ' +
+    'Checklists digitais, ordens de serviço, auditoria de equipamentos e dashboard em tempo real.',
+  keywords: ['facility management', 'gestão predial', 'condomínio', 'checklist', 'ordem de serviço'],
+  authors: [{ name: 'Visão360' }],
+  robots: { index: false, follow: false },
+};
+
+export const viewport: Viewport = {
+  themeColor: '#2563eb',
+  width: 'device-width',
+  initialScale: 1,
+};
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
+      <body className="min-h-screen bg-slate-50 antialiased">{children}</body>
+    </html>
+  );
+}

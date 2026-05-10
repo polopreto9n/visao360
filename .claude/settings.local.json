@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Copy-Item \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\visao360\\\\.env.example\" \"C:\\\\Users\\\\Administrator\\\\Desktop\\\\visao360\\\\.env\" -Force)",
+      "PowerShell(docker --version)",
+      "PowerShell(docker-compose --version)",
+      "PowerShell(winget --version 2>&1)",
+      "PowerShell(choco --version 2>&1)",
+      "PowerShell(scoop --version 2>&1)"
+    ]
+  }
+}

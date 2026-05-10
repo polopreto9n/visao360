@@ -1,0 +1,354 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../../../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  GESTOR
+  TECNICO
+  CLIENTE
+}
+
+enum AssetStatus {
+  ACTIVE
+  INACTIVE
+  MAINTENANCE
+  DECOMMISSIONED
+}
+
+enum ChecklistType {
+  PREVENTIVE
+  CORRECTIVE
+  INSPECTION
+  AUDIT
+}
+
+enum ExecutionStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkOrderStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  WAITING_PARTS
+  COMPLETED
+  CANCELLED
+}
+
+enum WorkOrderPriority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum IncidentStatus {
+  OPEN
+  INVESTIGATING
+  RESOLVED
+  CLOSED
+}
+
+enum NotificationType {
+  CHECKLIST_DUE
+  WORK_ORDER_ASSIGNED
+  INCIDENT_OPENED
+  ASSET_ALERT
+  SYSTEM
+}
+
+// ─── Models ───────────────────────────────────────────────────────────────────
+
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  cnpj      String?  @unique
+  email     String
+  phone     String?
+  address   String?
+  logoUrl   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users         User[]
+  units         Unit[]
+  assets        Asset[]
+  checklists    Checklist[]
+  executions    Execution[]
+  workOrders    WorkOrder[]
+  incidents     Incident[]
+  notifications Notification[]
+
+  @@map("companies")
+}
+
+model User {
+  id           String    @id @default(cuid())
+  companyId    String
+  name         String
+  email        String
+  passwordHash String
+  role         Role      @default(TECNICO)
+  phone        String?
+  avatarUrl    String?
+  isActive     Boolean   @default(true)
+  lastLoginAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  company            Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assignedUnits      Unit[]         @relation("UnitUsers")
+  createdWorkOrders  WorkOrder[]    @relation("WorkOrderCreator")
+  assignedWorkOrders WorkOrder[]    @relation("WorkOrderAssignee")
+  executions         Execution[]
+  incidents          Incident[]
+  notifications      Notification[]
+
+  @@unique([email, companyId])
+  @@index([companyId])
+  @@index([email])
+  @@map("users")
+}
+
+model Unit {
+  id          String   @id @default(cuid())
+  companyId   String
+  name        String
+  code        String?
+  address     String?
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  users      User[]      @relation("UnitUsers")
+  assets     Asset[]
+  checklists Checklist[]
+  workOrders WorkOrder[]
+  incidents  Incident[]
+
+  @@unique([code, companyId])
+  @@index([companyId])
+  @@map("units")
+}
+
+model Asset {
+  id                String      @id @default(cuid())
+  companyId         String
+  unitId            String
+  name              String
+  code              String?
+  category          String
+  brand             String?
+  model             String?
+  serialNumber      String?
+  qrCode            String      @unique @default(cuid())
+  status            AssetStatus @default(ACTIVE)
+  installDate       DateTime?
+  lastMaintenanceAt DateTime?
+  nextMaintenanceAt DateTime?
+  description       String?
+  photoUrl          String?
+  metadata          Json?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit       Unit        @relation(fields: [unitId], references: [id])
+  checklists Checklist[]
+  workOrders WorkOrder[]
+  executions Execution[]
+
+  @@index([companyId])
+  @@index([unitId])
+  @@index([qrCode])
+  @@index([status])
+  @@map("assets")
+}
+
+model Checklist {
+  id           String        @id @default(cuid())
+  companyId    String
+  unitId       String?
+  assetId      String?
+  name         String
+  description  String?
+  type         ChecklistType @default(PREVENTIVE)
+  isActive     Boolean       @default(true)
+  intervalDays Int?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  company    Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit       Unit?           @relation(fields: [unitId], references: [id])
+  asset      Asset?          @relation(fields: [assetId], references: [id])
+  items      ChecklistItem[]
+  executions Execution[]
+
+  @@index([companyId])
+  @@index([unitId])
+  @@map("checklists")
+}
+
+model ChecklistItem {
+  id            String   @id @default(cuid())
+  checklistId   String
+  order         Int
+  question      String
+  description   String?
+  requiresPhoto Boolean  @default(false)
+  requiresNote  Boolean  @default(false)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  checklist      Checklist       @relation(fields: [checklistId], references: [id], onDelete: Cascade)
+  executionItems ExecutionItem[]
+
+  @@index([checklistId])
+  @@map("checklist_items")
+}
+
+model Execution {
+  id           String          @id @default(cuid())
+  companyId    String
+  checklistId  String
+  assetId      String?
+  userId       String
+  status       ExecutionStatus @default(PENDING)
+  startedAt    DateTime?
+  completedAt  DateTime?
+  signatureUrl String?
+  notes        String?
+  score        Float?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  company   Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  checklist Checklist       @relation(fields: [checklistId], references: [id])
+  asset     Asset?          @relation(fields: [assetId], references: [id])
+  user      User            @relation(fields: [userId], references: [id])
+  items     ExecutionItem[]
+
+  @@index([companyId])
+  @@index([checklistId])
+  @@index([userId])
+  @@index([status])
+  @@map("executions")
+}
+
+model ExecutionItem {
+  id              String   @id @default(cuid())
+  executionId     String
+  checklistItemId String
+  answer          Boolean?
+  notes           String?
+  photoUrl        String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  execution     Execution     @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  checklistItem ChecklistItem @relation(fields: [checklistItemId], references: [id])
+
+  @@unique([executionId, checklistItemId])
+  @@index([executionId])
+  @@map("execution_items")
+}
+
+model WorkOrder {
+  id          String            @id @default(cuid())
+  companyId   String
+  unitId      String
+  assetId     String?
+  creatorId   String
+  assigneeId  String?
+  code        String            @unique
+  title       String
+  description String
+  status      WorkOrderStatus   @default(OPEN)
+  priority    WorkOrderPriority @default(MEDIUM)
+  dueDate     DateTime?
+  startedAt   DateTime?
+  completedAt DateTime?
+  notes       String?
+  photoUrls   String[]          @default([])
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit     Unit    @relation(fields: [unitId], references: [id])
+  asset    Asset?  @relation(fields: [assetId], references: [id])
+  creator  User    @relation("WorkOrderCreator", fields: [creatorId], references: [id])
+  assignee User?   @relation("WorkOrderAssignee", fields: [assigneeId], references: [id])
+
+  @@index([companyId])
+  @@index([unitId])
+  @@index([status])
+  @@index([creatorId])
+  @@map("work_orders")
+}
+
+model Incident {
+  id          String           @id @default(cuid())
+  companyId   String
+  unitId      String
+  reporterId  String
+  title       String
+  description String
+  severity    IncidentSeverity @default(MEDIUM)
+  status      IncidentStatus   @default(OPEN)
+  resolvedAt  DateTime?
+  photoUrls   String[]         @default([])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit     Unit    @relation(fields: [unitId], references: [id])
+  reporter User    @relation(fields: [reporterId], references: [id])
+
+  @@index([companyId])
+  @@index([unitId])
+  @@index([status])
+  @@map("incidents")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  companyId String
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  data      Json?
+  isRead    Boolean          @default(false)
+  readAt    DateTime?
+  createdAt DateTime         @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id])
+
+  @@index([companyId])
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
+}
