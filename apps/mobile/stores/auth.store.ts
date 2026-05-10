@@ -64,21 +64,6 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (refreshToken) await SecureStore.setItemAsync('visao360_refresh', refreshToken);
 
       set({ token: accessToken, user, isLoading: false });
-
-      // Registrar push token em background (sem bloquear o login)
-      void import('expo-notifications').then(async (Notifications) => {
-        try {
-          const { status } = await Notifications.getPermissionsAsync();
-          const finalStatus = status === 'granted'
-            ? status
-            : (await Notifications.requestPermissionsAsync()).status;
-          if (finalStatus !== 'granted') return;
-          const { data: expoPushToken } = await Notifications.getExpoPushTokenAsync();
-          await import('../services/api').then(({ api }) =>
-            api.post('/push/register', { token: expoPushToken, platform: 'expo' })
-          );
-        } catch { /* silencioso — push não crítico */ }
-      });
     } catch (err: unknown) {
       const message =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
