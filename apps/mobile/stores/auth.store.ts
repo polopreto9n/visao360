@@ -31,11 +31,22 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const response = await authApi.findCompanies(email);
-      const companies = response.data;
+      const companies = Array.isArray(response.data) ? response.data : [response.data];
+      if (companies.length === 0) {
+        set({ error: 'Nenhuma empresa encontrada para este e-mail.', isLoading: false });
+        return [];
+      }
       set({ companies, isLoading: false });
       return companies;
-    } catch {
-      set({ error: 'Nenhuma empresa encontrada para este e-mail.', isLoading: false });
+    } catch (err: unknown) {
+      const isNetworkError =
+        String(err).includes('Network') ||
+        String(err).includes('ECONNREFUSED') ||
+        String(err).includes('timeout');
+      const msg = isNetworkError
+        ? `Sem conexão com o servidor.\nVerifique se está na mesma rede Wi-Fi.\nAPI: ${process.env.EXPO_PUBLIC_API_URL ?? 'não configurada'}`
+        : 'Nenhuma empresa encontrada para este e-mail.';
+      set({ error: msg, isLoading: false });
       return [];
     }
   },

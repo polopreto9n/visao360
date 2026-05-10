@@ -1,7 +1,15 @@
 import axios, { AxiosError, AxiosInstance } from 'axios';
 import * as SecureStore from 'expo-secure-store';
+import Constants from 'expo-constants';
 
-const API_BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+// Lê da config do Expo (injetada via app.config.js no build)
+// Fallback para env var e depois para IP de desenvolvimento
+const API_BASE_URL: string =
+  (Constants.expoConfig?.extra?.apiUrl as string | undefined) ??
+  process.env.EXPO_PUBLIC_API_URL ??
+  'http://192.168.0.190:3001/api/v1';
+
+console.log('[Visão360] API URL:', API_BASE_URL);
 const TOKEN_KEY = 'visao360_token';
 
 export const api: AxiosInstance = axios.create({
