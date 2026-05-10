@@ -14,18 +14,18 @@
     android: {
       adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#2563eb' },
       package: 'com.visao360.app',
-      versionCode: 4,
+      versionCode: 6,
       permissions: ['android.permission.CAMERA','android.permission.READ_MEDIA_IMAGES','android.permission.READ_MEDIA_VIDEO','android.permission.VIBRATE'],
     },
     plugins: [
       'expo-router',
       ['expo-camera', { cameraPermission: 'O Visao360 usa a camera para escanear QR Codes.' }],
-      ['expo-image-picker', { photosPermission: 'O Visao360 acessa sua galeria.', cameraPermission: 'O Visao360 usa a camera.' }],
+      ['expo-image-picker', { photosPermission: 'Galeria para evidencias.', cameraPermission: 'Camera para evidencias.' }],
       'expo-secure-store',
     ],
     experiments: { typedRoutes: true },
     extra: {
-      apiUrl: 'https://d204ab95f49ddb.lhr.life/api/v1',
+      apiUrl: 'https://1428d7c7aeba74.lhr.life/api/v1',
       eas: { projectId: 'e3471a0f-8723-4b5b-ac05-7bdaf00355ce' },
     },
   },
