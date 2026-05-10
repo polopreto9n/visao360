@@ -14,7 +14,7 @@
     android: {
       adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#2563eb' },
       package: 'com.visao360.app',
-      versionCode: 6,
+      versionCode: 8,
       permissions: ['android.permission.CAMERA','android.permission.READ_MEDIA_IMAGES','android.permission.READ_MEDIA_VIDEO','android.permission.VIBRATE'],
     },
     plugins: [
@@ -25,7 +25,7 @@
     ],
     experiments: { typedRoutes: true },
     extra: {
-      apiUrl: 'https://1428d7c7aeba74.lhr.life/api/v1',
+      apiUrl: 'https://3cdcab9b78e4e5.lhr.life/api/v1',
       eas: { projectId: 'e3471a0f-8723-4b5b-ac05-7bdaf00355ce' },
     },
   },
