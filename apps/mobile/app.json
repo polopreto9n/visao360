@@ -1,15 +1,12 @@
-{
+﻿{
   "expo": {
     "name": "Visão360",
     "slug": "visao360",
     "version": "1.0.0",
-    "runtimeVersion": {
-      "policy": "appVersion"
-    },
     "orientation": "portrait",
     "userInterfaceStyle": "light",
     "scheme": "visao360",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "icon": "./assets/icon.png",
     "splash": {
       "image": "./assets/splash.png",
@@ -31,24 +28,7 @@
         "android.permission.CAMERA",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.VIBRATE",
-        "android.permission.RECEIVE_BOOT_COMPLETED",
-        "android.permission.RECORD_AUDIO"
-      ],
-      "intentFilters": [
-        {
-          "action": "VIEW",
-          "autoVerify": true,
-          "data": [
-            {
-              "scheme": "visao360"
-            }
-          ],
-          "category": [
-            "BROWSABLE",
-            "DEFAULT"
-          ]
-        }
+        "android.permission.VIBRATE"
       ]
     },
     "web": {
@@ -60,28 +40,17 @@
       [
         "expo-camera",
         {
-          "cameraPermission": "O Visão360 usa a câmera para escanear QR Codes e registrar evidências fotográficas."
+          "cameraPermission": "O Visao360 usa a camera para escanear QR Codes e registrar evidencias fotograficas."
         }
       ],
       [
         "expo-image-picker",
         {
-          "photosPermission": "O Visão360 acessa sua galeria para enviar fotos de evidências.",
-          "cameraPermission": "O Visão360 usa a câmera para registrar evidências fotográficas."
+          "photosPermission": "O Visao360 acessa sua galeria para enviar fotos de evidencias.",
+          "cameraPermission": "O Visao360 usa a camera para registrar evidencias fotograficas."
         }
       ],
-      [
-        "expo-secure-store",
-        {}
-      ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/icon.png",
-          "color": "#2563eb",
-          "sounds": []
-        }
-      ]
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true
@@ -89,11 +58,7 @@
     "extra": {
       "eas": {
         "projectId": "e3471a0f-8723-4b5b-ac05-7bdaf00355ce"
-      },
-      "router": {
-        "origin": false
       }
-    },
-    "owner": "ronaldoxvs-organization"
+    }
   }
 }
