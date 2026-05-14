@@ -54,9 +54,17 @@ export default function CadastroPage() {
       saveSession(res.data.accessToken, res.data.user, res.data.refreshToken);
       router.push('/dashboard');
     } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })
-        ?.response?.data?.message;
-      setError(msg ?? 'Erro ao criar conta. Tente novamente.');
+      const data = (err as { response?: { data?: { message?: string | string[]; statusCode?: number } } })
+        ?.response?.data;
+      if (data?.statusCode === 409) {
+        setError('E-mail já cadastrado. Use outro e-mail ou faça login.');
+      } else if (data?.statusCode === 403) {
+        setError('Conta suspensa. Acesse /recuperar para regularizar.');
+      } else if (Array.isArray(data?.message)) {
+        setError(data.message[0] ?? 'Verifique os dados e tente novamente.');
+      } else {
+        setError(data?.message ?? 'Erro ao criar conta. Tente novamente.');
+      }
     } finally {
       setLoading(false);
     }
