@@ -1,5 +1,5 @@
 # ── Stage 1: Dependencies ─────────────────────────────────────────────────────
-FROM node:20-alpine AS deps
+FROM node:20-slim AS deps
 
 WORKDIR /app
 COPY package*.json ./
@@ -11,7 +11,7 @@ COPY apps/web/package.json ./apps/web/
 RUN npm install --legacy-peer-deps
 
 # ── Stage 2: Builder ──────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:20-slim AS builder
 
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
@@ -26,14 +26,16 @@ ARG BUILD_ID=dev
 RUN echo "Build ID: ${BUILD_ID}" && mkdir -p apps/web/public && cd apps/web && npx next build
 
 # ── Stage 3: Production ───────────────────────────────────────────────────────
-FROM node:20-alpine AS production
+FROM node:20-slim AS production
+
+RUN apt-get update && apt-get install -y --no-install-recommends wget && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
+RUN addgroup --system --gid 1001 nodejs && adduser --system --uid 1001 nextjs
 
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
