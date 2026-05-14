@@ -4,7 +4,7 @@ dockerfilePath = "Dockerfile"
 buildCommand = ""
 
 [deploy]
-startCommand = "node_modules/.bin/prisma migrate deploy --schema=prisma/schema.prisma && node dist/main"
+startCommand = "node dist/main"
 healthcheckPath = "/api/v1/health"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"

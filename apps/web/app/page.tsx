@@ -1,10 +1,13 @@
 import Link from 'next/link';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001/api/v1';
+const SWAGGER_URL = API_URL.replace('/api/v1', '/api/docs');
+
 export default function HomePage() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center px-4">
+    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center px-4 py-12">
       <div className="text-center max-w-2xl mx-auto animate-fade-in">
-        {/* Logo / Brand */}
+        {/* Logo */}
         <div className="mb-8">
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-blue-600 mb-6 shadow-2xl">
             <span className="text-4xl font-black text-white">V</span>
@@ -13,6 +16,12 @@ export default function HomePage() {
             Visão<span className="text-blue-400">360</span>
           </h1>
           <p className="text-blue-200 text-xl font-medium">Gestão Predial Inteligente</p>
+        </div>
+
+        {/* Trial badge */}
+        <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-1.5 mb-6">
+          <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+          <span className="text-green-400 text-sm font-medium">14 dias grátis · Sem cartão de crédito</span>
         </div>
 
         {/* Description */}
@@ -41,37 +50,55 @@ export default function HomePage() {
           ))}
         </div>
 
-        {/* CTA */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        {/* CTAs principais */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-center mb-4">
+          <Link
+            href="/cadastro"
+            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-xl font-bold text-lg transition-all duration-200 shadow-lg hover:shadow-blue-500/25 hover:scale-105"
+          >
+            Criar conta grátis →
+          </Link>
           <Link
             href="/login"
-            className="bg-blue-600 hover:bg-blue-500 text-white px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 shadow-lg hover:shadow-blue-500/25 hover:scale-105"
-          >
-            Acessar Plataforma →
-          </Link>
-          <a
-            href="http://localhost:3001/api/docs"
-            target="_blank"
-            rel="noopener noreferrer"
             className="bg-white/10 hover:bg-white/20 text-white border border-white/20 px-8 py-4 rounded-xl font-semibold text-lg transition-all duration-200 backdrop-blur-sm"
           >
-            API Docs (Swagger)
-          </a>
+            Já tenho conta
+          </Link>
         </div>
 
-        {/* Status badges */}
-        <div className="mt-12 flex items-center justify-center gap-6 text-sm text-slate-400">
+        {/* Links secundários */}
+        <div className="flex items-center justify-center gap-6 mb-10">
+          <Link href="/planos" className="text-blue-400 hover:text-blue-300 text-sm font-medium transition">
+            Ver planos e preços
+          </Link>
+          <span className="text-slate-600">·</span>
+          <a
+            href={SWAGGER_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-slate-400 hover:text-slate-300 text-sm transition"
+          >
+            API Docs
+          </a>
+          <span className="text-slate-600">·</span>
+          <Link href="/recuperar" className="text-slate-400 hover:text-slate-300 text-sm transition">
+            Recuperar acesso
+          </Link>
+        </div>
+
+        {/* Status */}
+        <div className="flex items-center justify-center gap-5 text-xs text-slate-500">
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            API: localhost:3001
+            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+            API Online
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-blue-400" />
-            Web: localhost:3000
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+            PostgreSQL
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="w-2 h-2 rounded-full bg-purple-400" />
-            DB: PostgreSQL
+            <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+            Redis
           </span>
         </div>
       </div>
