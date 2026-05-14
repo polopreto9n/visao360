@@ -21,6 +21,9 @@ import { UploadModule } from "./upload/upload.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { ScheduleModule } from "@nestjs/schedule";
 import { SchedulerModule } from "./scheduler/scheduler.module";
+import { ChecklistSchedulesModule } from "./checklist-schedules/checklist-schedules.module";
+import { MetricsModule } from "./metrics/metrics.module";
+import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
 import { HealthController } from "./health/health.controller";
 import { TenantMiddleware } from "./common/middleware/tenant.middleware";
 
@@ -57,7 +60,10 @@ import { TenantMiddleware } from "./common/middleware/tenant.middleware";
     IncidentsModule,
     UploadModule,
     DashboardModule,
+    ChecklistSchedulesModule,
     SchedulerModule,
+    MetricsModule,
+    SubscriptionsModule,
   ],
   controllers: [HealthController],
 })

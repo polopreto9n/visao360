@@ -28,6 +28,9 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('Usuário não autenticado');
     }
 
+    // OWNER supera todos os roles — tem todas as permissões do sistema
+    if (user.role === 'OWNER') return true;
+
     const hasRole = requiredRoles.includes(user.role as Role);
 
     if (!hasRole) {

@@ -1,13 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ChecklistType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginationDto, paginated } from '../common/dto/pagination.dto';
 import { CreateChecklistDto } from './dto/create-checklist.dto';
 import { UpdateChecklistDto } from './dto/update-checklist.dto';
+import { UnitsService } from '../units/units.service';
 
 @Injectable()
 export class ChecklistsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly units: UnitsService,
+  ) {}
 
   async create(companyId: string, dto: CreateChecklistDto) {
     const { items, ...data } = dto;
@@ -28,11 +32,49 @@ export class ChecklistsService {
     });
   }
 
-  async findAll(companyId: string, dto: PaginationDto & { type?: ChecklistType; unitId?: string }) {
+  async findAll(
+    companyId: string,
+    dto: PaginationDto & { type?: ChecklistType; unitId?: string },
+    userId?: string,
+    userRole?: string,
+  ) {
+    let unitIds: string[] | undefined;
+    let excludeChecklistIds: string[] | undefined;
+
+    if ((userRole === 'TECNICO' || userRole === 'GESTOR') && userId) {
+      // Filtra por unidades atribuídas ao usuário
+      const ids = await this.units.getUserUnitIds(userId);
+      if (ids.length > 0) unitIds = ids;
+
+      // Exclui checklists com agenda ativa atribuída a OUTRO usuário
+      const scheduledForOthers = await this.prisma.checklistSchedule.findMany({
+        where: {
+          companyId,
+          isActive: true,
+          assigneeId: { not: userId },
+          NOT: { assigneeId: null },
+        },
+        select: { checklistId: true },
+      });
+
+      // Checklists que têm agenda para este usuário (não excluir)
+      const scheduledForMe = await this.prisma.checklistSchedule.findMany({
+        where: { companyId, isActive: true, assigneeId: userId },
+        select: { checklistId: true },
+      });
+      const myIds = new Set(scheduledForMe.map((s) => s.checklistId));
+
+      excludeChecklistIds = scheduledForOthers
+        .map((s) => s.checklistId)
+        .filter((id) => !myIds.has(id));
+    }
+
     const where = {
       companyId, isActive: true,
       ...(dto.type ? { type: dto.type } : {}),
-      ...(dto.unitId ? { unitId: dto.unitId } : {}),
+      ...(dto.unitId ? { unitId: dto.unitId } : unitIds ? { unitId: { in: unitIds } } : {}),
+      ...(excludeChecklistIds && excludeChecklistIds.length > 0
+        ? { id: { notIn: excludeChecklistIds } } : {}),
       ...(dto.search ? { name: { contains: dto.search, mode: 'insensitive' as const } } : {}),
     };
 
@@ -53,7 +95,7 @@ export class ChecklistsService {
     return paginated(data, total, dto);
   }
 
-  async findOne(id: string, companyId: string) {
+  async findOne(id: string, companyId: string, userId?: string, userRole?: string) {
     const checklist = await this.prisma.checklist.findFirst({
       where: { id, companyId },
       include: {
@@ -64,6 +106,12 @@ export class ChecklistsService {
       },
     });
     if (!checklist) throw new NotFoundException('Checklist não encontrado');
+    if (userRole === 'TECNICO' && userId && checklist.unitId) {
+      const unitIds = await this.units.getUserUnitIds(userId);
+      if (!unitIds.includes(checklist.unitId)) {
+        throw new ForbiddenException('Checklist não pertence a uma unidade atribuída a você');
+      }
+    }
     return checklist;
   }
 

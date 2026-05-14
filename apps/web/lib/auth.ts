@@ -32,11 +32,50 @@ export function clearSession(): void {
 }
 
 export const ROLE_LABELS: Record<string, string> = {
+  OWNER: 'Proprietário',
   ADMIN: 'Administrador',
   GESTOR: 'Gestor',
   TECNICO: 'Técnico',
   CLIENTE: 'Cliente',
 };
+
+export const SUBSCRIPTION_LABELS: Record<string, string> = {
+  TRIAL: 'Avaliação gratuita',
+  ACTIVE: 'Ativo',
+  PAST_DUE: 'Pagamento pendente',
+  SUSPENDED: 'Suspenso',
+  CANCELLED: 'Cancelado',
+};
+
+export const PLAN_LABELS: Record<string, string> = {
+  TRIAL: 'Trial',
+  STARTER: 'Starter',
+  PROFESSIONAL: 'Profissional',
+  ENTERPRISE: 'Enterprise',
+};
+
+export function isOwner(role: string): boolean {
+  return role === 'OWNER';
+}
+
+export function saveSubscription(status: string, daysLeft: number | null): void {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem('visao360_sub_status', status);
+  localStorage.setItem('visao360_sub_days', String(daysLeft ?? ''));
+}
+
+export function getSubscriptionStatus(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('visao360_sub_status');
+}
+
+export function getTrialDaysLeft(): number | null {
+  if (typeof window === 'undefined') return null;
+  const raw = localStorage.getItem('visao360_sub_days');
+  if (!raw) return null;
+  const n = parseInt(raw, 10);
+  return isNaN(n) ? null : n;
+}
 
 export const STATUS_LABELS: Record<string, string> = {
   OPEN: 'Aberta', ASSIGNED: 'Atribuída', IN_PROGRESS: 'Em andamento',
@@ -86,7 +125,7 @@ export function isOverdue(dateStr: string | null): boolean {
 }
 
 export function canAdmin(role: string): boolean {
-  return role === 'ADMIN';
+  return role === 'OWNER' || role === 'ADMIN';
 }
 
 export function canManage(role: string): boolean {

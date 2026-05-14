@@ -29,7 +29,7 @@ export class NotificationsController {
   @Patch(":id/read")
   @ApiOperation({ summary: "Marcar como lida" })
   markAsRead(@Param("id") id: string, @CurrentUser() u: AuthenticatedUser) {
-    return this.svc.markAsRead(id, u.id);
+    return this.svc.markAsRead(id, u.id, u.companyId);
   }
 
   @Patch("read-all")
@@ -41,6 +41,6 @@ export class NotificationsController {
   @Delete(":id")
   @ApiOperation({ summary: "Excluir notificacao" })
   delete(@Param("id") id: string, @CurrentUser() u: AuthenticatedUser) {
-    return this.svc.delete(id, u.id);
+    return this.svc.delete(id, u.id, u.companyId);
   }
 }

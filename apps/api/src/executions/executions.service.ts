@@ -1,26 +1,28 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ExecutionStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginationDto, paginated } from '../common/dto/pagination.dto';
 import { StartExecutionDto } from './dto/start-execution.dto';
 import { SubmitExecutionDto } from './dto/submit-execution.dto';
+import { ChecklistSchedulesService } from '../checklist-schedules/checklist-schedules.service';
 
 @Injectable()
 export class ExecutionsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly schedules: ChecklistSchedulesService,
+  ) {}
 
   async start(companyId: string, userId: string, dto: StartExecutionDto) {
-    // Verificar que o checklist existe e pertence à empresa
     const checklist = await this.prisma.checklist.findFirst({
       where: { id: dto.checklistId, companyId, isActive: true },
-      include: { items: true },
+      include: { items: { select: { id: true } } },
     });
     if (!checklist) throw new NotFoundException('Checklist não encontrado');
     if (checklist.items.length === 0) {
-      throw new BadRequestException('Checklist não possui itens');
+      throw new BadRequestException('Checklist não possui itens cadastrados');
     }
 
-    // Verificar asset se informado
     if (dto.assetId) {
       const asset = await this.prisma.asset.findFirst({ where: { id: dto.assetId, companyId } });
       if (!asset) throw new NotFoundException('Equipamento não encontrado');
@@ -41,7 +43,10 @@ export class ExecutionsService {
     });
   }
 
-  async findAll(companyId: string, dto: PaginationDto & { userId?: string; checklistId?: string; status?: ExecutionStatus }) {
+  async findAll(
+    companyId: string,
+    dto: PaginationDto & { userId?: string; checklistId?: string; status?: ExecutionStatus },
+  ) {
     const where = {
       companyId,
       ...(dto.userId ? { userId: dto.userId } : {}),
@@ -59,7 +64,8 @@ export class ExecutionsService {
           _count: { select: { items: true } },
         },
         orderBy: { createdAt: 'desc' },
-        skip: dto.skip, take: dto.limit,
+        skip: dto.skip,
+        take: dto.limit,
       }),
       this.prisma.execution.count({ where }),
     ]);
@@ -81,70 +87,90 @@ export class ExecutionsService {
     return execution;
   }
 
+  /**
+   * Conclui uma execução atomicamente via $transaction.
+   * Garante consistência: se qualquer etapa falhar, nenhuma mudança é salva.
+   */
   async complete(id: string, companyId: string, userId: string, dto: SubmitExecutionDto) {
     const execution = await this.findOne(id, companyId);
 
     if (execution.status === ExecutionStatus.COMPLETED) {
       throw new BadRequestException('Execução já foi concluída');
     }
+    if (execution.status === ExecutionStatus.CANCELLED) {
+      throw new BadRequestException('Execução cancelada não pode ser concluída');
+    }
     if (execution.userId !== userId) {
-      throw new BadRequestException('Você não pode concluir execuções de outro técnico');
+      throw new ForbiddenException('Você não pode concluir execuções de outro técnico');
     }
 
-    // Upsert dos itens respondidos
-    await Promise.all(
-      dto.items.map((item) =>
-        this.prisma.executionItem.upsert({
-          where: {
-            executionId_checklistItemId: {
+    const answered = dto.items.filter((i) => i.answer === true).length;
+    const score = dto.items.length > 0
+      ? Math.round((answered / dto.items.length) * 10000) / 100
+      : 0;
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      await Promise.all(
+        dto.items.map((item) =>
+          tx.executionItem.upsert({
+            where: {
+              executionId_checklistItemId: {
+                executionId: id,
+                checklistItemId: item.checklistItemId,
+              },
+            },
+            create: {
               executionId: id,
               checklistItemId: item.checklistItemId,
+              answer: item.answer,
+              notes: item.notes,
+              photoUrl: item.photoUrl,
             },
-          },
-          create: {
-            executionId: id,
-            checklistItemId: item.checklistItemId,
-            answer: item.answer,
-            notes: item.notes,
-            photoUrl: item.photoUrl,
-          },
-          update: {
-            answer: item.answer,
-            notes: item.notes,
-            photoUrl: item.photoUrl,
-          },
-        }),
-      ),
-    );
+            update: {
+              answer: item.answer,
+              notes: item.notes,
+              photoUrl: item.photoUrl,
+            },
+          }),
+        ),
+      );
 
-    // Calcular score: % de itens com resposta TRUE
-    const answered = dto.items.filter((i) => i.answer === true).length;
-    const score = dto.items.length > 0 ? (answered / dto.items.length) * 100 : 0;
-
-    return this.prisma.execution.update({
-      where: { id },
-      data: {
-        status: ExecutionStatus.COMPLETED,
-        completedAt: new Date(),
-        notes: dto.notes,
-        signatureUrl: dto.signatureUrl,
-        score: Math.round(score * 100) / 100,
-      },
-      include: {
-        items: { include: { checklistItem: true } },
-        checklist: { select: { id: true, name: true } },
-      },
+      return tx.execution.update({
+        where: { id },
+        data: {
+          status: ExecutionStatus.COMPLETED,
+          completedAt: new Date(),
+          notes: dto.notes,
+          signatureUrl: dto.signatureUrl,
+          score,
+        },
+        include: {
+          items: { include: { checklistItem: true } },
+          checklist: { select: { id: true, name: true } },
+        },
+      });
     });
+
+    // Avança agenda fora da transação — falha aqui não reverte a execução concluída
+    this.schedules
+      .advanceAfterExecution(execution.checklistId, execution.assetId ?? null, companyId)
+      .catch((err) =>
+        console.error(`[ExecutionsService] Falha ao avançar agenda (execução ${id}):`, err),
+      );
+
+    return updated;
   }
 
   async cancel(id: string, companyId: string, userId: string) {
     const execution = await this.findOne(id, companyId);
+
     if (execution.status === ExecutionStatus.COMPLETED) {
       throw new BadRequestException('Execução concluída não pode ser cancelada');
     }
     if (execution.userId !== userId) {
-      throw new BadRequestException('Você não pode cancelar execuções de outro técnico');
+      throw new ForbiddenException('Você não pode cancelar execuções de outro técnico');
     }
+
     return this.prisma.execution.update({
       where: { id },
       data: { status: ExecutionStatus.CANCELLED },

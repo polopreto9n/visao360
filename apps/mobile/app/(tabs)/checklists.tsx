@@ -14,7 +14,7 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { checklistsApi, Checklist, ExecutionItemPayload } from '../../services/api';
+import { checklistsApi, schedulesApi, Checklist, ChecklistSchedule, ExecutionItemPayload } from '../../services/api';
 import { useOfflineStore } from '../../stores/offline.store';
 import { useNetwork } from '../../hooks/useNetwork';
 import { SignaturePad } from '../../components/SignaturePad';
@@ -34,6 +34,7 @@ type Step = 'items' | 'notes' | 'signature' | 'done';
 
 export default function ChecklistsScreen() {
   const [checklists, setChecklists] = useState<Checklist[]>([]);
+  const [schedules, setSchedules] = useState<ChecklistSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState<Checklist | null>(null);
   const [executionId, setExecutionId] = useState<string | null>(null);
@@ -42,8 +43,12 @@ export default function ChecklistsScreen() {
 
   const load = useCallback(async () => {
     try {
-      const res = await checklistsApi.list();
-      setChecklists(res.data.data);
+      const [clRes, schRes] = await Promise.allSettled([
+        checklistsApi.list(),
+        schedulesApi.mine(),
+      ]);
+      if (clRes.status === 'fulfilled') setChecklists(clRes.value.data.data);
+      if (schRes.status === 'fulfilled') setSchedules(schRes.value.data);
     } catch {
       // Sem conexão — mantém lista vazia ou cache
     } finally {
@@ -97,6 +102,47 @@ export default function ChecklistsScreen() {
               ? `📵 Offline — execuções serão salvas localmente`
               : `☁️ ${pendingCount} item(ns) aguardando sincronização`}
           </Text>
+        </View>
+      )}
+
+      {/* Seção de agenda */}
+      {schedules.length > 0 && (
+        <View style={s.scheduleSection}>
+          <Text style={s.sectionTitle}>📅 Agenda — próximos 30 dias</Text>
+          {schedules.map((sch) => {
+            const due = new Date(sch.nextDueAt);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const diffDays = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            const isOverdue = diffDays < 0;
+            const isToday = diffDays === 0;
+            const label = isOverdue
+              ? `Vencido há ${Math.abs(diffDays)}d`
+              : isToday ? 'Hoje'
+              : diffDays === 1 ? 'Amanhã'
+              : `Em ${diffDays} dias`;
+            const labelColor = isOverdue ? '#dc2626' : isToday ? '#ca8a04' : '#16a34a';
+
+            return (
+              <View key={sch.id} style={s.scheduleRow}>
+                <View style={[s.scheduleDot, { backgroundColor: labelColor }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.scheduleName} numberOfLines={1}>
+                    {sch.name ?? sch.checklist.name}
+                  </Text>
+                  {sch.asset && (
+                    <Text style={s.scheduleSub} numberOfLines={1}>📦 {sch.asset.name}</Text>
+                  )}
+                  {sch.repeatDays && (
+                    <Text style={s.scheduleSub}>🔁 Repete a cada {sch.repeatDays}d</Text>
+                  )}
+                </View>
+                <View style={[s.scheduleBadge, { backgroundColor: labelColor + '20' }]}>
+                  <Text style={[s.scheduleBadgeText, { color: labelColor }]}>{label}</Text>
+                </View>
+              </View>
+            );
+          })}
         </View>
       )}
 
@@ -605,6 +651,15 @@ const s = StyleSheet.create({
   offlineBand: { backgroundColor: '#dc2626' },
   pendingBand: { backgroundColor: '#2563eb' },
   statusText: { color: '#fff', fontSize: 13, fontWeight: '600', textAlign: 'center' },
+
+  scheduleSection: { margin: 16, marginBottom: 0, backgroundColor: '#fff', borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#e2e8f0', gap: 10 },
+  sectionTitle: { fontSize: 14, fontWeight: '700', color: '#374151', marginBottom: 4 },
+  scheduleRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  scheduleDot: { width: 10, height: 10, borderRadius: 5 },
+  scheduleName: { fontSize: 13, fontWeight: '600', color: '#111827' },
+  scheduleSub: { fontSize: 11, color: '#9ca3af', marginTop: 1 },
+  scheduleBadge: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  scheduleBadgeText: { fontSize: 11, fontWeight: '700' },
 
   empty: { alignItems: 'center', paddingTop: 80, gap: 12 },
   emptyTitle: { fontSize: 18, fontWeight: '700', color: '#374151' },

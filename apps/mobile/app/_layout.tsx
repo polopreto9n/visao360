@@ -3,20 +3,13 @@ import { AppState, AppStateStatus } from 'react-native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { useAuthStore } from '../stores/auth.store';
 import { useOfflineStore } from '../stores/offline.store';
 import { useNetwork } from '../hooks/useNetwork';
 import { OfflineBanner } from '../components/OfflineBanner';
 
 export default function RootLayout() {
-  const loadFromStorage = useAuthStore((s) => s.loadFromStorage);
   const { syncAll, queue } = useOfflineStore();
   const { isOnline } = useNetwork();
-
-  // Carrega sessão do SecureStore na inicialização
-  useEffect(() => {
-    loadFromStorage();
-  }, []);
 
   // Tenta sincronizar quando app volta ao foreground com conexão
   useEffect(() => {

@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { clearSession, getUser, ROLE_LABELS, canManage } from '../../lib/auth';
+import { clearSession, getUser, ROLE_LABELS, canManage, canAdmin } from '../../lib/auth';
 
 const NAV = [
   { href: '/dashboard', label: 'Dashboard', icon: '📊' },
@@ -11,8 +11,9 @@ const NAV = [
   { href: '/dashboard/checklists', label: 'Checklists', icon: '✅' },
   { href: '/dashboard/assets', label: 'Equipamentos', icon: '🏗️' },
   { href: '/dashboard/incidents', label: 'Incidentes', icon: '⚠️' },
-  { href: '/dashboard/units', label: 'Unidades', icon: '🏢', manageOnly: true },
+  { href: '/dashboard/units', label: 'Condomínios', icon: '🏢', manageOnly: true },
   { href: '/dashboard/users', label: 'Usuários', icon: '👥', manageOnly: true },
+  { href: '/dashboard/conta', label: 'Assinatura', icon: '💳', adminOnly: true },
   { href: '/dashboard/profile', label: 'Meu Perfil', icon: '👤' },
 ];
 
@@ -28,7 +29,7 @@ export function Sidebar({ mobile, onClose }: { mobile?: boolean; onClose?: () =>
 
   const base = mobile
     ? 'w-64 bg-slate-900 text-white h-full flex flex-col'
-    : 'hidden lg:flex w-64 bg-slate-900 text-white flex-col fixed inset-y-0 left-0 z-30';
+    : 'flex w-56 bg-slate-900 text-white flex-col fixed inset-y-0 left-0 z-30';
 
   return (
     <aside className={base}>
@@ -48,7 +49,11 @@ export function Sidebar({ mobile, onClose }: { mobile?: boolean; onClose?: () =>
 
       {/* Nav */}
       <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
-        {NAV.filter((n) => !n.manageOnly || canManage(user?.role ?? '')).map((item) => {
+        {NAV.filter((n) => {
+        if (n.manageOnly && !canManage(user?.role ?? '')) return false;
+        if ((n as { adminOnly?: boolean }).adminOnly && !canAdmin(user?.role ?? '')) return false;
+        return true;
+      }).map((item) => {
           const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
           return (
             <Link

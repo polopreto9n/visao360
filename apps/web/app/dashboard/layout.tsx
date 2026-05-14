@@ -1,24 +1,82 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { isAuthenticated, getUser } from '../../lib/auth';
+import Link from 'next/link';
+import { isAuthenticated, getUser, saveSubscription } from '../../lib/auth';
+import { subscriptionsApi } from '../../lib/api';
 import { Sidebar } from '../../components/layout/Sidebar';
 import { NotificationBell } from '../../components/layout/NotificationBell';
+
+function TrialBanner({ daysLeft }: { daysLeft: number }) {
+  const urgent = daysLeft <= 3;
+  return (
+    <div className={`flex items-center justify-between px-4 py-2 text-sm font-medium ${
+      urgent
+        ? 'bg-orange-500 text-white'
+        : 'bg-blue-600 text-white'
+    }`}>
+      <span>
+        {urgent
+          ? `⚡ Trial encerra em ${daysLeft} dia(s)! Escolha um plano para não perder o acesso.`
+          : `🎯 Trial gratuito: ${daysLeft} dia(s) restante(s).`}
+      </span>
+      <Link
+        href="/planos"
+        className="ml-4 px-3 py-1 bg-white text-blue-700 rounded-full text-xs font-bold hover:bg-blue-50 transition flex-shrink-0"
+      >
+        Ver planos →
+      </Link>
+    </div>
+  );
+}
+
+function PastDueBanner() {
+  return (
+    <div className="flex items-center justify-between px-4 py-2 text-sm font-medium bg-yellow-500 text-white">
+      <span>⚠️ Pagamento pendente. Regularize para manter o acesso completo.</span>
+      <Link
+        href="/recuperar"
+        className="ml-4 px-3 py-1 bg-white text-yellow-700 rounded-full text-xs font-bold hover:bg-yellow-50 transition flex-shrink-0"
+      >
+        Regularizar →
+      </Link>
+    </div>
+  );
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
+  const [isPastDue, setIsPastDue] = useState(false);
   const user = getUser();
+
+  const checkSubscription = useCallback(async () => {
+    try {
+      const res = await subscriptionsApi.status();
+      const { subscriptionStatus, trialDaysLeft: days } = res.data;
+      saveSubscription(subscriptionStatus, days);
+      if (subscriptionStatus === 'TRIAL' && days !== null) {
+        setTrialDaysLeft(days);
+      }
+      if (subscriptionStatus === 'PAST_DUE') {
+        setIsPastDue(true);
+      }
+    } catch {
+      // 401 de subscription → interceptor redireciona para /recuperar automaticamente
+    }
+  }, []);
 
   useEffect(() => {
     if (!isAuthenticated()) {
       router.replace('/login');
     } else {
       setReady(true);
+      checkSubscription();
     }
-  }, [router]);
+  }, [router, checkSubscription]);
 
   if (!ready) {
     return (
@@ -47,7 +105,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar />
 
       {/* Main */}
-      <div className="lg:pl-64">
+      <div className="pl-56">
+        {/* Banners de assinatura */}
+        {trialDaysLeft !== null && <TrialBanner daysLeft={trialDaysLeft} />}
+        {isPastDue && <PastDueBanner />}
+
         {/* Top bar */}
         <header className="h-16 bg-white border-b border-slate-200 flex items-center gap-4 px-4 lg:px-6 sticky top-0 z-20">
           <button
@@ -72,7 +134,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             </div>
           </div>
         </header>
-
 
         {/* Content */}
         <main className="p-4 lg:p-6">{children}</main>

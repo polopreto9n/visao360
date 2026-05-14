@@ -100,6 +100,26 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * SET NX EX — atômico. Grava apenas se a chave não existir.
+   * Retorna true se gravou (lock adquirido), false se já existia.
+   * Usado para distributed locks no scheduler.
+   */
+  async setNX(key: string, value: string, ttlSeconds: number): Promise<boolean> {
+    if (this.client) {
+      const result = await this.client.set(key, value, 'EX', ttlSeconds, 'NX');
+      return result === 'OK';
+    }
+    // Fallback in-memory: verifica e grava atomicamente (single-thread JS)
+    const entry = this.fallback.get(key);
+    if (entry && Date.now() < entry.expiresAt) return false;
+    this.fallback.set(key, {
+      value,
+      expiresAt: Date.now() + ttlSeconds * 1000,
+    });
+    return true;
+  }
+
   /** Cache com auto-populate: busca no cache ou executa fn e armazena o resultado */
   async getOrSet<T>(key: string, fn: () => Promise<T>, ttlSeconds = 60): Promise<T> {
     const cached = await this.get<T>(key);
@@ -107,6 +127,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     const fresh = await fn();
     await this.set(key, fresh, ttlSeconds);
     return fresh;
+  }
+
+  async ping(): Promise<boolean> {
+    if (this.client) {
+      const result = await this.client.ping();
+      return result === 'PONG';
+    }
+    return true; // fallback always "alive"
   }
 
   isUsingFallback(): boolean {

@@ -18,8 +18,10 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+ARG NEXT_PUBLIC_API_URL=https://visao360-api-production.up.railway.app/api/v1
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
-RUN cd apps/web && npx next build
+RUN mkdir -p apps/web/public && cd apps/web && npx next build
 
 # ── Stage 3: Production ───────────────────────────────────────────────────────
 FROM node:20-alpine AS production

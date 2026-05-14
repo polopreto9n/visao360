@@ -28,13 +28,13 @@ export class ChecklistsController {
   @Get()
   @ApiOperation({ summary: 'Listar checklists ativos (filtros: type, unitId, assetId)' })
   findAll(@CurrentUser() u: AuthenticatedUser, @Query() q: ListChecklistsDto) {
-    return this.svc.findAll(u.companyId, q);
+    return this.svc.findAll(u.companyId, q, u.id, u.role);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obter checklist por ID com itens' })
   findOne(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
-    return this.svc.findOne(id, u.companyId);
+    return this.svc.findOne(id, u.companyId, u.id, u.role);
   }
 
   @Patch(':id')

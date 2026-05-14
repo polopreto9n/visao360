@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { usePushNotifications } from '../../hooks/usePushNotifications';
 
 type IconName = keyof typeof Ionicons.glyphMap;
 
@@ -8,6 +9,7 @@ function TabIcon({ name, color }: { name: IconName; color: string }) {
 }
 
 export default function TabsLayout() {
+  usePushNotifications();
   return (
     <Tabs
       screenOptions={{

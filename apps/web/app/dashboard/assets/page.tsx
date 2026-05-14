@@ -31,6 +31,8 @@ export default function AssetsPage() {
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [qrLoading, setQrLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<Asset | null>(null);
+  const [maintaining, setMaintaining] = useState<Asset | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const user = getUser();
   const canCreate = canManage(user?.role ?? '');
@@ -161,21 +163,40 @@ export default function AssetsPage() {
                   )}
                 </div>
 
+                {/* Botão registrar manutenção — aparece quando vencida */}
+                {overdue && canCreate && (
+                  <button
+                    onClick={() => setMaintaining(asset)}
+                    className="w-full mb-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold py-2 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    ✓ Registrar Manutenção
+                  </button>
+                )}
+
                 {/* Ações */}
                 <div className="flex gap-2">
                   <button
                     onClick={() => openQR(asset)}
                     className="flex-1 flex items-center justify-center gap-2 border border-blue-200 text-blue-700 hover:bg-blue-50 text-xs font-semibold py-2 rounded-xl transition-colors"
                   >
-                    <span>⬛</span> QR Code
+                    ⬛ QR Code
                   </button>
                   <button
                     onClick={() => downloadQR(asset)}
                     disabled={downloadingId === asset.id}
                     className="flex-1 flex items-center justify-center gap-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold py-2 rounded-xl transition-colors disabled:opacity-60"
                   >
-                    {downloadingId === asset.id ? '⏳ Gerando...' : '⬇ Baixar PNG'}
+                    {downloadingId === asset.id ? '⏳...' : '⬇ PNG'}
                   </button>
+                  {canCreate && (
+                    <button
+                      onClick={() => setEditing(asset)}
+                      className="px-3 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold rounded-xl transition-colors"
+                      title="Editar equipamento"
+                    >
+                      ✏️
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -240,14 +261,101 @@ export default function AssetsPage() {
       <Modal open={creating} onClose={() => setCreating(false)} title="Novo Equipamento" size="lg">
         <CreateAssetForm units={units} onSuccess={() => { setCreating(false); load(); }} />
       </Modal>
+
+      {/* Modal de edição */}
+      <Modal open={!!editing} onClose={() => setEditing(null)} title={`Editar — ${editing?.name ?? ''}`} size="lg">
+        {editing && (
+          <CreateAssetForm
+            units={units}
+            asset={editing}
+            onSuccess={() => { setEditing(null); load(); }}
+          />
+        )}
+      </Modal>
+
+      {/* Modal registrar manutenção */}
+      <Modal open={!!maintaining} onClose={() => setMaintaining(null)} title={`✓ Registrar Manutenção — ${maintaining?.name ?? ''}`} size="sm">
+        {maintaining && (
+          <RegisterMaintenanceForm
+            asset={maintaining}
+            onSuccess={() => { setMaintaining(null); load(); }}
+          />
+        )}
+      </Modal>
     </div>
   );
 }
 
-function CreateAssetForm({ units, onSuccess }: { units: Unit[]; onSuccess: () => void }) {
+function RegisterMaintenanceForm({ asset, onSuccess }: { asset: Asset; onSuccess: () => void }) {
+  const today = new Date().toISOString().split('T')[0];
+  const [nextDate, setNextDate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nextDate) { alert('Informe a data da próxima manutenção'); return; }
+    setSaving(true);
+    try {
+      await assetsApi.update(asset.id, {
+        lastMaintenanceAt: new Date().toISOString(),
+        nextMaintenanceAt: new Date(nextDate + 'T12:00:00').toISOString(),
+        status: 'ACTIVE',
+        ...(notes ? { description: notes } : {}),
+      });
+      onSuccess();
+    } catch (e: unknown) {
+      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao registrar');
+    } finally { setSaving(false); }
+  }
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800">
+        <p className="font-semibold">Manutenção realizada hoje ({new Date().toLocaleDateString('pt-BR')})</p>
+        <p className="text-xs mt-0.5 text-green-600">O campo "Última manutenção" será atualizado automaticamente.</p>
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Próxima manutenção *</label>
+        <input
+          required type="date"
+          min={today}
+          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+          value={nextDate}
+          onChange={(e) => setNextDate(e.target.value)}
+        />
+        <p className="text-xs text-slate-400 mt-1">Defina quando deve ser feita a próxima manutenção.</p>
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Observações (opcional)</label>
+        <textarea
+          rows={3}
+          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          placeholder="O que foi feito, peças trocadas, empresa responsável..."
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+        />
+      </div>
+      <button type="submit" disabled={saving}
+        className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm">
+        {saving ? 'Salvando...' : '✓ Confirmar Manutenção'}
+      </button>
+    </form>
+  );
+}
+
+function CreateAssetForm({ units, asset, onSuccess }: { units: Unit[]; asset?: Asset; onSuccess: () => void }) {
+  const isEditing = !!asset;
   const [form, setForm] = useState({
-    name: '', unitId: '', category: '', brand: '', model: '',
-    serialNumber: '', code: '', description: '', nextMaintenanceAt: '',
+    name: asset?.name ?? '',
+    unitId: asset?.unit?.id ?? '',
+    category: asset?.category ?? '',
+    brand: asset?.brand ?? '',
+    model: asset?.model ?? '',
+    serialNumber: asset?.serialNumber ?? '',
+    code: asset?.code ?? '',
+    description: asset?.description ?? '',
+    nextMaintenanceAt: asset?.nextMaintenanceAt ? new Date(asset.nextMaintenanceAt).toISOString().split('T')[0] : '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -255,18 +363,23 @@ function CreateAssetForm({ units, onSuccess }: { units: Unit[]; onSuccess: () =>
     e.preventDefault();
     setSaving(true);
     try {
-      await assetsApi.create({
+      const payload = {
         ...form,
         brand: form.brand || undefined,
         model: form.model || undefined,
         serialNumber: form.serialNumber || undefined,
         code: form.code || undefined,
         description: form.description || undefined,
-        nextMaintenanceAt: form.nextMaintenanceAt ? new Date(form.nextMaintenanceAt).toISOString() : undefined,
-      });
+        nextMaintenanceAt: form.nextMaintenanceAt ? new Date(form.nextMaintenanceAt + 'T12:00:00').toISOString() : undefined,
+      };
+      if (isEditing && asset) {
+        await assetsApi.update(asset.id, payload);
+      } else {
+        await assetsApi.create(payload);
+      }
       onSuccess();
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao criar equipamento');
+      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar equipamento');
     } finally { setSaving(false); }
   }
 
@@ -314,7 +427,7 @@ function CreateAssetForm({ units, onSuccess }: { units: Unit[]; onSuccess: () =>
       </div>
       <button type="submit" disabled={saving}
         className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm">
-        {saving ? 'Cadastrando...' : 'Cadastrar Equipamento'}
+        {saving ? 'Salvando...' : isEditing ? '✓ Salvar alterações' : 'Cadastrar Equipamento'}
       </button>
     </form>
   );

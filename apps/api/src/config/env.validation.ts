@@ -1,5 +1,14 @@
 import { plainToInstance } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Min, Max, validateSync } from 'class-validator';
+import {
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+  Max,
+  MinLength,
+  validateSync,
+} from 'class-validator';
 
 enum Environment {
   Development = 'development',
@@ -19,13 +28,19 @@ class EnvironmentVariables {
   PORT: number = 3001;
 
   @IsString()
+  @MinLength(20, { message: 'DATABASE_URL deve ser uma URL de conexão válida' })
   declare DATABASE_URL: string;
 
   @IsString()
+  @MinLength(32, { message: 'JWT_SECRET deve ter no mínimo 32 caracteres' })
   declare JWT_SECRET: string;
 
+  @IsString()
+  @MinLength(32, { message: 'JWT_REFRESH_SECRET deve ter no mínimo 32 caracteres e ser diferente do JWT_SECRET' })
+  declare JWT_REFRESH_SECRET: string;
+
   @IsInt()
-  @Min(300)
+  @Min(300, { message: 'JWT_EXPIRES_IN deve ser no mínimo 300 segundos' })
   @IsOptional()
   JWT_EXPIRES_IN: number = 86400;
 
@@ -56,6 +71,15 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   SUPABASE_SERVICE_ROLE_KEY: string = '';
+
+  // Stripe — opcionais em dev, obrigatórios em produção para billing funcionar
+  @IsString()
+  @IsOptional()
+  STRIPE_SECRET_KEY: string = '';
+
+  @IsString()
+  @IsOptional()
+  STRIPE_WEBHOOK_SECRET: string = '';
 }
 
 export function envValidation(config: Record<string, unknown>): EnvironmentVariables {
@@ -66,11 +90,14 @@ export function envValidation(config: Record<string, unknown>): EnvironmentVaria
   const errors = validateSync(validated, { skipMissingProperties: false });
 
   if (errors.length > 0) {
-    throw new Error(
-      `Variaveis de ambiente invalidas:\n${errors
-        .map((e) => Object.values(e.constraints ?? {}).join(', '))
-        .join('\n')}`,
-    );
+    const messages = errors
+      .map((e) => {
+        const constraints = Object.values(e.constraints ?? {}).join('; ');
+        return `  [${e.property}]: ${constraints}`;
+      })
+      .join('\n');
+
+    throw new Error(`❌ Variáveis de ambiente inválidas:\n${messages}`);
   }
 
   return validated;

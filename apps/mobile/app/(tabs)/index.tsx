@@ -10,7 +10,7 @@ import {
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuthStore } from '../../stores/auth.store';
-import { workOrdersApi, checklistsApi, WorkOrder, Checklist } from '../../services/api';
+import { workOrdersApi, checklistsApi, unitsApi, WorkOrder, Checklist, Unit } from '../../services/api';
 
 interface KPI {
   label: string;
@@ -24,17 +24,20 @@ export default function DashboardScreen() {
   const user = useAuthStore((s) => s.user);
   const [myOrders, setMyOrders] = useState<WorkOrder[]>([]);
   const [checklists, setChecklists] = useState<Checklist[]>([]);
+  const [myUnits, setMyUnits] = useState<Unit[]>([]);
   const [refreshing, setRefreshing] = useState(false);
 
   async function loadData() {
     try {
-      const [ordersRes, checkRes] = await Promise.allSettled([
+      const [ordersRes, checkRes, unitsRes] = await Promise.allSettled([
         workOrdersApi.myOrders(),
         checklistsApi.list(),
+        unitsApi.list(),
       ]);
 
       if (ordersRes.status === 'fulfilled') setMyOrders(ordersRes.value.data);
       if (checkRes.status === 'fulfilled') setChecklists(checkRes.value.data.data);
+      if (unitsRes.status === 'fulfilled') setMyUnits(unitsRes.value.data.data);
     } catch {
       // Silencioso — dados de demo quando API não alcançável
     }
@@ -86,6 +89,14 @@ export default function DashboardScreen() {
 
   const firstName = user?.name.split(' ')[0] ?? 'Técnico';
 
+  // Para TECNICO: mostra o condomínio. Para ADMIN/GESTOR: mostra a empresa.
+  const isTecnico = user?.role === 'TECNICO';
+  const subtitle = isTecnico && myUnits.length > 0
+    ? myUnits.length === 1
+      ? myUnits[0].name
+      : `${myUnits.length} condomínios`
+    : user?.company.name ?? '';
+
   return (
     <ScrollView
       style={styles.container}
@@ -95,7 +106,7 @@ export default function DashboardScreen() {
       <View style={styles.header}>
         <View>
           <Text style={styles.greeting}>Olá, {firstName} 👋</Text>
-          <Text style={styles.company}>{user?.company.name}</Text>
+          <Text style={styles.company}>{subtitle}</Text>
         </View>
         <TouchableOpacity onPress={() => router.push('/(tabs)/scan')} style={styles.scanBtn}>
           <Ionicons name="qr-code" size={22} color="#fff" />

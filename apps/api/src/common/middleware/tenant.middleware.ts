@@ -1,15 +1,8 @@
-import {
-  Injectable,
-  NestMiddleware,
-  UnauthorizedException,
-  Logger,
-} from '@nestjs/common';
+import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { Request, Response, NextFunction } from 'express';
-import { PrismaService } from '../../prisma/prisma.service';
 import { JwtPayload } from '../../auth/strategies/jwt.strategy';
 
-// Extende a interface Request do Express com dados do tenant
 declare global {
   namespace Express {
     interface Request {
@@ -19,47 +12,38 @@ declare global {
   }
 }
 
+/**
+ * Extrai tenantId e userId do JWT sem fazer query ao banco.
+ * A validação completa (usuário ativo, empresa ativa, blacklist) é feita pelo JwtAuthGuard + JwtStrategy.
+ * Isso elimina a query duplicada de DB que existia anteriormente neste middleware.
+ */
 @Injectable()
 export class TenantMiddleware implements NestMiddleware {
   private readonly logger = new Logger(TenantMiddleware.name);
 
-  constructor(
-    private readonly jwtService: JwtService,
-    private readonly prisma: PrismaService,
-  ) {}
+  constructor(private readonly jwtService: JwtService) {}
 
-  async use(req: Request, _res: Response, next: NextFunction): Promise<void> {
+  use(req: Request, _res: Response, next: NextFunction): void {
     const authHeader = req.headers.authorization;
 
     if (!authHeader?.startsWith('Bearer ')) {
       return next();
     }
 
-    const token = authHeader.substring(7);
+    const token = authHeader.slice(7);
 
     try {
-      const payload = this.jwtService.verify<JwtPayload>(token);
+      // Apenas decodifica (não verifica assinatura) para extrair tenant ID
+      // A verificação completa acontece no JwtStrategy.validate()
+      const payload = this.jwtService.decode<JwtPayload>(token);
 
-      // Verifica se a empresa está ativa e existe
-      const company = await this.prisma.company.findFirst({
-        where: { id: payload.companyId, isActive: true },
-        select: { id: true },
-      });
-
-      if (!company) {
-        throw new UnauthorizedException('Empresa não encontrada ou desativada');
+      if (payload?.companyId && payload?.sub) {
+        req.tenantId = payload.companyId;
+        req.userId = payload.sub;
+        this.logger.debug(`Tenant: ${payload.companyId} | User: ${payload.sub}`);
       }
-
-      req.tenantId = payload.companyId;
-      req.userId = payload.sub;
-
-      this.logger.debug(`Tenant resolvido: ${payload.companyId} | User: ${payload.sub}`);
-    } catch (err) {
-      if (err instanceof UnauthorizedException) {
-        throw err;
-      }
-      // Token inválido/expirado — deixa o JwtAuthGuard lidar
-      this.logger.debug('Token inválido no TenantMiddleware — será rejeitado pelo JwtAuthGuard');
+    } catch {
+      // Token malformado — JwtAuthGuard vai rejeitar na rota
     }
 
     next();

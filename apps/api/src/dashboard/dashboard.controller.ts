@@ -19,6 +19,6 @@ export class DashboardController {
     description: 'Retorna: assets por status, OSs abertas/vencidas, taxa de checklists, incidentes, atividade recente e alertas de manutenção',
   })
   kpis(@CurrentUser() u: AuthenticatedUser) {
-    return this.svc.getKPIs(u.companyId);
+    return this.svc.getKPIs(u.companyId, u.id, u.role);
   }
 }

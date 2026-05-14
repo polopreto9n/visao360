@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { dashboardApi, DashboardKPIs, workOrdersApi, WorkOrder } from '../../lib/api';
+import { dashboardApi, DashboardKPIs, workOrdersApi, WorkOrder, Execution } from '../../lib/api';
 import { formatDate, formatDateTime, isOverdue, STATUS_LABELS, PRIORITY_LABELS, STATUS_COLORS, PRIORITY_COLORS, getUser } from '../../lib/auth';
 import { Badge } from '../../components/ui/Badge';
 
@@ -219,23 +219,21 @@ export default function DashboardPage() {
 
       {/* Atividade recente */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* OS recentes */}
+        {/* OS em aberto */}
         <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-base font-bold text-gray-900">OS em Aberto</h2>
-            <Link href="/dashboard/work-orders" className="text-sm text-blue-600 hover:underline font-medium">
-              Ver todas →
-            </Link>
+            <Link href="/dashboard/work-orders" className="text-sm text-blue-600 hover:underline font-medium">Ver todas →</Link>
           </div>
           {recentActivity.workOrders.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-sm">Nenhuma OS aberta</div>
+            <div className="text-center py-8 text-slate-400 text-sm">Nenhuma OS aberta 🎉</div>
           ) : (
             <div className="space-y-3">
               {recentActivity.workOrders.map((wo) => (
                 <Link key={wo.id} href={`/dashboard/work-orders/${wo.id}`}>
                   <div className="flex items-start gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors border border-slate-100">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
                         <span className="text-xs text-slate-400 font-mono">{wo.code}</span>
                         <Badge value={wo.status} />
                         <Badge value={wo.priority} type="priority" />
@@ -255,44 +253,82 @@ export default function DashboardPage() {
           )}
         </div>
 
-        {/* Execuções recentes */}
-        <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-gray-900">Execuções Recentes</h2>
-            <Link href="/dashboard/checklists" className="text-sm text-blue-600 hover:underline font-medium">
-              Ver todas →
-            </Link>
-          </div>
-          {recentActivity.executions.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-sm">Nenhuma execução registrada</div>
-          ) : (
-            <div className="space-y-3">
-              {recentActivity.executions.map((ex) => (
-                <div key={ex.id} className="flex items-start gap-3 p-3 rounded-xl border border-slate-100">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Badge value={ex.status} />
-                      {ex.score !== null && (
-                        <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                          ex.score >= 80 ? 'bg-green-100 text-green-700' :
-                          ex.score >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                        }`}>
-                          {ex.score}%
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm font-semibold text-gray-900 truncate">{ex.checklist.name}</p>
-                    <p className="text-xs text-slate-500 mt-0.5">{ex.user.name}</p>
-                  </div>
-                  <p className="text-xs text-slate-400 flex-shrink-0">
-                    {formatDateTime(ex.completedAt ?? ex.startedAt)}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Execuções recentes + OS concluídas */}
+        <RecentActivity
+          executions={recentActivity.executions}
+          completedWorkOrders={recentActivity.completedWorkOrders ?? []}
+        />
       </div>
+    </div>
+  );
+}
+
+function RecentActivity({ executions, completedWorkOrders }: {
+  executions: Execution[];
+  completedWorkOrders: WorkOrder[];
+}) {
+  // Mescla checklists concluídos + OS concluídas, ordena por data mais recente
+  type Item =
+    | { kind: 'execution'; date: string; data: Execution }
+    | { kind: 'workorder'; date: string; data: WorkOrder };
+
+  const items: Item[] = [
+    ...executions.map((ex) => ({
+      kind: 'execution' as const,
+      date: ex.completedAt ?? ex.startedAt ?? ex.createdAt,
+      data: ex,
+    })),
+    ...completedWorkOrders.map((wo) => ({
+      kind: 'workorder' as const,
+      date: wo.completedAt ?? wo.updatedAt ?? wo.createdAt,
+      data: wo,
+    })),
+  ].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 8);
+
+  return (
+    <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-base font-bold text-gray-900">Execuções Recentes</h2>
+        <Link href="/dashboard/checklists" className="text-sm text-blue-600 hover:underline font-medium">Ver todas →</Link>
+      </div>
+      {items.length === 0 ? (
+        <div className="text-center py-8 text-slate-400 text-sm">Nenhuma atividade registrada</div>
+      ) : (
+        <div className="space-y-3">
+          {items.map((item) => item.kind === 'execution' ? (
+            <div key={`ex-${item.data.id}`} className="flex items-start gap-3 p-3 rounded-xl border border-slate-100">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <Badge value={item.data.status} />
+                  {item.data.score !== null && (
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      item.data.score >= 80 ? 'bg-green-100 text-green-700' :
+                      item.data.score >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                    }`}>{item.data.score}%</span>
+                  )}
+                </div>
+                <p className="text-sm font-semibold text-gray-900 truncate">📋 {item.data.checklist.name}</p>
+                <p className="text-xs text-slate-500 mt-0.5">{item.data.user.name}</p>
+              </div>
+              <p className="text-xs text-slate-400 flex-shrink-0">{formatDateTime(item.date)}</p>
+            </div>
+          ) : (
+            <Link key={`wo-${item.data.id}`} href={`/dashboard/work-orders/${item.data.id}`}>
+              <div className="flex items-start gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors">
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <Badge value={item.data.status} />
+                    <Badge value={item.data.priority} type="priority" />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900 truncate">🔧 {item.data.title}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{item.data.unit.name}</p>
+                </div>
+                <p className="text-xs text-slate-400 flex-shrink-0">{formatDateTime(item.date)}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

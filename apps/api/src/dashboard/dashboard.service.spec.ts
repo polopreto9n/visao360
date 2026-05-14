@@ -2,6 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { DashboardService } from './dashboard.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { UnitsService } from '../units/units.service';
 
 // ─── Mocks ────────────────────────────────────────────────────────────────────
 
@@ -47,6 +48,7 @@ beforeEach(async () => {
       DashboardService,
       { provide: PrismaService, useValue: mockPrisma },
       { provide: RedisService, useValue: mockRedis },
+      { provide: UnitsService, useValue: { getUserUnitIds: jest.fn().mockResolvedValue([]) } },
     ],
   }).compile();
 

@@ -8,6 +8,7 @@ import { AssetsService } from './assets.service';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { ListAssetsDto } from './dto/list-assets.dto';
+import { UpdateAssetStatusDto } from './dto/update-asset-status.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -31,19 +32,37 @@ export class AssetsController {
   @Get()
   @ApiOperation({ summary: 'Listar equipamentos com filtros' })
   findAll(@CurrentUser() u: AuthenticatedUser, @Query() q: ListAssetsDto) {
-    return this.svc.findAll(u.companyId, q);
+    return this.svc.findAll(u.companyId, q, u.id, u.role);
   }
 
   @Get('qr/:qrCode')
   @ApiOperation({ summary: 'Buscar equipamento por QR Code (scanner mobile)' })
   findByQR(@Param('qrCode') qrCode: string, @CurrentUser() u: AuthenticatedUser) {
-    return this.svc.findByQRCode(qrCode, u.companyId);
+    return this.svc.findByQRCode(qrCode, u.companyId, u.id, u.role);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obter equipamento por ID' })
   findOne(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
-    return this.svc.findOne(id, u.companyId);
+    return this.svc.findOne(id, u.companyId, u.id, u.role);
+  }
+
+  @Get(':id/checklists')
+  @ApiOperation({ summary: 'Checklists vinculados ao equipamento' })
+  getChecklists(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
+    return this.svc.getChecklists(id, u.companyId);
+  }
+
+  @Get(':id/history')
+  @ApiOperation({ summary: 'Histórico de execuções e OS do equipamento' })
+  getHistory(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
+    return this.svc.getHistory(id, u.companyId);
+  }
+
+  @Patch(':id/status')
+  @ApiOperation({ summary: 'Atualizar status do equipamento' })
+  updateStatus(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser, @Body() dto: UpdateAssetStatusDto) {
+    return this.svc.updateStatus(id, u.companyId, dto.status);
   }
 
   @Get(':id/qr-image')

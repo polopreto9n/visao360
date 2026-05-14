@@ -55,8 +55,42 @@
     "rootDir": "src",
     "testRegex": ".*\\.spec\\.ts$",
     "transform": { "^.+\\.(t|j)s$": "ts-jest" },
-    "collectCoverageFrom": ["**/*.(t|j)s"],
+    "collectCoverageFrom": [
+      "**/*.(t|j)s",
+      "!**/*.module.ts",
+      "!**/*.dto.ts",
+      "!**/*.entity.ts",
+      "!**/main.ts",
+      "!**/*.decorator.ts",
+      "!**/*.guard.ts",
+      "!**/*.filter.ts",
+      "!**/*.interceptor.ts",
+      "!**/*.middleware.ts",
+      "!**/*.strategy.ts"
+    ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "coverageReporters": ["text", "lcov", "html"],
+    "coverageThreshold": {
+      "global": {
+        "branches": 50,
+        "functions": 60,
+        "lines": 60,
+        "statements": 60
+      },
+      "./src/auth/auth.service.ts": {
+        "branches": 80,
+        "functions": 90,
+        "lines": 90,
+        "statements": 90
+      },
+      "./src/work-orders/work-orders.service.ts": {
+        "branches": 70,
+        "functions": 80,
+        "lines": 80,
+        "statements": 80
+      }
+    },
+    "testEnvironment": "node",
+    "verbose": true
   }
 }

@@ -11,10 +11,26 @@ datasource db {
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
 enum Role {
+  OWNER    // Dono do tenant — criado no signup, não pode ser rebaixado
   ADMIN
   GESTOR
   TECNICO
   CLIENTE
+}
+
+enum Plan {
+  TRIAL
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionStatus {
+  TRIAL       // Período de avaliação gratuita
+  ACTIVE      // Assinatura ativa e paga
+  PAST_DUE    // Pagamento falhou — grace period de 7 dias
+  SUSPENDED   // Acesso bloqueado por falta de pagamento
+  CANCELLED   // Cancelado pelo cliente
 }
 
 enum AssetStatus {
@@ -87,17 +103,28 @@ model Company {
   address   String?
   logoUrl   String?
   isActive  Boolean  @default(true)
+
+  // Assinatura SaaS
+  plan                 Plan               @default(TRIAL)
+  subscriptionStatus   SubscriptionStatus @default(TRIAL)
+  trialEndsAt          DateTime?
+  stripeCustomerId     String?            @unique
+  stripeSubscriptionId String?            @unique
+  currentPeriodEnd     DateTime?
+  pastDueSince         DateTime?          // Preenchido quando status → PAST_DUE; limpo ao sair
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users         User[]
-  units         Unit[]
-  assets        Asset[]
-  checklists    Checklist[]
-  executions    Execution[]
-  workOrders    WorkOrder[]
-  incidents     Incident[]
-  notifications Notification[]
+  users               User[]
+  units               Unit[]
+  assets              Asset[]
+  checklists          Checklist[]
+  executions          Execution[]
+  workOrders          WorkOrder[]
+  incidents           Incident[]
+  notifications       Notification[]
+  checklistSchedules  ChecklistSchedule[]
 
   @@map("companies")
 }
@@ -116,13 +143,14 @@ model User {
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
-  company            Company        @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  assignedUnits      Unit[]         @relation("UnitUsers")
-  createdWorkOrders  WorkOrder[]    @relation("WorkOrderCreator")
-  assignedWorkOrders WorkOrder[]    @relation("WorkOrderAssignee")
-  executions         Execution[]
-  incidents          Incident[]
-  notifications      Notification[]
+  company              Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  assignedUnits        Unit[]               @relation("UnitUsers")
+  createdWorkOrders    WorkOrder[]          @relation("WorkOrderCreator")
+  assignedWorkOrders   WorkOrder[]          @relation("WorkOrderAssignee")
+  executions           Execution[]
+  incidents            Incident[]
+  notifications        Notification[]
+  checklistSchedules   ChecklistSchedule[]  @relation("ScheduleAssignee")
 
   @@unique([email, companyId])
   @@index([companyId])
@@ -174,11 +202,12 @@ model Asset {
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
 
-  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  unit       Unit        @relation(fields: [unitId], references: [id])
-  checklists Checklist[]
-  workOrders WorkOrder[]
-  executions Execution[]
+  company           Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit              Unit                 @relation(fields: [unitId], references: [id])
+  checklists        Checklist[]
+  workOrders        WorkOrder[]
+  executions        Execution[]
+  checklistSchedules ChecklistSchedule[]
 
   @@index([companyId])
   @@index([unitId])
@@ -200,15 +229,42 @@ model Checklist {
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
 
-  company    Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  unit       Unit?           @relation(fields: [unitId], references: [id])
-  asset      Asset?          @relation(fields: [assetId], references: [id])
+  company    Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit       Unit?                @relation(fields: [unitId], references: [id])
+  asset      Asset?               @relation(fields: [assetId], references: [id])
   items      ChecklistItem[]
   executions Execution[]
+  schedules  ChecklistSchedule[]
 
   @@index([companyId])
   @@index([unitId])
   @@map("checklists")
+}
+
+model ChecklistSchedule {
+  id                String    @id @default(cuid())
+  companyId         String
+  checklistId       String
+  assetId           String?
+  assigneeId        String?
+  name              String?
+  nextDueAt         DateTime
+  repeatDays        Int?
+  reminderDaysBefore Int?     @default(0)
+  isActive          Boolean   @default(true)
+  lastSentAt        DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  company   Company   @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  checklist Checklist @relation(fields: [checklistId], references: [id])
+  asset     Asset?    @relation(fields: [assetId], references: [id])
+  assignee  User?     @relation("ScheduleAssignee", fields: [assigneeId], references: [id])
+
+  @@index([companyId])
+  @@index([assigneeId])
+  @@index([nextDueAt])
+  @@map("checklist_schedules")
 }
 
 model ChecklistItem {
@@ -250,10 +306,11 @@ model Execution {
   user      User            @relation(fields: [userId], references: [id])
   items     ExecutionItem[]
 
-  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, userId])
   @@index([checklistId])
   @@index([userId])
-  @@index([status])
+  @@index([completedAt])
   @@map("executions")
 }
 
@@ -282,7 +339,7 @@ model WorkOrder {
   assetId     String?
   creatorId   String
   assigneeId  String?
-  code        String            @unique
+  code        String
   title       String
   description String
   status      WorkOrderStatus   @default(OPEN)
@@ -301,9 +358,12 @@ model WorkOrder {
   creator  User    @relation("WorkOrderCreator", fields: [creatorId], references: [id])
   assignee User?   @relation("WorkOrderAssignee", fields: [assigneeId], references: [id])
 
-  @@index([companyId])
+  @@unique([code, companyId])
+  @@index([companyId, status])
+  @@index([companyId, assigneeId])
   @@index([unitId])
-  @@index([status])
+  @@index([assigneeId])
+  @@index([dueDate])
   @@index([creatorId])
   @@map("work_orders")
 }
@@ -347,8 +407,40 @@ model Notification {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id])
 
+  @@index([userId, isRead])
   @@index([companyId])
-  @@index([userId])
-  @@index([isRead])
+  @@index([createdAt])
   @@map("notifications")
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  companyId  String?
+  userId     String?
+  action     String
+  resource   String
+  resourceId String?
+  statusCode Int?
+  ip         String?
+  userAgent  String?
+  durationMs Int?
+  createdAt  DateTime @default(now())
+
+  @@index([companyId, createdAt])
+  @@index([userId])
+  @@index([resource, action])
+  @@map("audit_logs")
+}
+
+// Idempotência de webhooks Stripe: garante que cada evento seja processado UMA vez.
+// Stripe entrega at-least-once; sem esta tabela, eventos duplicados causam duplo billing.
+model StripeEvent {
+  id          String   @id  // = Stripe event ID (evt_xxx) — globalmente único
+  type        String
+  companyId   String?
+  processedAt DateTime @default(now())
+
+  @@index([companyId])
+  @@index([processedAt])
+  @@map("stripe_events")
 }

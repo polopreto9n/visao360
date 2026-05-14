@@ -37,6 +37,17 @@ api.interceptors.response.use(
 
     if (typeof window === 'undefined') return Promise.reject(err);
 
+    // Subscription-related 401 → não tenta refresh, vai direto para recuperação
+    const msg = (err.response?.data as { message?: string })?.message ?? '';
+    const isSubscriptionBlock =
+      msg.includes('suspensa') ||
+      msg.includes('cancelada') ||
+      msg.includes('avaliação encerrado');
+    if (isSubscriptionBlock) {
+      window.location.href = '/recuperar';
+      return Promise.reject(err);
+    }
+
     const refreshToken = localStorage.getItem('visao360_refresh');
     if (!refreshToken) {
       localStorage.removeItem('visao360_token');
@@ -100,10 +111,24 @@ export interface CompanyStats {
   openWorkOrders: number; openIncidents: number;
 }
 
+export interface UnitUser {
+  id: string; name: string; email: string; role: string; phone: string | null; isActive: boolean;
+}
+
 export interface Unit {
   id: string; name: string; code: string | null; address: string | null;
-  isActive: boolean; _count: { assets: number; checklists: number };
+  description: string | null; isActive: boolean;
+  users: UnitUser[];
+  _count: { assets: number; checklists: number; workOrders?: number };
 }
+
+export const unitsApi = {
+  list: () => api.get<Paginated<Unit>>('/units'),
+  assignUser: (unitId: string, userId: string) =>
+    api.post<Unit>(`/units/${unitId}/users/${userId}`),
+  removeUser: (unitId: string, userId: string) =>
+    api.delete<Unit>(`/units/${unitId}/users/${userId}`),
+};
 
 export interface Asset {
   id: string; name: string; code: string | null; category: string;
@@ -130,7 +155,7 @@ export interface Checklist {
 
 export interface Execution {
   id: string; status: string; score: number | null;
-  startedAt: string | null; completedAt: string | null;
+  startedAt: string | null; completedAt: string | null; createdAt: string;
   checklist: { id: string; name: string; type: string };
   user: { id: string; name: string };
   asset: { id: string; name: string } | null;
@@ -140,7 +165,7 @@ export interface Execution {
 export interface WorkOrder {
   id: string; code: string; title: string; description: string;
   status: string; priority: string; dueDate: string | null;
-  startedAt: string | null; completedAt: string | null; notes: string | null;
+  startedAt: string | null; completedAt: string | null; updatedAt: string; createdAt: string; notes: string | null;
   unit: { id: string; name: string };
   asset: { id: string; name: string; qrCode: string } | null;
   creator: { id: string; name: string; email: string };
@@ -159,7 +184,7 @@ export interface DashboardKPIs {
     assetsByStatus: { status: string; count: number }[];
     woByPriority: { priority: string; count: number }[];
   };
-  recentActivity: { executions: Execution[]; workOrders: WorkOrder[] };
+  recentActivity: { executions: Execution[]; workOrders: WorkOrder[]; completedWorkOrders: WorkOrder[] };
   alerts: { assetsNeedingMaintenance: (Asset & { isOverdue: boolean })[] };
 }
 
@@ -170,14 +195,48 @@ export interface User {
 
 // ─── API calls ────────────────────────────────────────────────────────────────
 
+export interface SubscriptionStatus {
+  subscriptionStatus: string;
+  plan: string;
+  trialDaysLeft: number | null;
+  trialEndsAt: string | null;
+  currentPeriodEnd: string | null;
+  stripeCustomerId: string | null;
+}
+
+export interface RecoverResult {
+  companyId: string;
+  companyName: string;
+  subscriptionStatus: string;
+  plan: string;
+  trialDaysLeft: number | null;
+  currentPeriodEnd: string | null;
+  billingPortalUrl: string | null;
+  message: string;
+}
+
 export const authApi = {
   findCompanies: (email: string) =>
     api.get<{ id: string; name: string; logoUrl: string | null; isActive: boolean }[]>(
       `/auth/find-companies`, { params: { email } }
     ),
   login: (email: string, password: string, companyId: string) =>
-    api.post<{ accessToken: string; user: AuthUser }>('/auth/login', { email, password, companyId }),
+    api.post<{ accessToken: string; refreshToken: string; user: AuthUser }>('/auth/login', { email, password, companyId }),
   me: () => api.get<AuthUser>('/auth/me'),
+  registerTenant: (data: {
+    companyName: string; companyEmail: string;
+    ownerName: string; ownerEmail: string;
+    password: string; phone?: string; cnpj?: string;
+  }) =>
+    api.post<{ accessToken: string; refreshToken: string; trialEndsAt: string; user: AuthUser }>(
+      '/auth/register-tenant', data
+    ),
+};
+
+export const subscriptionsApi = {
+  status: () => api.get<SubscriptionStatus>('/subscriptions/status'),
+  recover: (email: string, companyId: string, password: string) =>
+    rawApi.post<RecoverResult>('/subscriptions/recover', { email, companyId, password }),
 };
 
 export const dashboardApi = {
@@ -220,8 +279,26 @@ export const usersApi = {
   list: (params?: Record<string, unknown>) => api.get<Paginated<User>>('/users', { params }),
 };
 
-export const unitsApi = {
-  list: () => api.get<Paginated<Unit>>('/units'),
+export interface ChecklistSchedule {
+  id: string;
+  name: string | null;
+  nextDueAt: string;
+  repeatDays: number | null;
+  reminderDaysBefore: number | null;
+  isActive: boolean;
+  checklist: { id: string; name: string; type: string };
+  asset: { id: string; name: string } | null;
+  assignee: { id: string; name: string; email: string } | null;
+}
+
+export const schedulesApi = {
+  byChecklist: (checklistId: string) =>
+    api.get<ChecklistSchedule | null>(`/checklist-schedules/by-checklist/${checklistId}`),
+  create: (data: Record<string, unknown>) =>
+    api.post<ChecklistSchedule>('/checklist-schedules', data),
+  update: (id: string, data: Record<string, unknown>) =>
+    api.patch<ChecklistSchedule>(`/checklist-schedules/${id}`, data),
+  remove: (id: string) => api.delete(`/checklist-schedules/${id}`),
 };
 
 export const companiesApi = {

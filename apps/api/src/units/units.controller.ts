@@ -44,6 +44,20 @@ export class UnitsController {
     return this.svc.update(id, u.companyId, dto);
   }
 
+  @Post(':id/users/:userId')
+  @Roles(Role.ADMIN, Role.GESTOR)
+  @ApiOperation({ summary: 'Atribuir responsável à unidade' })
+  assignUser(@Param('id') id: string, @Param('userId') userId: string, @CurrentUser() u: AuthenticatedUser) {
+    return this.svc.assignUser(id, userId, u.companyId);
+  }
+
+  @Delete(':id/users/:userId')
+  @Roles(Role.ADMIN, Role.GESTOR)
+  @ApiOperation({ summary: 'Remover responsável da unidade' })
+  removeUser(@Param('id') id: string, @Param('userId') userId: string, @CurrentUser() u: AuthenticatedUser) {
+    return this.svc.removeUser(id, userId, u.companyId);
+  }
+
   @Delete(':id')
   @Roles(Role.ADMIN)
   @ApiOperation({ summary: 'Desativar unidade (ADMIN)' })

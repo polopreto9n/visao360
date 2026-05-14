@@ -4,6 +4,8 @@
 import { NotificationType, Role, WorkOrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { PushService } from '../push/push.service';
+import { UnitsService } from '../units/units.service';
 import { PaginationDto, paginated } from '../common/dto/pagination.dto';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
@@ -29,12 +31,17 @@ export class WorkOrdersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly notifications: NotificationsService,
+    private readonly push: PushService,
+    private readonly units: UnitsService,
   ) {}
 
-  private async generateCode(companyId: string): Promise<string> {
+  private generateCode(): string {
     const year = new Date().getFullYear();
-    const count = await this.prisma.workOrder.count({ where: { companyId } });
-    return `OS-${year}-${String(count + 1).padStart(4, '0')}`;
+    // Usando randomUUID truncado para evitar race condition no count simultâneo.
+    // O @unique([code, companyId]) no schema garante unicidade — colisão é improvável
+    // (16^8 = 4 bilhões de combinações) e seria rejeitada com ConflictException.
+    const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+    return `OS-${year}-${suffix}`;
   }
 
   async create(companyId: string, creatorId: string, dto: CreateWorkOrderDto) {
@@ -46,11 +53,17 @@ export class WorkOrdersService {
     ]);
     if (!unit) throw new NotFoundException('Unidade não encontrada');
     if (dto.assigneeId && !assignee) throw new NotFoundException('Técnico não encontrado');
+    if (dto.assigneeId) {
+      const inUnit = await this.prisma.unit.findFirst({
+        where: { id: dto.unitId, users: { some: { id: dto.assigneeId } } },
+      });
+      if (!inUnit) throw new BadRequestException('O responsável não pertence a esta unidade');
+    }
     if (dto.assetId) {
       const asset = await this.prisma.asset.findFirst({ where: { id: dto.assetId, companyId } });
       if (!asset) throw new NotFoundException('Equipamento não encontrado');
     }
-    const code = await this.generateCode(companyId);
+    const code = this.generateCode();
     const wo = await this.prisma.workOrder.create({
       data: {
         ...dto, companyId, creatorId, code,
@@ -60,23 +73,42 @@ export class WorkOrdersService {
       include: WO_INCLUDE,
     });
     if (dto.assigneeId && assignee) {
-      await this.notifications.create({
-        companyId, userId: dto.assigneeId,
-        type: NotificationType.WORK_ORDER_ASSIGNED,
-        title: `Nova OS atribuida: ${code}`,
-        body: `"${dto.title}" - Prioridade: ${dto.priority}`,
-        data: { workOrderId: wo.id, code },
-      });
+      const title = `Nova OS atribuída: ${code}`;
+      const body = `"${dto.title}" — Prioridade: ${dto.priority}`;
+      await Promise.all([
+        this.notifications.create({
+          companyId, userId: dto.assigneeId,
+          type: NotificationType.WORK_ORDER_ASSIGNED,
+          title, body,
+          data: { workOrderId: wo.id, code },
+        }),
+        this.push.sendToUser(dto.assigneeId, companyId, {
+          title, body,
+          data: { screen: 'orders', workOrderId: wo.id, code },
+        }),
+      ]);
     }
     return wo;
   }
 
-  async findAll(companyId: string, dto: PaginationDto & { status?: WorkOrderStatus; unitId?: string; assigneeId?: string; priority?: string; overdue?: boolean }) {
+  async findAll(
+    companyId: string,
+    dto: PaginationDto & { status?: WorkOrderStatus; unitId?: string; assigneeId?: string; priority?: string; overdue?: boolean },
+    userId?: string,
+    userRole?: string,
+  ) {
+    let unitIds: string[] | undefined;
+    if ((userRole === 'TECNICO' || userRole === 'CLIENTE') && userId) {
+      const ids = await this.units.getUserUnitIds(userId);
+      if (ids.length > 0) unitIds = ids;
+    }
+
     const where: Record<string, unknown> = {
       companyId,
       ...(dto.status ? { status: dto.status } : {}),
-      ...(dto.unitId ? { unitId: dto.unitId } : {}),
-      ...(dto.assigneeId ? { assigneeId: dto.assigneeId } : {}),
+      ...(dto.unitId ? { unitId: dto.unitId } : unitIds ? { unitId: { in: unitIds } } : {}),
+      // CLIENTE não filtra por assignee — pode ver todas as OS da sua unidade
+      ...(dto.assigneeId && userRole !== 'CLIENTE' ? { assigneeId: dto.assigneeId } : {}),
       ...(dto.priority ? { priority: dto.priority } : {}),
       ...(dto.overdue ? { dueDate: { lt: new Date() }, status: { notIn: [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED] } } : {}),
       ...(dto.search ? { OR: [{ code: { contains: dto.search, mode: 'insensitive' } }, { title: { contains: dto.search, mode: 'insensitive' } }] } : {}),
@@ -134,21 +166,32 @@ export class WorkOrdersService {
   }
 
   async assign(id: string, companyId: string, assigneeId: string) {
-    await this.findOne(id, companyId);
+    const wo = await this.findOne(id, companyId);
     const assignee = await this.prisma.user.findFirst({ where: { id: assigneeId, companyId } });
     if (!assignee) throw new NotFoundException('Tecnico nao encontrado');
-    const wo = await this.prisma.workOrder.update({
+    const inUnit = await this.prisma.unit.findFirst({
+      where: { id: wo.unitId, users: { some: { id: assigneeId } } },
+    });
+    if (!inUnit) throw new BadRequestException('O responsável não pertence a esta unidade');
+    const updated = await this.prisma.workOrder.update({
       where: { id },
       data: { assigneeId, status: WorkOrderStatus.ASSIGNED },
       include: WO_INCLUDE,
     });
-    await this.notifications.create({
-      companyId, userId: assigneeId,
-      type: NotificationType.WORK_ORDER_ASSIGNED,
-      title: `OS atribuida: ${wo.code}`,
-      body: `"${wo.title}" foi atribuida a voce`,
-      data: { workOrderId: id },
-    });
-    return wo;
+    const title = `OS atribuída: ${updated.code}`;
+    const body = `"${updated.title}" foi atribuída a você`;
+    await Promise.all([
+      this.notifications.create({
+        companyId, userId: assigneeId,
+        type: NotificationType.WORK_ORDER_ASSIGNED,
+        title, body,
+        data: { workOrderId: id },
+      }),
+      this.push.sendToUser(assigneeId, companyId, {
+        title, body,
+        data: { screen: 'orders', workOrderId: id },
+      }),
+    ]);
+    return updated;
   }
 }

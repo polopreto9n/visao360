@@ -3,7 +3,7 @@
     name: 'Visao360',
     slug: 'visao360',
     owner: 'ronaldoxvs-organization',
-    version: '1.1.0',
+    version: '1.2.0',
     orientation: 'portrait',
     userInterfaceStyle: 'light',
     scheme: 'visao360',
@@ -14,7 +14,7 @@
     android: {
       adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#2563eb' },
       package: 'com.visao360.app',
-      versionCode: 10,
+      versionCode: 11,
       permissions: ['android.permission.CAMERA','android.permission.READ_MEDIA_IMAGES','android.permission.READ_MEDIA_VIDEO','android.permission.VIBRATE'],
     },
     plugins: [
@@ -22,6 +22,15 @@
       ['expo-camera', { cameraPermission: 'O Visao360 usa a camera para escanear QR Codes.' }],
       ['expo-image-picker', { photosPermission: 'Galeria para evidencias.', cameraPermission: 'Camera para evidencias.' }],
       'expo-secure-store',
+      [
+        'expo-notifications',
+        {
+          icon: './assets/icon.png',
+          color: '#2563eb',
+          defaultChannel: 'visao360',
+          sounds: [],
+        },
+      ],
     ],
     experiments: { typedRoutes: true },
     extra: {

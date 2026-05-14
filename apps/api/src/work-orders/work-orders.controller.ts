@@ -28,7 +28,7 @@ export class WorkOrdersController {
   @Get()
   @ApiOperation({ summary: 'Listar OSs com filtros (status, unidade, técnico, prioridade)' })
   findAll(@CurrentUser() u: AuthenticatedUser, @Query() q: ListWorkOrdersDto) {
-    return this.svc.findAll(u.companyId, q);
+    return this.svc.findAll(u.companyId, q, u.id, u.role);
   }
 
   @Get('my')

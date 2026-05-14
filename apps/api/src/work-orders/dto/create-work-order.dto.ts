@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsDateString, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
+import { IsArray, IsDateString, IsEnum, IsOptional, IsString, MaxLength } from 'class-validator';
 import { WorkOrderPriority } from '@prisma/client';
 
 export class CreateWorkOrderDto {
@@ -24,4 +24,7 @@ export class CreateWorkOrderDto {
 
   @ApiPropertyOptional({ description: 'Prazo (ISO 8601)', example: '2024-08-01T00:00:00.000Z' })
   @IsDateString() @IsOptional() dueDate?: string;
+
+  @ApiPropertyOptional({ description: 'URLs de fotos anexadas', type: [String] })
+  @IsArray() @IsString({ each: true }) @IsOptional() photoUrls?: string[];
 }

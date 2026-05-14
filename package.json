@@ -48,6 +48,7 @@
     "expo-network": "^55.0.13",
     "expo-server-sdk": "^6.1.0",
     "ioredis": "^5.10.1",
+    "next": "^14.2.35",
     "nodemailer": "^8.0.7",
     "qrcode": "^1.5.4",
     "react-native-svg": "^15.15.4"

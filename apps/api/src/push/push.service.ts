@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { RedisService } from '../redis/redis.service';
+import { withRetry } from '../common/utils/retry';
 
 const TOKEN_TTL = 365 * 24 * 60 * 60; // 1 ano
 const MAX_TOKENS_PER_USER = 5;
@@ -81,19 +82,24 @@ export class PushService {
       }));
 
       try {
-        const res = await fetch(this.expoEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-          body: JSON.stringify(messages),
-        });
-
-        if (!res.ok) {
-          this.logger.warn(`Expo Push falhou: ${res.statusText}`);
-        } else {
-          this.logger.log(`Push enviado para ${batch.length} devices`);
-        }
+        await withRetry(
+          async () => {
+            const res = await fetch(this.expoEndpoint, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+              body: JSON.stringify(messages),
+            });
+            if (!res.ok) {
+              const err = new Error(`Expo Push HTTP ${res.status}`);
+              (err as Error & { status: number }).status = res.status;
+              throw err;
+            }
+          },
+          { maxAttempts: 3, baseDelayMs: 500, maxDelayMs: 5000 },
+        );
+        this.logger.log(`Push enviado para ${batch.length} devices`);
       } catch (err) {
-        this.logger.error(`Erro ao enviar push: ${String(err)}`);
+        this.logger.error(`Expo Push falhou após 3 tentativas: ${String(err)}`);
       }
     }
   }

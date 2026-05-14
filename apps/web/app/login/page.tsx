@@ -239,6 +239,14 @@ export default function LoginPage() {
           )}
         </div>
 
+        {/* Criar conta */}
+        <p className="text-center mt-6 text-slate-400 text-sm">
+          Não tem uma conta?{' '}
+          <Link href="/cadastro" className="text-blue-400 hover:text-blue-300 font-medium">
+            Criar grátis — 14 dias de trial
+          </Link>
+        </p>
+
         {/* Dev hint */}
         {process.env.NODE_ENV !== 'production' && (
           <div className="mt-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-xs text-yellow-200">

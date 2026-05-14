@@ -72,9 +72,9 @@ export class NotificationsService {
     return { ...paginated(data, total, dto), unreadCount };
   }
 
-  async markAsRead(id: string, userId: string) {
+  async markAsRead(id: string, userId: string, companyId: string) {
     return this.prisma.notification.updateMany({
-      where: { id, userId },
+      where: { id, userId, companyId },
       data: { isRead: true, readAt: new Date() },
     });
   }
@@ -87,8 +87,8 @@ export class NotificationsService {
     return { updated: result.count };
   }
 
-  async delete(id: string, userId: string) {
-    await this.prisma.notification.deleteMany({ where: { id, userId } });
+  async delete(id: string, userId: string, companyId: string) {
+    await this.prisma.notification.deleteMany({ where: { id, userId, companyId } });
     return { deleted: true };
   }
 

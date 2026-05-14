@@ -1,22 +1,25 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { checklistsApi, unitsApi, Checklist, Execution, Unit } from '../../../lib/api';
+import { checklistsApi, schedulesApi, usersApi, unitsApi, Checklist, ChecklistSchedule, Execution, Unit, User } from '../../../lib/api';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
-import { formatDateTime, STATUS_LABELS, getUser, canManage } from '../../../lib/auth';
+import { formatDateTime, getUser, canManage } from '../../../lib/auth';
 import { api } from '../../../lib/api';
 
 export default function ChecklistsPage() {
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [executions, setExecutions] = useState<Execution[]>([]);
   const [units, setUnits] = useState<Unit[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [schedules, setSchedules] = useState<Record<string, ChecklistSchedule | null>>({});
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState<Checklist | null>(null);
   const [executionId, setExecutionId] = useState<string | null>(null);
   const [tab, setTab] = useState<'templates' | 'history'>('templates');
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Checklist | null>(null);
+  const [scheduling, setScheduling] = useState<Checklist | null>(null);
   const user = getUser();
   const canCreate = canManage(user?.role ?? '');
 
@@ -29,12 +32,23 @@ export default function ChecklistsPage() {
       ]);
       setChecklists(clRes.data.data);
       setExecutions(exRes.data.data);
+
+      // Busca agenda de cada checklist em paralelo
+      const schEntries = await Promise.all(
+        clRes.data.data.map((cl) =>
+          schedulesApi.byChecklist(cl.id)
+            .then((r) => [cl.id, r.data] as [string, ChecklistSchedule | null])
+            .catch(() => [cl.id, null] as [string, null]),
+        ),
+      );
+      setSchedules(Object.fromEntries(schEntries));
     } finally { setLoading(false); }
   }, []);
 
   useEffect(() => { load(); }, [load]);
   useEffect(() => {
     unitsApi.list().then((r) => setUnits(r.data.data)).catch(() => {});
+    usersApi.list({ limit: 100 }).then((r) => setUsers(r.data.data)).catch(() => {});
   }, []);
 
   async function startExecution(cl: Checklist) {
@@ -88,41 +102,89 @@ export default function ChecklistsPage() {
               <p className="text-lg font-semibold text-slate-700">Nenhum checklist cadastrado</p>
             </div>
           )}
-          {checklists.map((cl) => (
-            <div key={cl.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col gap-4">
-              <div className="flex items-start justify-between gap-2">
-                <span className="text-2xl">{TYPE_ICONS[cl.type] ?? '📋'}</span>
-                <Badge value={cl.type} />
-              </div>
-              <div className="flex-1">
-                <h3 className="font-bold text-gray-900">{cl.name}</h3>
-                {cl.description && <p className="text-sm text-slate-500 mt-1 line-clamp-2">{cl.description}</p>}
-              </div>
-              <div className="flex items-center gap-3 text-xs text-slate-500">
-                <span>📌 {cl.items.length} itens</span>
-                {cl.unit && <span>🏢 {cl.unit.name}</span>}
-                {cl.intervalDays && <span>🔄 A cada {cl.intervalDays}d</span>}
-                {cl._count && <span>📊 {cl._count.executions} execuções</span>}
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => startExecution(cl)}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
-                >
-                  ▶ Executar
-                </button>
-                {canCreate && (
-                  <button
-                    onClick={() => setEditing(cl)}
-                    className="px-4 border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-semibold rounded-xl transition-colors"
-                    title="Editar checklist"
-                  >
-                    ✏️
-                  </button>
+          {checklists.map((cl) => {
+            const sch = schedules[cl.id];
+            const nextDate = sch ? new Date(sch.nextDueAt) : null;
+            const today = new Date(); today.setHours(0,0,0,0);
+            const diffDays = nextDate ? Math.ceil((nextDate.getTime() - today.getTime()) / 86400000) : null;
+            const isOverdue = diffDays !== null && diffDays < 0;
+            const isToday = diffDays === 0;
+            const isSoon = diffDays !== null && diffDays > 0 && diffDays <= 3;
+
+            return (
+              <div key={cl.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col gap-4">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="text-2xl">{TYPE_ICONS[cl.type] ?? '📋'}</span>
+                  <Badge value={cl.type} />
+                </div>
+                <div className="flex-1">
+                  <h3 className="font-bold text-gray-900">{cl.name}</h3>
+                  {cl.description && <p className="text-sm text-slate-500 mt-1 line-clamp-2">{cl.description}</p>}
+                </div>
+                <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                  <span>📌 {cl.items.length} itens</span>
+                  {cl.unit && <span>🏢 {cl.unit.name}</span>}
+                  {cl.intervalDays && <span>🔄 A cada {cl.intervalDays}d</span>}
+                  {cl._count && <span>📊 {cl._count.executions} execuções</span>}
+                </div>
+
+                {/* Badge de agenda */}
+                {sch && nextDate && (
+                  <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border ${
+                    isOverdue ? 'bg-red-50 border-red-200 text-red-700' :
+                    isToday   ? 'bg-amber-50 border-amber-200 text-amber-700' :
+                    isSoon    ? 'bg-orange-50 border-orange-200 text-orange-700' :
+                                'bg-blue-50 border-blue-200 text-blue-700'
+                  }`}>
+                    <span className="text-base">{isOverdue ? '🚨' : isToday ? '⏰' : '📅'}</span>
+                    <div className="flex-1 min-w-0">
+                      <span>
+                        {isOverdue
+                          ? `Vencido há ${Math.abs(diffDays!)}d — ${nextDate.toLocaleDateString('pt-BR')}`
+                          : isToday ? 'Previsto para hoje'
+                          : `Próxima: ${nextDate.toLocaleDateString('pt-BR')}${diffDays === 1 ? ' (amanhã)' : ` (em ${diffDays}d)`}`
+                        }
+                      </span>
+                      {sch.assignee && <span className="ml-2 opacity-75">· {sch.assignee.name}</span>}
+                    </div>
+                    {sch.reminderDaysBefore ? (
+                      <span className="flex-shrink-0">🔔 {sch.reminderDaysBefore}d antes</span>
+                    ) : null}
+                  </div>
                 )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => startExecution(cl)}
+                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+                  >
+                    ▶ Executar
+                  </button>
+                  {canCreate && (
+                    <>
+                      <button
+                        onClick={() => setScheduling(cl)}
+                        className={`px-3 border text-sm font-semibold rounded-xl transition-colors ${
+                          sch ? 'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100' :
+                                'border-slate-200 hover:bg-slate-50 text-slate-600'
+                        }`}
+                        title={sch ? 'Editar agenda' : 'Agendar'}
+                      >
+                        {sch ? '🗓️' : '🗓️+'}
+                      </button>
+                      <button
+                        onClick={() => setEditing(cl)}
+                        className="px-3 border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-semibold rounded-xl transition-colors"
+                        title="Editar checklist"
+                      >
+                        ✏️
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
         <div className="space-y-3">
@@ -185,6 +247,23 @@ export default function ChecklistsPage() {
             units={units}
             checklist={editing}
             onSuccess={() => { setEditing(null); load(); }}
+          />
+        )}
+      </Modal>
+
+      {/* Modal agendar checklist */}
+      <Modal
+        open={!!scheduling}
+        onClose={() => setScheduling(null)}
+        title={`🗓️ Agendar — ${scheduling?.name ?? ''}`}
+        size="md"
+      >
+        {scheduling && (
+          <ScheduleForm
+            checklist={scheduling}
+            existingSchedule={schedules[scheduling.id] ?? null}
+            users={users}
+            onSuccess={() => { setScheduling(null); load(); }}
           />
         )}
       </Modal>
@@ -367,6 +446,178 @@ function CreateChecklistForm({
             ? `✓ Salvar alterações (${items.length} itens)`
             : `Criar checklist com ${items.length} item(ns)`}
       </button>
+    </form>
+  );
+}
+
+// ─── Agendar Checklist ───────────────────────────────────────────────────────
+
+function ScheduleForm({
+  checklist, existingSchedule, users, onSuccess,
+}: {
+  checklist: Checklist;
+  existingSchedule: ChecklistSchedule | null;
+  users: User[];
+  onSuccess: () => void;
+}) {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+
+  const [form, setForm] = useState({
+    assigneeId: existingSchedule?.assignee?.id ?? '',
+    nextDueAt: existingSchedule
+      ? new Date(existingSchedule.nextDueAt).toISOString().split('T')[0]
+      : tomorrowStr,
+    repeatDays: existingSchedule?.repeatDays?.toString() ?? checklist.intervalDays?.toString() ?? '',
+    reminderDaysBefore: existingSchedule?.reminderDaysBefore?.toString() ?? '0',
+    name: existingSchedule?.name ?? '',
+  });
+  const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const payload = {
+        checklistId: checklist.id,
+        assigneeId: form.assigneeId || undefined,
+        nextDueAt: new Date(form.nextDueAt).toISOString(),
+        repeatDays: form.repeatDays ? Number(form.repeatDays) : undefined,
+        reminderDaysBefore: Number(form.reminderDaysBefore),
+        name: form.name || undefined,
+      };
+      if (existingSchedule) {
+        await schedulesApi.update(existingSchedule.id, payload);
+      } else {
+        await schedulesApi.create(payload);
+      }
+      onSuccess();
+    } catch (err: unknown) {
+      alert((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar agenda');
+    } finally { setSaving(false); }
+  }
+
+  async function handleRemove() {
+    if (!existingSchedule) return;
+    if (!confirm('Remover esta agenda?')) return;
+    setRemoving(true);
+    try {
+      await schedulesApi.remove(existingSchedule.id);
+      onSuccess();
+    } finally { setRemoving(false); }
+  }
+
+  const technicians = users.filter((u) => ['TECNICO', 'GESTOR', 'ADMIN'].includes(u.role) && u.isActive);
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Nome da agenda (opcional)</label>
+        <input
+          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          placeholder={`ex: ${checklist.name} — Torre A`}
+          value={form.name}
+          onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Técnico responsável</label>
+        <select
+          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+          value={form.assigneeId}
+          onChange={(e) => setForm(f => ({ ...f, assigneeId: e.target.value }))}
+        >
+          <option value="">Sem técnico específico</option>
+          {technicians.map((u) => (
+            <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+          ))}
+        </select>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Próxima execução *</label>
+          <input
+            required
+            type="date"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            value={form.nextDueAt}
+            min={new Date().toISOString().split('T')[0]}
+            onChange={(e) => setForm(f => ({ ...f, nextDueAt: e.target.value }))}
+          />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1">Repetir a cada (dias)</label>
+          <input
+            type="number"
+            min="1"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="ex: 30"
+            value={form.repeatDays}
+            onChange={(e) => setForm(f => ({ ...f, repeatDays: e.target.value }))}
+          />
+          <p className="text-xs text-slate-400 mt-0.5">Deixe vazio para execução única</p>
+        </div>
+      </div>
+
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">🔔 Aviso antecipado</label>
+        <select
+          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+          value={form.reminderDaysBefore}
+          onChange={(e) => setForm(f => ({ ...f, reminderDaysBefore: e.target.value }))}
+        >
+          <option value="0">No próprio dia</option>
+          <option value="1">1 dia antes</option>
+          <option value="2">2 dias antes</option>
+          <option value="3">3 dias antes</option>
+          <option value="5">5 dias antes</option>
+          <option value="7">1 semana antes</option>
+          <option value="14">2 semanas antes</option>
+        </select>
+        <p className="text-xs text-slate-400 mt-1">
+          O técnico receberá uma notificação push no celular nessa antecedência.
+        </p>
+      </div>
+
+      {form.nextDueAt && (
+        <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-800">
+          <p className="font-semibold">📅 Resumo</p>
+          <p className="mt-0.5">
+            Previsto para <strong>{new Date(form.nextDueAt + 'T12:00:00').toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}</strong>
+            {form.repeatDays && `, repetindo a cada ${form.repeatDays} dias`}.
+          </p>
+          {Number(form.reminderDaysBefore) > 0 && (
+            <p className="mt-0.5">
+              🔔 Notificação {form.reminderDaysBefore} dia(s) antes —{' '}
+              <strong>{new Date(new Date(form.nextDueAt + 'T12:00:00').getTime() - Number(form.reminderDaysBefore) * 86400000).toLocaleDateString('pt-BR')}</strong>
+            </p>
+          )}
+        </div>
+      )}
+
+      <div className="flex gap-3 pt-1">
+        {existingSchedule && (
+          <button
+            type="button"
+            onClick={handleRemove}
+            disabled={removing}
+            className="px-4 border border-red-200 text-red-600 hover:bg-red-50 text-sm font-semibold rounded-xl transition-colors disabled:opacity-50"
+          >
+            {removing ? 'Removendo...' : '🗑️ Remover'}
+          </button>
+        )}
+        <button
+          type="submit"
+          disabled={saving}
+          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+        >
+          {saving ? 'Salvando...' : existingSchedule ? '✓ Atualizar agenda' : '✓ Criar agenda'}
+        </button>
+      </div>
     </form>
   );
 }

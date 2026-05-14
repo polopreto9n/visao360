@@ -12,10 +12,11 @@ import { Prisma } from '@prisma/client';
 interface ErrorResponse {
   statusCode: number;
   message: string | string[];
-  details?: unknown;
   timestamp: string;
   path: string;
 }
+
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 @Catch()
 export class AllExceptionsFilter implements ExceptionFilter {
@@ -49,12 +50,10 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       const status = exception.getStatus();
       const res = exception.getResponse();
-
       const message =
         typeof res === 'string'
           ? res
           : (res as { message?: string | string[] }).message ?? exception.message;
-
       return { statusCode: status, message, timestamp, path };
     }
 
@@ -65,15 +64,18 @@ export class AllExceptionsFilter implements ExceptionFilter {
     if (exception instanceof Prisma.PrismaClientValidationError) {
       return {
         statusCode: HttpStatus.BAD_REQUEST,
-        message: 'Dados inválidos na requisição ao banco de dados',
+        message: 'Dados inválidos na requisição',
         timestamp,
         path,
       };
     }
 
+    // Em produção: nunca expor detalhes internos de erros 500
     return {
       statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-      message: 'Erro interno do servidor',
+      message: IS_PRODUCTION
+        ? 'Erro interno. Nossa equipe foi notificada.'
+        : (exception instanceof Error ? exception.message : String(exception)),
       timestamp,
       path,
     };
@@ -86,7 +88,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
   ): ErrorResponse {
     switch (error.code) {
       case 'P2002': {
-        const fields = (error.meta?.target as string[])?.join(', ') ?? 'campo';
+        const fields = IS_PRODUCTION
+          ? 'valor'
+          : ((error.meta?.target as string[])?.join(', ') ?? 'campo');
         return {
           statusCode: HttpStatus.CONFLICT,
           message: `Já existe um registro com o mesmo ${fields}`,
@@ -95,31 +99,15 @@ export class AllExceptionsFilter implements ExceptionFilter {
         };
       }
       case 'P2025':
-        return {
-          statusCode: HttpStatus.NOT_FOUND,
-          message: 'Registro não encontrado',
-          timestamp,
-          path,
-        };
+        return { statusCode: HttpStatus.NOT_FOUND, message: 'Registro não encontrado', timestamp, path };
       case 'P2003':
-        return {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: 'Referência inválida: registro relacionado não existe',
-          timestamp,
-          path,
-        };
+        return { statusCode: HttpStatus.BAD_REQUEST, message: 'Referência inválida: registro relacionado não existe', timestamp, path };
       case 'P2014':
-        return {
-          statusCode: HttpStatus.BAD_REQUEST,
-          message: 'Violação de constraint: a alteração quebraria uma relação existente',
-          timestamp,
-          path,
-        };
+        return { statusCode: HttpStatus.BAD_REQUEST, message: 'Violação de constraint: a alteração quebraria uma relação existente', timestamp, path };
       default:
         return {
           statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
-          message: 'Erro no banco de dados',
-          details: { code: error.code },
+          message: IS_PRODUCTION ? 'Erro no banco de dados' : `Erro no banco de dados [${error.code}]`,
           timestamp,
           path,
         };

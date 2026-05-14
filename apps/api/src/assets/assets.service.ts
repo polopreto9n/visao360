@@ -1,7 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Response } from 'express';
 import * as QRCode from 'qrcode';
+import { AssetStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { UnitsService } from '../units/units.service';
 import { paginated } from '../common/dto/pagination.dto';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
@@ -17,7 +19,10 @@ const ASSET_SELECT = {
 
 @Injectable()
 export class AssetsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly units: UnitsService,
+  ) {}
 
   async create(companyId: string, dto: CreateAssetDto) {
     // Verificar que a unidade pertence à empresa
@@ -30,10 +35,16 @@ export class AssetsService {
     });
   }
 
-  async findAll(companyId: string, dto: ListAssetsDto) {
+  async findAll(companyId: string, dto: ListAssetsDto, userId?: string, userRole?: string) {
+    let unitIds: string[] | undefined;
+    if ((userRole === 'TECNICO' || userRole === 'CLIENTE') && userId) {
+      const ids = await this.units.getUserUnitIds(userId);
+      if (ids.length > 0) unitIds = ids;
+    }
+
     const where = {
       companyId,
-      ...(dto.unitId ? { unitId: dto.unitId } : {}),
+      ...(dto.unitId ? { unitId: dto.unitId } : unitIds ? { unitId: { in: unitIds } } : {}),
       ...(dto.category ? { category: { contains: dto.category, mode: 'insensitive' as const } } : {}),
       ...(dto.status ? { status: dto.status } : {}),
       ...(dto.search
@@ -55,7 +66,7 @@ export class AssetsService {
     return paginated(data, total, dto);
   }
 
-  async findOne(id: string, companyId: string) {
+  async findOne(id: string, companyId: string, userId?: string, userRole?: string) {
     const asset = await this.prisma.asset.findFirst({
       where: { id, companyId },
       include: {
@@ -69,15 +80,27 @@ export class AssetsService {
       },
     });
     if (!asset) throw new NotFoundException('Equipamento não encontrado');
+    if ((userRole === 'TECNICO' || userRole === 'CLIENTE') && userId) {
+      const unitIds = await this.units.getUserUnitIds(userId);
+      if (!unitIds.includes(asset.unit.id)) {
+        throw new ForbiddenException('Equipamento não pertence a uma unidade atribuída a você');
+      }
+    }
     return asset;
   }
 
-  async findByQRCode(qrCode: string, companyId: string) {
+  async findByQRCode(qrCode: string, companyId: string, userId?: string, userRole?: string) {
     const asset = await this.prisma.asset.findFirst({
       where: { qrCode, companyId },
       include: { unit: { select: { id: true, name: true } } },
     });
     if (!asset) throw new NotFoundException(`QR Code "${qrCode}" não encontrado`);
+    if ((userRole === 'TECNICO' || userRole === 'CLIENTE') && userId) {
+      const unitIds = await this.units.getUserUnitIds(userId);
+      if (!unitIds.includes(asset.unit.id)) {
+        throw new ForbiddenException('Este equipamento não pertence a uma unidade atribuída a você');
+      }
+    }
     return asset;
   }
 
@@ -114,6 +137,85 @@ export class AssetsService {
       width: 300,
       margin: 2,
       color: { dark: '#1e40af', light: '#ffffff' },
+    });
+  }
+
+  async getChecklists(id: string, companyId: string) {
+    const asset = await this.prisma.asset.findFirst({ where: { id, companyId } });
+    if (!asset) throw new NotFoundException('Equipamento não encontrado');
+
+    const CHECKLIST_INCLUDE = {
+      items: {
+        select: { id: true, order: true, question: true, description: true, requiresPhoto: true, requiresNote: true },
+        orderBy: { order: 'asc' as const },
+      },
+    };
+
+    // 1. Checklists vinculados diretamente ao ativo
+    const direct = await this.prisma.checklist.findMany({
+      where: { assetId: id, companyId, isActive: true },
+      include: CHECKLIST_INCLUDE,
+      orderBy: { name: 'asc' },
+    });
+    if (direct.length > 0) return direct;
+
+    // 2. Checklists da mesma unidade sem ativo específico
+    const unitLevel = await this.prisma.checklist.findMany({
+      where: { unitId: asset.unitId, assetId: null, companyId, isActive: true },
+      include: CHECKLIST_INCLUDE,
+      orderBy: { name: 'asc' },
+    });
+    if (unitLevel.length > 0) return unitLevel;
+
+    // 3. Checklists gerais da empresa (sem unidade ou ativo)
+    return this.prisma.checklist.findMany({
+      where: { assetId: null, unitId: null, companyId, isActive: true },
+      include: CHECKLIST_INCLUDE,
+      orderBy: { name: 'asc' },
+      take: 5,
+    });
+  }
+
+  async getHistory(id: string, companyId: string) {
+    const asset = await this.prisma.asset.findFirst({ where: { id, companyId } });
+    if (!asset) throw new NotFoundException('Equipamento não encontrado');
+
+    const [executions, workOrders] = await Promise.all([
+      this.prisma.execution.findMany({
+        where: { assetId: id, companyId, status: 'COMPLETED' },
+        select: {
+          id: true, score: true, completedAt: true, notes: true,
+          checklist: { select: { id: true, name: true, type: true } },
+          user: { select: { id: true, name: true } },
+        },
+        orderBy: { completedAt: 'desc' },
+        take: 10,
+      }),
+      this.prisma.workOrder.findMany({
+        where: { assetId: id, companyId },
+        select: {
+          id: true, code: true, title: true, status: true, priority: true,
+          createdAt: true, completedAt: true,
+          assignee: { select: { id: true, name: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+      }),
+    ]);
+
+    return { executions, workOrders };
+  }
+
+  async updateStatus(id: string, companyId: string, status: AssetStatus) {
+    const asset = await this.prisma.asset.findFirst({ where: { id, companyId } });
+    if (!asset) throw new NotFoundException('Equipamento não encontrado');
+    return this.prisma.asset.update({
+      where: { id },
+      data: {
+        status,
+        ...(status === AssetStatus.MAINTENANCE ? { lastMaintenanceAt: new Date() } : {}),
+      },
+      select: ASSET_SELECT,
     });
   }
 
