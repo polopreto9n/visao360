@@ -1,4 +1,4 @@
-# railway.toml — configuracao do servico visao360-web (servico linkado)
+# railway.toml — visao360-web (servico linkado)
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "apps/web/Dockerfile"

@@ -24,11 +24,14 @@ ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 RUN mkdir -p apps/web/public && \
     cd apps/web && \
     npx next build && \
-    # Patch server.js: hardcoda 0.0.0.0 para que o servidor ouça em todas
-    # as interfaces. Docker sobrescreve process.env.HOSTNAME com o hostname
-    # do container, então não podemos usar env var para isso.
-    sed -i "s/process\.env\.HOSTNAME || '0\.0\.0\.0'/'0.0.0.0'/g" \
-        .next/standalone/apps/web/server.js
+    # Patch: substitui a linha inteira de hostname independente do formato
+    # Docker sobrescreve process.env.HOSTNAME com hostname interno do container,
+    # tornando-o inacessivel externamente. Hardcodamos 0.0.0.0 direto no binario.
+    find .next/standalone -name "server.js" ! -path "*/node_modules/*" \
+        -exec sed -i "s/const hostname = .*/const hostname = '0.0.0.0';/" {} \; && \
+    # Verificacao: falha o build se o patch nao funcionou
+    grep -q "const hostname = '0.0.0.0'" .next/standalone/apps/web/server.js || \
+        (echo "PATCH FAILED: hostname not patched" && exit 1)
 
 # ── Stage 3: Production ───────────────────────────────────────────────────────
 FROM node:20-slim AS production
@@ -44,21 +47,20 @@ RUN addgroup --system --gid 1001 nodejs && \
 
 WORKDIR /app
 
-# Standalone preserva estrutura do monorepo: apps/web/server.js
+# Standalone inclui apps/web/.next/server/ + node_modules otimizados
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
-# Arquivos estáticos devem ficar em apps/web/.next/static (relativo ao server.js)
+# Static files: devem ficar em apps/web/.next/static/ (relativo ao server.js)
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
-# Pasta public relativa ao server.js
+# Public: relativo ao server.js
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 
 USER nextjs
-
-# WORKDIR no diretório do server.js para CMD limpo
-WORKDIR /app/apps/web
 
 EXPOSE 3000
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s \
   CMD wget -qO- http://localhost:3000 || exit 1
 
-CMD ["node", "server.js"]
+# WORKDIR /app — CMD compativel com Custom Start Command no Railway dashboard
+# (node apps/web/server.js a partir de /app)
+CMD ["node", "apps/web/server.js"]
