@@ -30,7 +30,9 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' blob: data: https://*.supabase.co",
               "font-src 'self'",
-              `connect-src 'self' ${process.env.NEXT_PUBLIC_API_URL ?? ''} https://*.supabase.co wss://*.supabase.co`,
+              // Usa apenas a origin (sem path) — CSP sem trailing slash faz match exato
+              // https://example.com/api/v1 bloquearia /api/v1/auth/login (path diferente)
+              `connect-src 'self' ${(() => { try { return process.env.NEXT_PUBLIC_API_URL ? new URL(process.env.NEXT_PUBLIC_API_URL).origin : ''; } catch { return ''; } })()} https://*.supabase.co wss://*.supabase.co`,
               "form-action 'self'",
               "frame-ancestors 'none'",
               process.env.NODE_ENV === 'production' ? 'upgrade-insecure-requests' : '',
