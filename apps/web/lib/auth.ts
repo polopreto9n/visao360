@@ -129,5 +129,5 @@ export function canAdmin(role: string): boolean {
 }
 
 export function canManage(role: string): boolean {
-  return role === 'ADMIN' || role === 'GESTOR';
+  return role === 'OWNER' || role === 'ADMIN' || role === 'GESTOR';
 }
