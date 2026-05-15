@@ -273,9 +273,10 @@ model ChecklistItem {
   order         Int
   question      String
   description   String?
-  requiresPhoto Boolean  @default(false)
-  requiresNote  Boolean  @default(false)
-  createdAt     DateTime @default(now())
+  requiresPhoto  Boolean  @default(false)
+  requiresNote   Boolean  @default(false)
+  expectedAnswer Boolean  @default(true)
+  createdAt      DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   checklist      Checklist       @relation(fields: [checklistId], references: [id], onDelete: Cascade)

@@ -193,6 +193,7 @@ export interface ChecklistItem {
   description: string | null;
   requiresPhoto: boolean;
   requiresNote: boolean;
+  expectedAnswer: boolean;
 }
 
 export interface Checklist {

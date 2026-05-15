@@ -34,8 +34,11 @@ export default function ExecutionDetailPage() {
 
   const itemsMap = Object.fromEntries(execution.items.map((i) => [i.checklistItem.id, i]));
   const sortedItems = [...execution.checklist.items].sort((a, b) => a.order - b.order);
-  const okCount = execution.items.filter((i) => i.answer === true).length;
-  const nokCount = execution.items.filter((i) => i.answer === false).length;
+  const expectedMap = Object.fromEntries(execution.checklist.items.map((i) => [i.id, i.expectedAnswer]));
+  const conformCount = execution.items.filter((i) => i.answer === (expectedMap[i.checklistItem.id] ?? true)).length;
+  const nonConformCount = execution.items.filter((i) => i.answer !== null && i.answer !== (expectedMap[i.checklistItem.id] ?? true)).length;
+  const okCount = conformCount;
+  const nokCount = nonConformCount;
   const photosAll = execution.items.filter((i) => i.photoUrl).map((i) => ({ url: i.photoUrl!, question: i.checklistItem.question }));
   const score = execution.score ?? 0;
 
@@ -78,11 +81,11 @@ export default function ExecutionDetailPage() {
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
           <p className="text-3xl font-extrabold text-green-600">{okCount}</p>
-          <p className="text-xs text-slate-500 mt-1">OK / Sim</p>
+          <p className="text-xs text-slate-500 mt-1">Conformes</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
           <p className="text-3xl font-extrabold text-red-600">{nokCount}</p>
-          <p className="text-xs text-slate-500 mt-1">NOK / Não</p>
+          <p className="text-xs text-slate-500 mt-1">Não Conformes</p>
         </div>
         <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
           <p className="text-3xl font-extrabold text-slate-700">{photosAll.length}</p>
@@ -145,13 +148,15 @@ export default function ExecutionDetailPage() {
           {sortedItems.map((item) => {
             const resp = itemsMap[item.id];
             const answered = resp?.answer !== null && resp?.answer !== undefined;
+            const isConform = answered && resp.answer === item.expectedAnswer;
+            const isNonConform = answered && resp.answer !== item.expectedAnswer;
             return (
-              <div key={item.id} className={`px-5 py-4 flex gap-4 ${answered && resp.answer === false ? 'bg-red-50/40' : ''}`}>
+              <div key={item.id} className={`px-5 py-4 flex gap-4 ${isNonConform ? 'bg-red-50/40' : ''}`}>
                 {/* Ícone de status */}
                 <div className="flex-shrink-0 mt-0.5">
                   {!answered ? (
                     <span className="w-6 h-6 rounded-full bg-slate-200 flex items-center justify-center text-xs font-bold text-slate-400">{item.order}</span>
-                  ) : resp.answer ? (
+                  ) : isConform ? (
                     <span className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-sm">✅</span>
                   ) : (
                     <span className="w-6 h-6 rounded-full bg-red-100 flex items-center justify-center text-sm">❌</span>
@@ -190,14 +195,20 @@ export default function ExecutionDetailPage() {
                   </div>
                 )}
 
-                {/* Resposta textual */}
-                <div className="flex-shrink-0 text-right">
+                {/* Resposta + status */}
+                <div className="flex-shrink-0 text-right space-y-1">
                   {!answered ? (
                     <span className="text-xs text-slate-400">—</span>
-                  ) : resp.answer ? (
-                    <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded-full">SIM</span>
                   ) : (
-                    <span className="text-xs font-bold text-red-700 bg-red-100 px-2 py-0.5 rounded-full">NÃO</span>
+                    <>
+                      <span className={`block text-xs font-bold px-2 py-0.5 rounded-full ${
+                        resp.answer ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                      }`}>{resp.answer ? 'SIM' : 'NÃO'}</span>
+                      <span className={`block text-xs font-bold px-2 py-0.5 rounded-full ${
+                        isConform ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                      }`}>{isConform ? '✅ Conforme' : '❌ Não Conforme'}</span>
+                      <span className="block text-xs text-slate-400">Esp: {item.expectedAnswer ? 'SIM' : 'NÃO'}</span>
+                    </>
                   )}
                 </div>
               </div>

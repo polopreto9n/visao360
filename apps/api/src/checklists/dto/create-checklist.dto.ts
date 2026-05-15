@@ -11,6 +11,8 @@ export class CreateChecklistItemDto {
   @ApiPropertyOptional() @IsString() @IsOptional() description?: string;
   @ApiPropertyOptional() @IsBoolean() @IsOptional() requiresPhoto?: boolean = false;
   @ApiPropertyOptional() @IsBoolean() @IsOptional() requiresNote?: boolean = false;
+  @ApiPropertyOptional({ description: 'Resposta que indica conformidade (true=SIM, false=NÃO)', default: true })
+  @IsBoolean() @IsOptional() expectedAnswer?: boolean = true;
 }
 
 export class CreateChecklistDto {

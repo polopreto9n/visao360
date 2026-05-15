@@ -324,7 +324,7 @@ export default function ChecklistsPage() {
 
 // ─── Criar Checklist ─────────────────────────────────────────────────────────
 
-interface ChecklistItemForm { question: string; requiresPhoto: boolean; requiresNote: boolean; }
+interface ChecklistItemForm { question: string; requiresPhoto: boolean; requiresNote: boolean; expectedAnswer: boolean; }
 
 function CreateChecklistForm({
   units, checklist, onSuccess,
@@ -347,13 +347,13 @@ function CreateChecklistForm({
     checklist && checklist.items.length > 0
       ? [...checklist.items]
           .sort((a, b) => a.order - b.order)
-          .map((i) => ({ question: i.question, requiresPhoto: i.requiresPhoto, requiresNote: i.requiresNote }))
-      : [{ question: '', requiresPhoto: false, requiresNote: false }],
+          .map((i) => ({ question: i.question, requiresPhoto: i.requiresPhoto, requiresNote: i.requiresNote, expectedAnswer: i.expectedAnswer ?? true }))
+      : [{ question: '', requiresPhoto: false, requiresNote: false, expectedAnswer: true }],
   );
 
   const [saving, setSaving] = useState(false);
 
-  function addItem() { setItems([...items, { question: '', requiresPhoto: false, requiresNote: false }]); }
+  function addItem() { setItems([...items, { question: '', requiresPhoto: false, requiresNote: false, expectedAnswer: true }]); }
   function removeItem(i: number) { if (items.length > 1) setItems(items.filter((_, idx) => idx !== i)); }
   function updateItem(i: number, field: keyof ChecklistItemForm, value: string | boolean) {
     setItems(items.map((it, idx) => idx === i ? { ...it, [field]: value } : it));
@@ -464,7 +464,7 @@ function CreateChecklistForm({
                   value={item.question}
                   onChange={(e) => updateItem(idx, 'question', e.target.value)}
                   placeholder="Pergunta do checklist..." />
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-3">
                   <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
                     <input type="checkbox" checked={item.requiresPhoto}
                       onChange={(e) => updateItem(idx, 'requiresPhoto', e.target.checked)} className="rounded" />
@@ -475,6 +475,20 @@ function CreateChecklistForm({
                       onChange={(e) => updateItem(idx, 'requiresNote', e.target.checked)} className="rounded" />
                     📝 Exige nota
                   </label>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs text-slate-500">✅ Conforme se:</span>
+                    <button
+                      type="button"
+                      onClick={() => updateItem(idx, 'expectedAnswer', !item.expectedAnswer)}
+                      className={`text-xs font-bold px-2 py-0.5 rounded-full border transition-colors ${
+                        item.expectedAnswer
+                          ? 'bg-green-100 text-green-700 border-green-300'
+                          : 'bg-red-100 text-red-700 border-red-300'
+                      }`}
+                    >
+                      {item.expectedAnswer ? 'SIM' : 'NÃO'}
+                    </button>
+                  </div>
                 </div>
               </div>
 
@@ -764,25 +778,34 @@ function ExecutionModal({ checklist, executionId, onClose }: {
             </div>
           </div>
 
-          {/* Resposta */}
+          {/* Resposta esperada */}
+          <p className="text-xs text-slate-400">
+            Resposta conforme: <span className="font-semibold text-slate-600">{item.expectedAnswer ? 'SIM' : 'NÃO'}</span>
+          </p>
+
+          {/* Botões Sim / Não com indicação de conformidade */}
           <div className="flex gap-3">
-            {[true, false].map((val) => (
-              <button
-                key={String(val)}
-                onClick={() => setAnswer(item.id, val)}
-                className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-all ${
-                  answers[item.id]?.answer === val
-                    ? val ? 'bg-green-600 text-white shadow-md' : 'bg-red-600 text-white shadow-md'
-                    : val ? 'border-2 border-green-300 text-green-700 hover:bg-green-50' : 'border-2 border-red-300 text-red-700 hover:bg-red-50'
-                }`}
-              >
-                {val ? '✓ Sim / OK' : '✗ Não / NOK'}
-              </button>
-            ))}
+            {([true, false] as const).map((val) => {
+              const selected = answers[item.id]?.answer === val;
+              const isConform = val === item.expectedAnswer;
+              return (
+                <button
+                  key={String(val)}
+                  onClick={() => setAnswer(item.id, val)}
+                  className={`flex-1 py-3 rounded-xl font-semibold text-sm transition-all ${
+                    selected
+                      ? isConform ? 'bg-green-600 text-white shadow-md' : 'bg-red-600 text-white shadow-md'
+                      : isConform ? 'border-2 border-green-300 text-green-700 hover:bg-green-50' : 'border-2 border-red-300 text-red-700 hover:bg-red-50'
+                  }`}
+                >
+                  {val ? '✓ Sim' : '✗ Não'}
+                </button>
+              );
+            })}
           </div>
 
           {/* Notas */}
-          {(item.requiresNote || answers[item.id]?.answer === false) && (
+          {(item.requiresNote || (answers[item.id]?.answer !== null && answers[item.id]?.answer !== item.expectedAnswer)) && (
             <textarea
               rows={3}
               className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
@@ -821,7 +844,8 @@ function ExecutionModal({ checklist, executionId, onClose }: {
               onClick={() => setCurrent(idx)}
               className={`w-3 h-3 rounded-full transition-all ${
                 idx === current ? 'bg-blue-600 scale-125' :
-                answers[it.id]?.answer !== null ? 'bg-green-400' : 'bg-slate-200'
+                answers[it.id]?.answer === null ? 'bg-slate-200' :
+                answers[it.id]?.answer === it.expectedAnswer ? 'bg-green-400' : 'bg-red-400'
               }`}
             />
           ))}

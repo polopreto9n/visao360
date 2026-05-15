@@ -25,6 +25,7 @@ export class ChecklistsService {
             description: item.description,
             requiresPhoto: item.requiresPhoto ?? false,
             requiresNote: item.requiresNote ?? false,
+            expectedAnswer: item.expectedAnswer ?? true,
           })),
         },
       },
@@ -158,6 +159,7 @@ export class ChecklistsService {
             description: newItems[i].description ?? null,
             requiresPhoto: newItems[i].requiresPhoto ?? false,
             requiresNote: newItems[i].requiresNote ?? false,
+            expectedAnswer: newItems[i].expectedAnswer ?? true,
           },
         });
       } else if (hasNew && !hasOld) {
@@ -170,6 +172,7 @@ export class ChecklistsService {
             description: newItems[i].description ?? null,
             requiresPhoto: newItems[i].requiresPhoto ?? false,
             requiresNote: newItems[i].requiresNote ?? false,
+            expectedAnswer: newItems[i].expectedAnswer ?? true,
           },
         });
       } else if (!hasNew && hasOld) {

@@ -104,9 +104,17 @@ export class ExecutionsService {
       throw new ForbiddenException('Você não pode concluir execuções de outro técnico');
     }
 
-    const answered = dto.items.filter((i) => i.answer === true).length;
+    // Busca expectedAnswer de cada item em lote (evita N+1)
+    const checklistItems = await this.prisma.checklistItem.findMany({
+      where: { id: { in: dto.items.map((i) => i.checklistItemId) } },
+      select: { id: true, expectedAnswer: true },
+    });
+    const expectedMap = Object.fromEntries(checklistItems.map((ci) => [ci.id, ci.expectedAnswer]));
+    const conformCount = dto.items.filter(
+      (i) => i.answer === (expectedMap[i.checklistItemId] ?? true),
+    ).length;
     const score = dto.items.length > 0
-      ? Math.round((answered / dto.items.length) * 10000) / 100
+      ? Math.round((conformCount / dto.items.length) * 10000) / 100
       : 0;
 
     const updated = await this.prisma.$transaction(async (tx) => {

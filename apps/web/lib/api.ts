@@ -142,6 +142,7 @@ export interface Asset {
 export interface ChecklistItem {
   id: string; order: number; question: string;
   description: string | null; requiresPhoto: boolean; requiresNote: boolean;
+  expectedAnswer: boolean;
 }
 
 export interface Checklist {
@@ -166,7 +167,7 @@ export interface ExecutionDetail {
   id: string; status: string; score: number | null; notes: string | null;
   signatureUrl: string | null;
   startedAt: string | null; completedAt: string | null; createdAt: string;
-  checklist: { id: string; name: string; type: string; items: { id: string; order: number; question: string; description: string | null; requiresPhoto: boolean; requiresNote: boolean }[] };
+  checklist: { id: string; name: string; type: string; items: { id: string; order: number; question: string; description: string | null; requiresPhoto: boolean; requiresNote: boolean; expectedAnswer: boolean }[] };
   user: { id: string; name: string; email: string };
   asset: { id: string; name: string; qrCode: string } | null;
   items: {

@@ -267,8 +267,10 @@ function ExecutionFlow({
   }
 
   function calcScore(): number {
-    const answered = Object.values(itemStates).filter((s) => s.answer === true).length;
-    return Math.round((answered / totalItems) * 100);
+    const conforms = sortedItems.filter(
+      (item) => itemStates[item.id].answer === item.expectedAnswer,
+    ).length;
+    return Math.round((conforms / totalItems) * 100);
   }
 
   async function handleSubmit(sig: string) {
@@ -389,7 +391,7 @@ function ExecutionFlow({
             </View>
 
             {/* Notas */}
-            {(item.requiresNote || itemStates[item.id].answer === false) && (
+            {(item.requiresNote || (itemStates[item.id].answer !== null && itemStates[item.id].answer !== item.expectedAnswer)) && (
               <TextInput
                 style={exec.noteInput}
                 value={itemStates[item.id].notes}
@@ -488,13 +490,13 @@ function ExecutionFlow({
             <View style={exec.summaryRow}>
               <View style={exec.summaryItem}>
                 <Text style={[exec.summaryValue, { color: '#16a34a' }]}>
-                  {Object.values(itemStates).filter((s) => s.answer === true).length}
+                  {sortedItems.filter((i) => itemStates[i.id].answer === i.expectedAnswer).length}
                 </Text>
                 <Text style={exec.summaryLabel}>Conformes</Text>
               </View>
               <View style={exec.summaryItem}>
                 <Text style={[exec.summaryValue, { color: '#dc2626' }]}>
-                  {Object.values(itemStates).filter((s) => s.answer === false).length}
+                  {sortedItems.filter((i) => itemStates[i.id].answer !== null && itemStates[i.id].answer !== i.expectedAnswer).length}
                 </Text>
                 <Text style={exec.summaryLabel}>Não conformes</Text>
               </View>
