@@ -29,12 +29,14 @@ export default function ChecklistsPage() {
   const [deletingEx, setDeletingEx] = useState<Execution | null>(null);
   const [deleteExLoading, setDeleteExLoading] = useState(false);
 
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
+
   const load = useCallback(async () => {
     setLoading(true);
     try {
       const [clRes, exRes] = await Promise.all([
         checklistsApi.list({ limit: 50 }),
-        checklistsApi.executions({ limit: 20 }),
+        checklistsApi.executions({ limit: 200 }),
       ]);
       setChecklists(clRes.data.data);
       setExecutions(exRes.data.data);
@@ -223,46 +225,101 @@ export default function ChecklistsPage() {
             );
           })}
         </div>
-      ) : (
-        <div className="space-y-3">
-          {executions.length === 0 && (
+      ) : (() => {
+        // Agrupa execuções por checklist, ordenado pela data da mais recente
+        const groups = new Map<string, Execution[]>();
+        executions
+          .slice()
+          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+          .forEach((ex) => {
+            const key = ex.checklist.id;
+            if (!groups.has(key)) groups.set(key, []);
+            groups.get(key)!.push(ex);
+          });
+        const groupList = Array.from(groups.values());
+
+        return (
+        <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+          {groupList.length === 0 && (
             <div className="bg-white rounded-xl border border-slate-200 p-16 text-center">
               <p className="text-4xl mb-3">📜</p>
               <p className="text-lg font-semibold text-slate-700">Nenhuma execução registrada</p>
             </div>
           )}
-          {executions.map((ex) => (
-            <div key={ex.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex items-start gap-4">
-              <Link href={`/dashboard/executions/${ex.id}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <Badge value={ex.status} />
-                  {ex.score !== null && (
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                      ex.score >= 80 ? 'bg-green-100 text-green-700' :
-                      ex.score >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                    }`}>{ex.score}% conformidade</span>
+          {groupList.map((group) => {
+            const latest = group[0];
+            const checklistId = latest.checklist.id;
+            const isExpanded = expandedGroups.has(checklistId);
+            const displayList = isExpanded ? group : [latest];
+            const extra = group.length - 1;
+
+            return (
+              <div key={checklistId} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                {/* Header do grupo */}
+                <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-gray-900">{latest.checklist.name}</span>
+                    {group.length > 1 && (
+                      <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-semibold">
+                        {group.length} execuções
+                      </span>
+                    )}
+                  </div>
+                  {extra > 0 && (
+                    <button
+                      onClick={() => setExpandedGroups(prev => {
+                        const next = new Set(prev);
+                        isExpanded ? next.delete(checklistId) : next.add(checklistId);
+                        return next;
+                      })}
+                      className="text-xs text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+                    >
+                      {isExpanded ? '▲ Recolher' : `▼ Ver mais ${extra} anterior${extra > 1 ? 'es' : ''}`}
+                    </button>
                   )}
                 </div>
-                <p className="font-semibold text-gray-900">{ex.checklist.name}</p>
-                <div className="flex flex-wrap gap-4 mt-1 text-xs text-slate-500">
-                  <span>👤 {ex.user.name}</span>
-                  {ex.asset && <span>🏗️ {ex.asset.name}</span>}
-                  <span>📌 {ex._count.items} itens respondidos</span>
+
+                {/* Execuções do grupo */}
+                <div className="divide-y divide-slate-50">
+                  {displayList.map((ex) => (
+                    <div key={ex.id} className="p-4 flex items-start gap-4">
+                      <Link href={`/dashboard/executions/${ex.id}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
+                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                          <Badge value={ex.status} />
+                          {ex.score !== null && (
+                            <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                              ex.score >= 80 ? 'bg-green-100 text-green-700' :
+                              ex.score >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                            }`}>{ex.score}% conformidade</span>
+                          )}
+                        </div>
+                        <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+                          <span>👤 {ex.user.name}</span>
+                          {ex.asset && <span>🏗️ {ex.asset.name}</span>}
+                          <span>📌 {ex._count.items} itens</span>
+                        </div>
+                      </Link>
+                      <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                        <p className="text-xs text-slate-400">{formatDateTime(ex.completedAt ?? ex.startedAt)}</p>
+                        <Link href={`/dashboard/executions/${ex.id}`} className="text-xs text-blue-500">Ver →</Link>
+                        {isAdmin && (
+                          <button onClick={() => setDeletingEx(ex)}
+                            className="text-xs text-slate-300 hover:text-red-500 transition-colors"
+                            title="Excluir">🗑️</button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              </Link>
-              <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                <p className="text-xs text-slate-400">{formatDateTime(ex.completedAt ?? ex.startedAt)}</p>
-                <Link href={`/dashboard/executions/${ex.id}`} className="text-xs text-blue-500">Ver detalhes →</Link>
-                {isAdmin && (
-                  <button
-                    onClick={() => setDeletingEx(ex)}
-                    className="text-xs text-slate-300 hover:text-red-500 transition-colors"
-                    title="Excluir do histórico"
-                  >🗑️</button>
-                )}
               </div>
-            </div>
-          ))}
+            );
+          })}
+          <p className="text-center text-xs text-slate-400 py-2">
+            {groupList.length} checklist{groupList.length !== 1 ? 's' : ''} · {executions.length} execução{executions.length !== 1 ? 'ões' : ''} no total
+          </p>
+        </div>
+        );
+      })()
         </div>
       )}
 
