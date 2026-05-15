@@ -1,0 +1,34 @@
+workflows:
+  android-apk:
+    name: Visão360 — Android APK (Preview)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+
+    environment:
+      vars:
+        EXPO_PUBLIC_API_URL: "https://visao360-api-production.up.railway.app/api/v1"
+        NODE_ENV: "production"
+      groups:
+        - expo_credentials   # Grupo com EXPO_TOKEN (configurar no Codemagic dashboard)
+
+    scripts:
+      - name: Instalar dependências do monorepo
+        script: npm install --legacy-peer-deps
+
+      - name: Build APK via EAS local (macOS)
+        working_directory: apps/mobile
+        script: |
+          npm install -g eas-cli@latest
+          eas build --profile preview --platform android --local --non-interactive
+
+    artifacts:
+      - apps/mobile/build-*.apk
+      - "**/*.apk"
+
+    publishing:
+      email:
+        recipients:
+          - polopreto9n@gmail.com
+        notify:
+          success: true
+          failure: true
