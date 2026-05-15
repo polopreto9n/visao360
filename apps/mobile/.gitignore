@@ -1,0 +1,15 @@
+# Expo managed workflow — diretórios nativos gerados pelo prebuild
+android/
+ios/
+
+# Build outputs
+*.apk
+*.aab
+*.ipa
+
+# Metro
+.metro-health-check*
+
+# Expo
+.expo/
+dist/
