@@ -189,7 +189,10 @@ export class ChecklistsService {
 
   async deleteChecklist(id: string, companyId: string) {
     await this.findOne(id, companyId);
-    await this.prisma.checklist.update({ where: { id }, data: { isActive: false } });
+    await this.prisma.$transaction([
+      this.prisma.checklist.update({ where: { id }, data: { isActive: false } }),
+      this.prisma.checklistSchedule.updateMany({ where: { checklistId: id }, data: { isActive: false } }),
+    ]);
     return { deleted: true };
   }
 }

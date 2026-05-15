@@ -111,6 +111,7 @@ export class ChecklistSchedulesService {
         assigneeId: userId,
         isActive: true,
         nextDueAt: { lte: in45days },
+        checklist: { isActive: true },
       },
       include: SCHEDULE_INCLUDE,
       orderBy: { nextDueAt: 'asc' },
