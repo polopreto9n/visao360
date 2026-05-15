@@ -165,6 +165,12 @@ export class WorkOrdersService {
     return updated;
   }
 
+  async delete(id: string, companyId: string) {
+    await this.findOne(id, companyId);
+    await this.prisma.workOrder.delete({ where: { id } });
+    return { deleted: true };
+  }
+
   async assign(id: string, companyId: string, assigneeId: string) {
     const wo = await this.findOne(id, companyId);
     const assignee = await this.prisma.user.findFirst({ where: { id: assigneeId, companyId } });

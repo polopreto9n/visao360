@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { workOrdersApi, unitsApi, usersApi, WorkOrder, Unit, User } from '../../../lib/api';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
-import { formatDate, isOverdue, getUser, canManage } from '../../../lib/auth';
+import { formatDate, isOverdue, getUser, canManage, canAdmin } from '../../../lib/auth';
 
 const STATUS_TABS = [
   { key: '', label: 'Todas' },
@@ -45,10 +45,13 @@ export default function WorkOrdersPage() {
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState<WorkOrder | null>(null);
   const [statusNote, setStatusNote] = useState('');
+  const [deleting, setDeleting] = useState<WorkOrder | null>(null);
+  const [deleteLoading, setDeleteLoading] = useState(false);
   const [units, setUnits] = useState<Unit[]>([]);
   const [techUsers, setTechUsers] = useState<User[]>([]);
   const user = getUser();
   const canCreate = canManage(user?.role ?? '');
+  const isAdmin = canAdmin(user?.role ?? '');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -73,6 +76,17 @@ export default function WorkOrdersPage() {
       }).catch(() => {});
     }
   }, [canCreate]);
+
+  async function handleDelete(wo: WorkOrder) {
+    setDeleteLoading(true);
+    try {
+      await workOrdersApi.delete(wo.id);
+      setDeleting(null);
+      load();
+    } catch (e: unknown) {
+      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir OS');
+    } finally { setDeleteLoading(false); }
+  }
 
   async function handleUpdateStatus(wo: WorkOrder, status: string) {
     try {
@@ -166,19 +180,26 @@ export default function WorkOrdersPage() {
                   </div>
 
                   {/* Ações */}
-                  {transitions.length > 0 && (
-                    <div className="flex flex-wrap gap-2 flex-shrink-0">
-                      {transitions.map((t) => (
-                        <button
-                          key={t.status}
-                          onClick={() => { setUpdating(wo); }}
-                          className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${BTN_COLORS[t.color]}`}
-                        >
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  <div className="flex flex-wrap gap-2 flex-shrink-0">
+                    {transitions.map((t) => (
+                      <button
+                        key={t.status}
+                        onClick={() => { setUpdating(wo); }}
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${BTN_COLORS[t.color]}`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                    {isAdmin && (
+                      <button
+                        onClick={() => setDeleting(wo)}
+                        className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors bg-slate-100 hover:bg-red-100 hover:text-red-700 text-slate-500"
+                        title="Excluir OS"
+                      >
+                        🗑️
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -222,6 +243,31 @@ export default function WorkOrdersPage() {
                 rows={3} placeholder="Informe detalhes sobre a atualização..."
                 value={statusNote} onChange={(e) => setStatusNote(e.target.value)}
               />
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      {/* Modal de confirmação de exclusão */}
+      <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Excluir Ordem de Serviço" size="sm">
+        {deleting && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Tem certeza que deseja excluir permanentemente a OS <strong>{deleting.code}</strong>?
+            </p>
+            <p className="text-sm font-semibold text-gray-900">{deleting.title}</p>
+            <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
+              Esta ação não pode ser desfeita.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleting(null)}
+                className="flex-1 border border-slate-200 hover:bg-slate-50 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                Cancelar
+              </button>
+              <button onClick={() => handleDelete(deleting)} disabled={deleteLoading}
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">
+                {deleteLoading ? 'Excluindo...' : 'Excluir'}
+              </button>
             </div>
           </div>
         )}

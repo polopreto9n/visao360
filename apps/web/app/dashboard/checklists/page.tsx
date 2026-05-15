@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { checklistsApi, schedulesApi, usersApi, unitsApi, Checklist, ChecklistSchedule, Execution, Unit, User } from '../../../lib/api';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
-import { formatDateTime, getUser, canManage } from '../../../lib/auth';
+import { formatDateTime, getUser, canManage, canAdmin } from '../../../lib/auth';
 import { api } from '../../../lib/api';
 
 export default function ChecklistsPage() {
@@ -22,6 +22,9 @@ export default function ChecklistsPage() {
   const [scheduling, setScheduling] = useState<Checklist | null>(null);
   const user = getUser();
   const canCreate = canManage(user?.role ?? '');
+  const isAdmin = canAdmin(user?.role ?? '');
+  const [deletingCl, setDeletingCl] = useState<Checklist | null>(null);
+  const [deleteClLoading, setDeleteClLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -59,6 +62,17 @@ export default function ChecklistsPage() {
     } catch (e: unknown) {
       alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao iniciar checklist');
     }
+  }
+
+  async function handleDeleteChecklist(cl: Checklist) {
+    setDeleteClLoading(true);
+    try {
+      await checklistsApi.remove(cl.id);
+      setDeletingCl(null);
+      load();
+    } catch (e: unknown) {
+      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir checklist');
+    } finally { setDeleteClLoading(false); }
   }
 
   const TYPE_ICONS: Record<string, string> = {
@@ -179,6 +193,15 @@ export default function ChecklistsPage() {
                       >
                         ✏️
                       </button>
+                      {isAdmin && (
+                        <button
+                          onClick={() => setDeletingCl(cl)}
+                          className="px-3 border border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-600 text-slate-400 text-sm font-semibold rounded-xl transition-colors"
+                          title="Excluir checklist"
+                        >
+                          🗑️
+                        </button>
+                      )}
                     </>
                   )}
                 </div>
@@ -248,6 +271,30 @@ export default function ChecklistsPage() {
             checklist={editing}
             onSuccess={() => { setEditing(null); load(); }}
           />
+        )}
+      </Modal>
+
+      {/* Modal de confirmação de exclusão */}
+      <Modal open={!!deletingCl} onClose={() => setDeletingCl(null)} title="Excluir Checklist" size="sm">
+        {deletingCl && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Tem certeza que deseja desativar o checklist <strong>{deletingCl.name}</strong>?
+            </p>
+            <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
+              O checklist será desativado e não aparecerá mais na lista. O histórico de execuções é preservado.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeletingCl(null)}
+                className="flex-1 border border-slate-200 hover:bg-slate-50 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                Cancelar
+              </button>
+              <button onClick={() => handleDeleteChecklist(deletingCl)} disabled={deleteClLoading}
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">
+                {deleteClLoading ? 'Excluindo...' : 'Excluir'}
+              </button>
+            </div>
+          </div>
         )}
       </Modal>
 

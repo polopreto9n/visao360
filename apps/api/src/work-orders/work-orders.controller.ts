@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
 import { WorkOrdersService } from './work-orders.service';
@@ -51,6 +51,13 @@ export class WorkOrdersController {
     @Body() dto: UpdateStatusDto,
   ) {
     return this.svc.updateStatus(id, u.companyId, u.id, u.role as Role, dto);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Excluir OS permanentemente (ADMIN)' })
+  remove(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
+    return this.svc.delete(id, u.companyId);
   }
 
   @Patch(':id/assign/:assigneeId')

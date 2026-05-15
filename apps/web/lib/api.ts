@@ -273,6 +273,7 @@ export const workOrdersApi = {
     api.patch<WorkOrder>(`/work-orders/${id}/status`, { status, notes }),
   assign: (id: string, assigneeId: string) =>
     api.patch<WorkOrder>(`/work-orders/${id}/assign/${assigneeId}`),
+  delete: (id: string) => api.delete(`/work-orders/${id}`),
 };
 
 export const usersApi = {
