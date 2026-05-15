@@ -40,42 +40,36 @@ export class ChecklistsService {
     userRole?: string,
   ) {
     let unitIds: string[] | undefined;
-    let excludeChecklistIds: string[] | undefined;
+    let allowedChecklistIds: string[] | undefined; // undefined = sem restrição (admin/owner)
 
-    if ((userRole === 'TECNICO' || userRole === 'GESTOR') && userId) {
-      // Filtra por unidades atribuídas ao usuário
-      const ids = await this.units.getUserUnitIds(userId);
-      if (ids.length > 0) unitIds = ids;
-
-      // Exclui checklists com agenda ativa atribuída a OUTRO usuário
-      const scheduledForOthers = await this.prisma.checklistSchedule.findMany({
+    if (userRole === 'TECNICO' && userId) {
+      // TECNICO: vê APENAS checklists com agenda ativa atribuída a ele
+      const scheduledForMe = await this.prisma.checklistSchedule.findMany({
         where: {
           companyId,
           isActive: true,
-          assigneeId: { not: userId },
-          NOT: { assigneeId: null },
+          assigneeId: userId,
+          checklist: { isActive: true },
         },
         select: { checklistId: true },
       });
-
-      // Checklists que têm agenda para este usuário (não excluir)
-      const scheduledForMe = await this.prisma.checklistSchedule.findMany({
-        where: { companyId, isActive: true, assigneeId: userId },
-        select: { checklistId: true },
-      });
-      const myIds = new Set(scheduledForMe.map((s) => s.checklistId));
-
-      excludeChecklistIds = scheduledForOthers
-        .map((s) => s.checklistId)
-        .filter((id) => !myIds.has(id));
+      allowedChecklistIds = [...new Set(scheduledForMe.map((s) => s.checklistId))];
+      // Se não tem nenhum agendado → retorna lista vazia imediatamente
+      if (allowedChecklistIds.length === 0) {
+        return paginated([], 0, dto);
+      }
+    } else if (userRole === 'GESTOR' && userId) {
+      // GESTOR: vê checklists das suas unidades (comportamento anterior mantido)
+      const ids = await this.units.getUserUnitIds(userId);
+      if (ids.length > 0) unitIds = ids;
     }
 
     const where = {
       companyId, isActive: true,
       ...(dto.type ? { type: dto.type } : {}),
-      ...(dto.unitId ? { unitId: dto.unitId } : unitIds ? { unitId: { in: unitIds } } : {}),
-      ...(excludeChecklistIds && excludeChecklistIds.length > 0
-        ? { id: { notIn: excludeChecklistIds } } : {}),
+      ...(allowedChecklistIds
+        ? { id: { in: allowedChecklistIds } }
+        : dto.unitId ? { unitId: dto.unitId } : unitIds ? { unitId: { in: unitIds } } : {}),
       ...(dto.search ? { name: { contains: dto.search, mode: 'insensitive' as const } } : {}),
     };
 
