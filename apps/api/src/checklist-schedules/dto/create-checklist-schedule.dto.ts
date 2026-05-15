@@ -22,4 +22,10 @@ export class CreateChecklistScheduleDto {
 
   @ApiPropertyOptional({ description: 'Enviar aviso X dias antes da data prevista. 0 = no próprio dia.' })
   @IsInt() @Min(0) @IsOptional() reminderDaysBefore?: number;
+
+  @ApiPropertyOptional({ description: 'Dias antes do vencimento em que o checklist fica disponível.', default: 3 })
+  @IsInt() @Min(0) @IsOptional() releaseBeforeDays?: number;
+
+  @ApiPropertyOptional({ description: 'Dias de tolerância após o vencimento antes de expirar.', default: 2 })
+  @IsInt() @Min(0) @IsOptional() toleranceDays?: number;
 }

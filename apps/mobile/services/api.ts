@@ -271,6 +271,9 @@ export interface ChecklistSchedule {
   name: string | null;
   nextDueAt: string;
   repeatDays: number | null;
+  reminderDaysBefore: number | null;
+  releaseBeforeDays: number | null;
+  toleranceDays: number | null;
   isActive: boolean;
   checklist: { id: string; name: string; type: string };
   asset: { id: string; name: string; code: string | null } | null;

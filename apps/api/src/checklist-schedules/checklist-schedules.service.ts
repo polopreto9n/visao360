@@ -44,6 +44,8 @@ export class ChecklistSchedulesService {
         nextDueAt: new Date(dto.nextDueAt),
         repeatDays: dto.repeatDays,
         reminderDaysBefore: dto.reminderDaysBefore,
+        releaseBeforeDays: dto.releaseBeforeDays ?? 3,
+        toleranceDays: dto.toleranceDays ?? 2,
       },
       include: SCHEDULE_INCLUDE,
     });
@@ -101,13 +103,14 @@ export class ChecklistSchedulesService {
 
   async findMine(companyId: string, userId: string) {
     const now = new Date();
-    const in30days = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+    // 45 dias: cobre itens bloqueados com até ~15 dias de janela de liberação
+    const in45days = new Date(now.getTime() + 45 * 24 * 60 * 60 * 1000);
     return this.prisma.checklistSchedule.findMany({
       where: {
         companyId,
         assigneeId: userId,
         isActive: true,
-        nextDueAt: { lte: in30days },
+        nextDueAt: { lte: in45days },
       },
       include: SCHEDULE_INCLUDE,
       orderBy: { nextDueAt: 'asc' },

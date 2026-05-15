@@ -248,10 +248,12 @@ model ChecklistSchedule {
   assetId           String?
   assigneeId        String?
   name              String?
-  nextDueAt         DateTime
-  repeatDays        Int?
+  nextDueAt          DateTime
+  repeatDays         Int?
   reminderDaysBefore Int?     @default(0)
-  isActive          Boolean   @default(true)
+  releaseBeforeDays  Int?     @default(3)
+  toleranceDays      Int?     @default(2)
+  isActive           Boolean  @default(true)
   lastSentAt        DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt

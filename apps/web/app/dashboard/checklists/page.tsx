@@ -536,6 +536,8 @@ function ScheduleForm({
       : tomorrowStr,
     repeatDays: existingSchedule?.repeatDays?.toString() ?? checklist.intervalDays?.toString() ?? '',
     reminderDaysBefore: existingSchedule?.reminderDaysBefore?.toString() ?? '0',
+    releaseBeforeDays: (existingSchedule as any)?.releaseBeforeDays?.toString() ?? '3',
+    toleranceDays: (existingSchedule as any)?.toleranceDays?.toString() ?? '2',
     name: existingSchedule?.name ?? '',
   });
   const [saving, setSaving] = useState(false);
@@ -551,6 +553,8 @@ function ScheduleForm({
         nextDueAt: new Date(form.nextDueAt).toISOString(),
         repeatDays: form.repeatDays ? Number(form.repeatDays) : undefined,
         reminderDaysBefore: Number(form.reminderDaysBefore),
+        releaseBeforeDays: Number(form.releaseBeforeDays),
+        toleranceDays: Number(form.toleranceDays),
         name: form.name || undefined,
       };
       if (existingSchedule) {
@@ -646,6 +650,29 @@ function ScheduleForm({
         <p className="text-xs text-slate-400 mt-1">
           O técnico receberá uma notificação push no celular nessa antecedência.
         </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1">🔓 Liberar antes (dias)</label>
+          <input
+            type="number" min="0"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            value={form.releaseBeforeDays}
+            onChange={(e) => setForm(f => ({ ...f, releaseBeforeDays: e.target.value }))}
+          />
+          <p className="text-xs text-slate-400 mt-0.5">Dias antes do vencimento que fica disponível</p>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold text-slate-600 mb-1">⏳ Tolerância (dias)</label>
+          <input
+            type="number" min="0"
+            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            value={form.toleranceDays}
+            onChange={(e) => setForm(f => ({ ...f, toleranceDays: e.target.value }))}
+          />
+          <p className="text-xs text-slate-400 mt-0.5">Dias após o vencimento antes de expirar</p>
+        </div>
       </div>
 
       {form.nextDueAt && (
