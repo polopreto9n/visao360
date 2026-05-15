@@ -10,7 +10,7 @@ const NAV = [
   { href: '/dashboard/work-orders', label: 'Ordens de Serviço', icon: '🔧' },
   { href: '/dashboard/checklists', label: 'Checklists', icon: '✅' },
   { href: '/dashboard/assets', label: 'Equipamentos', icon: '🏗️' },
-  { href: '/dashboard/incidents', label: 'Incidentes', icon: '⚠️' },
+  { href: '/dashboard/incidents', label: 'Ocorrências', icon: '⚠️' },
   { href: '/dashboard/units', label: 'Condomínios', icon: '🏢', manageOnly: true },
   { href: '/dashboard/users', label: 'Usuários', icon: '👥', manageOnly: true },
   { href: '/dashboard/conta', label: 'Assinatura', icon: '💳', adminOnly: true },

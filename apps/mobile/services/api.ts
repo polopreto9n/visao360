@@ -297,6 +297,28 @@ export const unitsApi = {
   list: () => api.get<{ data: Unit[]; total: number }>('/units'),
 };
 
+// ─── Ocorrências (Incidents) ─────────────────────────────────────────────────
+
+export interface Incident {
+  id: string;
+  title: string;
+  description: string;
+  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  status: 'OPEN' | 'INVESTIGATING' | 'RESOLVED' | 'CLOSED';
+  photoUrls: string[];
+  createdAt: string;
+  resolvedAt: string | null;
+  unit: { id: string; name: string };
+  reporter: { id: string; name: string; email: string };
+}
+
+export const incidentsApi = {
+  list: (params?: { status?: string; limit?: number }) =>
+    api.get<{ data: Incident[]; total: number }>('/incidents', { params: { limit: 50, ...params } }),
+  create: (data: { title: string; description: string; unitId: string; severity?: string; photoUrls?: string[] }) =>
+    api.post<Incident>('/incidents', data),
+};
+
 // ─── Upload ───────────────────────────────────────────────────────────────────
 
 export const uploadApi = {

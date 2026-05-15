@@ -59,6 +59,14 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen
+        name="incidents"
+        options={{
+          title: 'Ocorrências',
+          tabBarLabel: 'Ocorrências',
+          tabBarIcon: ({ color }) => <TabIcon name="warning-outline" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="profile"
         options={{
           title: 'Perfil',
