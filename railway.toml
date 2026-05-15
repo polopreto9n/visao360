@@ -1,18 +1,8 @@
-# railway.toml — visao360-web (servico linkado)
-[build]
-builder = "DOCKERFILE"
-dockerfilePath = "apps/web/Dockerfile"
-buildArgs = { NEXT_PUBLIC_API_URL = "https://visao360-api-production.up.railway.app/api/v1" }
+# railway.toml — configuracoes de deploy compartilhadas
+# Dockerfile path configurado por servico no dashboard do Railway:
+#   visao360-web -> apps/web/Dockerfile
+#   visao360-api -> Dockerfile (raiz)
 
 [deploy]
-healthcheckPath = "/"
-healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 3
-
-[environments]
-  [environments.production]
-    [environments.production.variables]
-    NODE_ENV = "production"
-    PORT = "3000"
-    NEXT_TELEMETRY_DISABLED = "1"
