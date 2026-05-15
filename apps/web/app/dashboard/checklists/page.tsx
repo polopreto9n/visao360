@@ -47,7 +47,7 @@ export default function ChecklistsPage() {
     try {
       const [clRes, exRes] = await Promise.all([
         checklistsApi.list({ limit: 50 }),
-        checklistsApi.executions({ limit: 200 }),
+        checklistsApi.executions({ limit: 100 }),
       ]);
       setChecklists(clRes.data.data);
       setExecutions(exRes.data.data);
