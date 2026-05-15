@@ -162,6 +162,19 @@ export interface Execution {
   _count: { items: number };
 }
 
+export interface ExecutionDetail {
+  id: string; status: string; score: number | null; notes: string | null;
+  signatureUrl: string | null;
+  startedAt: string | null; completedAt: string | null; createdAt: string;
+  checklist: { id: string; name: string; type: string; items: { id: string; order: number; question: string; description: string | null; requiresPhoto: boolean; requiresNote: boolean }[] };
+  user: { id: string; name: string; email: string };
+  asset: { id: string; name: string; qrCode: string } | null;
+  items: {
+    id: string; answer: boolean | null; notes: string | null; photoUrl: string | null;
+    checklistItem: { id: string; order: number; question: string; requiresPhoto: boolean; requiresNote: boolean };
+  }[];
+}
+
 export interface WorkOrder {
   id: string; code: string; title: string; description: string;
   status: string; priority: string; dueDate: string | null;
@@ -262,6 +275,7 @@ export const checklistsApi = {
   complete: (execId: string, items: unknown[], notes?: string, signatureUrl?: string) =>
     api.patch(`/executions/${execId}/complete`, { items, notes, signatureUrl }),
   executions: (params?: Record<string, unknown>) => api.get<Paginated<Execution>>('/executions', { params }),
+  getExecution: (id: string) => api.get<ExecutionDetail>(`/executions/${id}`),
 };
 
 export const workOrdersApi = {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { checklistsApi, schedulesApi, usersApi, unitsApi, Checklist, ChecklistSchedule, Execution, Unit, User } from '../../../lib/api';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
@@ -218,28 +219,31 @@ export default function ChecklistsPage() {
             </div>
           )}
           {executions.map((ex) => (
-            <div key={ex.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex items-start gap-4">
-              <div className="flex-1 min-w-0">
-                <div className="flex flex-wrap items-center gap-2 mb-1">
-                  <Badge value={ex.status} />
-                  {ex.score !== null && (
-                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                      ex.score >= 80 ? 'bg-green-100 text-green-700' :
-                      ex.score >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                    }`}>{ex.score}% conformidade</span>
-                  )}
+            <Link key={ex.id} href={`/dashboard/executions/${ex.id}`}>
+              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex items-start gap-4 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer">
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-2 mb-1">
+                    <Badge value={ex.status} />
+                    {ex.score !== null && (
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        ex.score >= 80 ? 'bg-green-100 text-green-700' :
+                        ex.score >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                      }`}>{ex.score}% conformidade</span>
+                    )}
+                  </div>
+                  <p className="font-semibold text-gray-900">{ex.checklist.name}</p>
+                  <div className="flex flex-wrap gap-4 mt-1 text-xs text-slate-500">
+                    <span>👤 {ex.user.name}</span>
+                    {ex.asset && <span>🏗️ {ex.asset.name}</span>}
+                    <span>📌 {ex._count.items} itens respondidos</span>
+                  </div>
                 </div>
-                <p className="font-semibold text-gray-900">{ex.checklist.name}</p>
-                <div className="flex flex-wrap gap-4 mt-1 text-xs text-slate-500">
-                  <span>👤 {ex.user.name}</span>
-                  {ex.asset && <span>🏗️ {ex.asset.name}</span>}
-                  <span>📌 {ex._count.items} itens respondidos</span>
+                <div className="text-right flex-shrink-0">
+                  <p className="text-xs text-slate-400">{formatDateTime(ex.completedAt ?? ex.startedAt)}</p>
+                  <p className="text-xs text-blue-500 mt-1">Ver detalhes →</p>
                 </div>
               </div>
-              <div className="text-right flex-shrink-0">
-                <p className="text-xs text-slate-400">{formatDateTime(ex.completedAt ?? ex.startedAt)}</p>
-              </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
