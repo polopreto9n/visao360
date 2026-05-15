@@ -8,6 +8,17 @@ import { Modal } from '../../../components/ui/Modal';
 import { formatDateTime, getUser, canManage, canAdmin } from '../../../lib/auth';
 import { api } from '../../../lib/api';
 
+function groupExecutions(executions: Execution[]): Execution[][] {
+  const m: { [key: string]: Execution[] } = {};
+  const sorted = executions.slice().sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  for (let i = 0; i < sorted.length; i++) {
+    const id = sorted[i].checklist.id;
+    if (!m[id]) { m[id] = []; }
+    m[id].push(sorted[i]);
+  }
+  return Object.values(m);
+}
+
 export default function ChecklistsPage() {
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [executions, setExecutions] = useState<Execution[]>([]);
@@ -95,16 +106,7 @@ export default function ChecklistsPage() {
     PREVENTIVE: '🛡️', CORRECTIVE: '🔨', INSPECTION: '🔍', AUDIT: '📋',
   };
 
-  // Agrupa execuções por checklist, ordenado pela data da mais recente
-  const _exGroups = new Map<string, Execution[]>();
-  executions
-    .slice()
-    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-    .forEach((ex) => {
-      if (!_exGroups.has(ex.checklist.id)) _exGroups.set(ex.checklist.id, []);
-      _exGroups.get(ex.checklist.id)!.push(ex);
-    });
-  const executionGroups = Array.from(_exGroups.values());
+  const executionGroups = groupExecutions(executions);
 
   return (
     <div className="space-y-5">
@@ -311,7 +313,6 @@ export default function ChecklistsPage() {
           <p className="text-center text-xs text-slate-400 py-2">
             {executionGroups.length} checklist{executionGroups.length !== 1 ? 's' : ''} · {executions.length} execução{executions.length !== 1 ? 'ões' : ''} no total
           </p>
-        </div>
         </div>
       )}
 
