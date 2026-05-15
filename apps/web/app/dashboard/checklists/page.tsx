@@ -26,6 +26,8 @@ export default function ChecklistsPage() {
   const isAdmin = canAdmin(user?.role ?? '');
   const [deletingCl, setDeletingCl] = useState<Checklist | null>(null);
   const [deleteClLoading, setDeleteClLoading] = useState(false);
+  const [deletingEx, setDeletingEx] = useState<Execution | null>(null);
+  const [deleteExLoading, setDeleteExLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -63,6 +65,17 @@ export default function ChecklistsPage() {
     } catch (e: unknown) {
       alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao iniciar checklist');
     }
+  }
+
+  async function handleDeleteExecution(ex: Execution) {
+    setDeleteExLoading(true);
+    try {
+      await checklistsApi.deleteExecution(ex.id);
+      setDeletingEx(null);
+      load();
+    } catch (e: unknown) {
+      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir execução');
+    } finally { setDeleteExLoading(false); }
   }
 
   async function handleDeleteChecklist(cl: Checklist) {
@@ -219,31 +232,36 @@ export default function ChecklistsPage() {
             </div>
           )}
           {executions.map((ex) => (
-            <Link key={ex.id} href={`/dashboard/executions/${ex.id}`}>
-              <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex items-start gap-4 hover:border-blue-300 hover:shadow-md transition-all cursor-pointer">
-                <div className="flex-1 min-w-0">
-                  <div className="flex flex-wrap items-center gap-2 mb-1">
-                    <Badge value={ex.status} />
-                    {ex.score !== null && (
-                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                        ex.score >= 80 ? 'bg-green-100 text-green-700' :
-                        ex.score >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
-                      }`}>{ex.score}% conformidade</span>
-                    )}
-                  </div>
-                  <p className="font-semibold text-gray-900">{ex.checklist.name}</p>
-                  <div className="flex flex-wrap gap-4 mt-1 text-xs text-slate-500">
-                    <span>👤 {ex.user.name}</span>
-                    {ex.asset && <span>🏗️ {ex.asset.name}</span>}
-                    <span>📌 {ex._count.items} itens respondidos</span>
-                  </div>
+            <div key={ex.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-4 flex items-start gap-4">
+              <Link href={`/dashboard/executions/${ex.id}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
+                <div className="flex flex-wrap items-center gap-2 mb-1">
+                  <Badge value={ex.status} />
+                  {ex.score !== null && (
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      ex.score >= 80 ? 'bg-green-100 text-green-700' :
+                      ex.score >= 60 ? 'bg-yellow-100 text-yellow-700' : 'bg-red-100 text-red-700'
+                    }`}>{ex.score}% conformidade</span>
+                  )}
                 </div>
-                <div className="text-right flex-shrink-0">
-                  <p className="text-xs text-slate-400">{formatDateTime(ex.completedAt ?? ex.startedAt)}</p>
-                  <p className="text-xs text-blue-500 mt-1">Ver detalhes →</p>
+                <p className="font-semibold text-gray-900">{ex.checklist.name}</p>
+                <div className="flex flex-wrap gap-4 mt-1 text-xs text-slate-500">
+                  <span>👤 {ex.user.name}</span>
+                  {ex.asset && <span>🏗️ {ex.asset.name}</span>}
+                  <span>📌 {ex._count.items} itens respondidos</span>
                 </div>
+              </Link>
+              <div className="flex flex-col items-end gap-2 flex-shrink-0">
+                <p className="text-xs text-slate-400">{formatDateTime(ex.completedAt ?? ex.startedAt)}</p>
+                <Link href={`/dashboard/executions/${ex.id}`} className="text-xs text-blue-500">Ver detalhes →</Link>
+                {isAdmin && (
+                  <button
+                    onClick={() => setDeletingEx(ex)}
+                    className="text-xs text-slate-300 hover:text-red-500 transition-colors"
+                    title="Excluir do histórico"
+                  >🗑️</button>
+                )}
               </div>
-            </Link>
+            </div>
           ))}
         </div>
       )}
@@ -275,6 +293,30 @@ export default function ChecklistsPage() {
             checklist={editing}
             onSuccess={() => { setEditing(null); load(); }}
           />
+        )}
+      </Modal>
+
+      {/* Modal excluir execução */}
+      <Modal open={!!deletingEx} onClose={() => setDeletingEx(null)} title="Excluir do Histórico" size="sm">
+        {deletingEx && (
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600">
+              Excluir esta execução de <strong>{deletingEx.checklist.name}</strong> por <strong>{deletingEx.user.name}</strong>?
+            </p>
+            <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
+              Esta ação é permanente e remove fotos e assinaturas vinculadas.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeletingEx(null)}
+                className="flex-1 border border-slate-200 hover:bg-slate-50 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                Cancelar
+              </button>
+              <button onClick={() => handleDeleteExecution(deletingEx)} disabled={deleteExLoading}
+                className="flex-1 bg-red-600 hover:bg-red-700 disabled:opacity-60 text-white font-semibold py-2.5 rounded-xl transition-colors text-sm">
+                {deleteExLoading ? 'Excluindo...' : 'Excluir'}
+              </button>
+            </div>
+          </div>
         )}
       </Modal>
 

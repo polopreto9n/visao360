@@ -1,5 +1,6 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Role } from '@prisma/client';
 import { ExecutionsService } from './executions.service';
 import { StartExecutionDto } from './dto/start-execution.dto';
 import { SubmitExecutionDto } from './dto/submit-execution.dto';
@@ -7,6 +8,7 @@ import { ListExecutionsDto } from './dto/list-executions.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
+import { Roles } from '../common/decorators/roles.decorator';
 import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
 
 @ApiTags('Executions')
@@ -44,5 +46,12 @@ export class ExecutionsController {
   @ApiOperation({ summary: 'Cancelar execucao em andamento' })
   cancel(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
     return this.svc.cancel(id, u.companyId, u.id);
+  }
+
+  @Delete(':id')
+  @Roles(Role.ADMIN)
+  @ApiOperation({ summary: 'Excluir execucao do historico (ADMIN)' })
+  remove(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
+    return this.svc.deleteExecution(id, u.companyId);
   }
 }

@@ -277,6 +277,7 @@ export const checklistsApi = {
     api.patch(`/executions/${execId}/complete`, { items, notes, signatureUrl }),
   executions: (params?: Record<string, unknown>) => api.get<Paginated<Execution>>('/executions', { params }),
   getExecution: (id: string) => api.get<ExecutionDetail>(`/executions/${id}`),
+  deleteExecution: (id: string) => api.delete(`/executions/${id}`),
 };
 
 export const workOrdersApi = {

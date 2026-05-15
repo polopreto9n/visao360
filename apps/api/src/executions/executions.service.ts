@@ -169,6 +169,13 @@ export class ExecutionsService {
     return updated;
   }
 
+  async deleteExecution(id: string, companyId: string) {
+    const execution = await this.findOne(id, companyId);
+    await this.prisma.executionItem.deleteMany({ where: { executionId: execution.id } });
+    await this.prisma.execution.delete({ where: { id: execution.id } });
+    return { deleted: true };
+  }
+
   async cancel(id: string, companyId: string, userId: string) {
     const execution = await this.findOne(id, companyId);
 
