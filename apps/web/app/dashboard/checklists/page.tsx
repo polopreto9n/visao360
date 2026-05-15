@@ -95,6 +95,20 @@ export default function ChecklistsPage() {
     PREVENTIVE: '🛡️', CORRECTIVE: '🔨', INSPECTION: '🔍', AUDIT: '📋',
   };
 
+  // Agrupa execuções por checklist, ordenado pela data da mais recente
+  const executionGroups = (() => {
+    const groups = new Map<string, Execution[]>();
+    executions
+      .slice()
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .forEach((ex) => {
+        const key = ex.checklist.id;
+        if (!groups.has(key)) groups.set(key, []);
+        groups.get(key)!.push(ex);
+      });
+    return Array.from(groups.values());
+  })();
+
   return (
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-4">
@@ -225,37 +239,22 @@ export default function ChecklistsPage() {
             );
           })}
         </div>
-      ) : (() => {
-        // Agrupa execuções por checklist, ordenado pela data da mais recente
-        const groups = new Map<string, Execution[]>();
-        executions
-          .slice()
-          .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-          .forEach((ex) => {
-            const key = ex.checklist.id;
-            if (!groups.has(key)) groups.set(key, []);
-            groups.get(key)!.push(ex);
-          });
-        const groupList = Array.from(groups.values());
-
-        return (
+      ) : (
         <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
-          {groupList.length === 0 && (
+          {executionGroups.length === 0 && (
             <div className="bg-white rounded-xl border border-slate-200 p-16 text-center">
               <p className="text-4xl mb-3">📜</p>
               <p className="text-lg font-semibold text-slate-700">Nenhuma execução registrada</p>
             </div>
           )}
-          {groupList.map((group) => {
+          {executionGroups.map((group) => {
             const latest = group[0];
             const checklistId = latest.checklist.id;
             const isExpanded = expandedGroups.has(checklistId);
             const displayList = isExpanded ? group : [latest];
             const extra = group.length - 1;
-
             return (
               <div key={checklistId} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                {/* Header do grupo */}
                 <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold text-gray-900">{latest.checklist.name}</span>
@@ -278,8 +277,6 @@ export default function ChecklistsPage() {
                     </button>
                   )}
                 </div>
-
-                {/* Execuções do grupo */}
                 <div className="divide-y divide-slate-50">
                   {displayList.map((ex) => (
                     <div key={ex.id} className="p-4 flex items-start gap-4">
@@ -315,11 +312,9 @@ export default function ChecklistsPage() {
             );
           })}
           <p className="text-center text-xs text-slate-400 py-2">
-            {groupList.length} checklist{groupList.length !== 1 ? 's' : ''} · {executions.length} execução{executions.length !== 1 ? 'ões' : ''} no total
+            {executionGroups.length} checklist{executionGroups.length !== 1 ? 's' : ''} · {executions.length} execução{executions.length !== 1 ? 'ões' : ''} no total
           </p>
         </div>
-        );
-      })()
         </div>
       )}
 
