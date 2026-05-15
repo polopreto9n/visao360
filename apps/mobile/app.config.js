@@ -14,7 +14,8 @@
     android: {
       adaptiveIcon: { foregroundImage: './assets/adaptive-icon.png', backgroundColor: '#2563eb' },
       package: 'com.visao360.app',
-      versionCode: 11,
+      versionCode: 12,
+      googleServicesFile: './google-services.json',
       permissions: ['android.permission.CAMERA','android.permission.READ_MEDIA_IMAGES','android.permission.READ_MEDIA_VIDEO','android.permission.VIBRATE'],
     },
     plugins: [
