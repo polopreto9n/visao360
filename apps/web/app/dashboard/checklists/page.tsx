@@ -96,18 +96,15 @@ export default function ChecklistsPage() {
   };
 
   // Agrupa execuções por checklist, ordenado pela data da mais recente
-  const executionGroups = (() => {
-    const groups = new Map<string, Execution[]>();
-    executions
-      .slice()
-      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-      .forEach((ex) => {
-        const key = ex.checklist.id;
-        if (!groups.has(key)) groups.set(key, []);
-        groups.get(key)!.push(ex);
-      });
-    return Array.from(groups.values());
-  })();
+  const _exGroups = new Map<string, Execution[]>();
+  executions
+    .slice()
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .forEach((ex) => {
+      if (!_exGroups.has(ex.checklist.id)) _exGroups.set(ex.checklist.id, []);
+      _exGroups.get(ex.checklist.id)!.push(ex);
+    });
+  const executionGroups = Array.from(_exGroups.values());
 
   return (
     <div className="space-y-5">
