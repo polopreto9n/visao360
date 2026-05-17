@@ -42,6 +42,9 @@ export class DashboardService {
       assetsByStatus, woByPriority,
       recentExecutions, recentWorkOrders, completedWorkOrders,
       assetsNeedingMaintenance,
+      checklistsByType,
+      woByStatus,
+      incidentsByUnit,
     ] = await Promise.all([
       this.prisma.asset.count({ where: { companyId, ...unitFilter } }),
       this.prisma.asset.count({ where: { companyId, status: 'ACTIVE', ...unitFilter } }),
@@ -122,6 +125,27 @@ export class DashboardService {
           unit: { select: { name: true } } },
         orderBy: { nextMaintenanceAt: 'asc' }, take: 10,
       }),
+
+      // Checklists por tipo de checklist (execuções do mês)
+      this.prisma.execution.findMany({
+        where: { companyId, createdAt: { gte: startOfMonth }, ...execUnitFilter },
+        include: { checklist: { select: { type: true } } },
+        take: 500,
+      }),
+
+      // OS por status
+      this.prisma.workOrder.groupBy({
+        by: ['status'], where: { companyId, ...unitFilter }, _count: { id: true },
+      }),
+
+      // Unidades com mais ocorrências (top 5)
+      this.prisma.incident.groupBy({
+        by: ['unitId'],
+        where: { companyId },
+        _count: { id: true },
+        orderBy: { _count: { id: 'desc' } },
+        take: 5,
+      }),
     ]);
 
     const checklistCompletionRate =
@@ -138,12 +162,25 @@ export class DashboardService {
         openIncidents, criticalIncidents,
       },
       charts: {
-        assetsByStatus: assetsByStatus.map((s) => ({
-          status: s.status, count: s._count.id,
-        })),
-        woByPriority: woByPriority.map((p) => ({
-          priority: p.priority, count: p._count.id,
-        })),
+        assetsByStatus: assetsByStatus.map((s) => ({ status: s.status, count: s._count.id })),
+        woByPriority: woByPriority.map((p) => ({ priority: p.priority, count: p._count.id })),
+        woByStatus: woByStatus.map((s) => ({ status: s.status, count: s._count.id })),
+        checklistsByType: (() => {
+          const counts: Record<string, number> = {};
+          for (const ex of checklistsByType) {
+            const t = (ex.checklist as { type: string }).type;
+            counts[t] = (counts[t] ?? 0) + 1;
+          }
+          return Object.entries(counts).map(([type, count]) => ({ type, count }));
+        })(),
+        incidentsByUnit: await Promise.all(
+          incidentsByUnit.map(async (iu) => {
+            const unit = await this.prisma.unit.findUnique({
+              where: { id: iu.unitId }, select: { name: true },
+            });
+            return { unit: unit?.name ?? iu.unitId, count: iu._count.id };
+          }),
+        ),
       },
       recentActivity: {
         executions: recentExecutions,

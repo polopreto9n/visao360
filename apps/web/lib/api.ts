@@ -197,6 +197,9 @@ export interface DashboardKPIs {
   charts: {
     assetsByStatus: { status: string; count: number }[];
     woByPriority: { priority: string; count: number }[];
+    woByStatus: { status: string; count: number }[];
+    checklistsByType: { type: string; count: number }[];
+    incidentsByUnit: { unit: string; count: number }[];
   };
   recentActivity: { executions: Execution[]; workOrders: WorkOrder[]; completedWorkOrders: WorkOrder[] };
   alerts: { assetsNeedingMaintenance: (Asset & { isOverdue: boolean })[] };
