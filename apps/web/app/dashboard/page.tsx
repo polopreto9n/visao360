@@ -222,7 +222,7 @@ export default function DashboardPage() {
                   data={checklistTypeData}
                   cx="50%" cy="50%"
                   innerRadius={45} outerRadius={70}
-                  paddingAngle={3}
+                  paddingAngle={checklistTypeData.length > 1 ? 3 : 0}
                   dataKey="value"
                 >
                   {checklistTypeData.map((entry, i) => (
