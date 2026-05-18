@@ -166,7 +166,68 @@ export class ExecutionsService {
         console.error(`[ExecutionsService] Falha ao avançar agenda (execução ${id}):`, err),
       );
 
+    // Auto-cria OS para itens reprovados quando conformidade < 70%
+    const checklistUnitId = (execution.checklist as { unitId?: string | null }).unitId;
+    if (score < 70 && dto.items.length > 0) {
+      this.autoCreateWorkOrder(execution, companyId, userId, dto.items, expectedMap, score, checklistUnitId ?? null)
+        .catch((err) =>
+          console.error(`[ExecutionsService] Falha ao criar OS automática (execução ${id}):`, err),
+        );
+    }
+
     return updated;
+  }
+
+  private async autoCreateWorkOrder(
+    execution: Awaited<ReturnType<ExecutionsService['findOne']>>,
+    companyId: string,
+    userId: string,
+    items: SubmitExecutionDto['items'],
+    expectedMap: Record<string, boolean>,
+    score: number,
+    checklistUnitId: string | null,
+  ) {
+    const failedIds = items
+      .filter((i) => i.answer !== (expectedMap[i.checklistItemId] ?? true))
+      .map((i) => i.checklistItemId);
+
+    if (failedIds.length === 0) return;
+
+    // Resolve unitId: prefere do checklist, fallback para unidade do asset
+    let unitId = checklistUnitId;
+    if (!unitId && execution.assetId) {
+      const asset = await this.prisma.asset.findUnique({
+        where: { id: execution.assetId },
+        select: { unitId: true },
+      });
+      unitId = asset?.unitId ?? null;
+    }
+
+    if (!unitId) return; // não tem unidade → não cria OS
+
+    const failedDetails = await this.prisma.checklistItem.findMany({
+      where: { id: { in: failedIds } },
+      select: { question: true, order: true },
+      orderBy: { order: 'asc' },
+    });
+
+    const priority = score < 50 ? 'HIGH' : 'MEDIUM';
+    const code = `OS-${new Date().getFullYear()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const itemList = failedDetails.map((i) => `• ${i.question}`).join('\n');
+
+    await this.prisma.workOrder.create({
+      data: {
+        companyId,
+        creatorId: userId,
+        code,
+        title: `Correção — ${execution.checklist.name}`,
+        description: `Gerada automaticamente após checklist com ${score.toFixed(0)}% de conformidade.\n\nItens reprovados:\n${itemList}`,
+        status: 'OPEN',
+        priority,
+        unitId,
+        assetId: execution.assetId ?? null,
+      },
+    });
   }
 
   async deleteExecution(id: string, companyId: string) {

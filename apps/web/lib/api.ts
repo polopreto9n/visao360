@@ -186,6 +186,8 @@ export interface WorkOrder {
   assignee: { id: string; name: string; email: string } | null;
 }
 
+export interface KPITrend { pct: number; prev: number; }
+
 export interface DashboardKPIs {
   summary: {
     totalAssets: number; activeAssets: number; assetsInMaintenance: number;
@@ -193,6 +195,13 @@ export interface DashboardKPIs {
     overdueWorkOrders: number; completedThisMonth: number;
     checklistsThisMonth: number; checklistCompletionRate: number;
     openIncidents: number; criticalIncidents: number;
+    trends?: {
+      newWorkOrders: KPITrend;
+      completedThisMonth: KPITrend;
+      checklistsThisMonth: KPITrend;
+      checklistCompletionRate: KPITrend;
+      newIncidents: KPITrend;
+    };
   };
   charts: {
     assetsByStatus: { status: string; count: number }[];
@@ -203,6 +212,21 @@ export interface DashboardKPIs {
   };
   recentActivity: { executions: Execution[]; workOrders: WorkOrder[]; completedWorkOrders: WorkOrder[] };
   alerts: { assetsNeedingMaintenance: (Asset & { isOverdue: boolean })[] };
+}
+
+export interface MyActionsResult {
+  dueSchedules: {
+    id: string; nextDueAt: string;
+    checklist: { id: string; name: string; type: string };
+    asset: { id: string; name: string } | null;
+  }[];
+  urgentWorkOrders: {
+    id: string; code: string; title: string;
+    status: string; priority: string; dueDate: string | null;
+    unit: { id: string; name: string };
+    asset: { id: string; name: string } | null;
+  }[];
+  total: number;
 }
 
 export interface User {
@@ -258,6 +282,7 @@ export const subscriptionsApi = {
 
 export const dashboardApi = {
   kpis: () => api.get<DashboardKPIs>('/dashboard/kpis'),
+  myActions: () => api.get<MyActionsResult>('/dashboard/my-actions'),
 };
 
 export const assetsApi = {

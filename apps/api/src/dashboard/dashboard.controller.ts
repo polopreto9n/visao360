@@ -14,11 +14,14 @@ export class DashboardController {
   constructor(private readonly svc: DashboardService) {}
 
   @Get('kpis')
-  @ApiOperation({
-    summary: 'KPIs gerenciais em tempo real',
-    description: 'Retorna: assets por status, OSs abertas/vencidas, taxa de checklists, incidentes, atividade recente e alertas de manutenção',
-  })
+  @ApiOperation({ summary: 'KPIs gerenciais com tendências mensais' })
   kpis(@CurrentUser() u: AuthenticatedUser) {
     return this.svc.getKPIs(u.companyId, u.id, u.role);
+  }
+
+  @Get('my-actions')
+  @ApiOperation({ summary: 'Próximas ações do usuário logado (checklists + OS urgentes)' })
+  myActions(@CurrentUser() u: AuthenticatedUser) {
+    return this.svc.getMyActions(u.id, u.companyId);
   }
 }

@@ -26,6 +26,8 @@ const LOCK_TTL: Record<string, number> = {
   'low-score-review': 10 * 60,    // 10 min (pode ter muitas execuções)
   'trial-expiry': 2 * 60,         // 2 min
   'past-due-expiry': 3 * 60,      // 3 min
+  'wo-escalation': 3 * 60,        // 3 min (job horário)
+  'critical-overdue': 3 * 60,     // 3 min (job diário)
 };
 
 @Injectable()
@@ -385,6 +387,109 @@ export class SchedulerService {
     }
 
     this.logger.log(`[trial-expiry] ${expired.length} trial(s) expirado(s) → SUSPENDED`);
+  }
+
+  /**
+   * Roda a cada hora — OS HIGH/CRITICAL sem atualização há 24h → notifica gestores.
+   * O lock usa TTL de 3 min; após expirar, a próxima hora pode adquiri-lo novamente.
+   */
+  @Cron('0 * * * *', { name: 'wo-escalation', timeZone: 'America/Sao_Paulo' })
+  async escalateStaleWorkOrders() {
+    if (!await this.acquireLock('wo-escalation')) return;
+    this.logger.log('[wo-escalation] Verificando OS paradas...');
+
+    const threshold = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const stale = await this.prisma.workOrder.findMany({
+      where: {
+        priority: { in: ['HIGH', 'CRITICAL'] },
+        status: { notIn: ['COMPLETED', 'CANCELLED'] },
+        updatedAt: { lt: threshold },
+      },
+      take: 200,
+      include: {
+        company: { select: { id: true } },
+        unit: { select: { name: true } },
+      },
+    });
+
+    if (stale.length === 0) {
+      this.logger.log('[wo-escalation] Nenhuma OS parada');
+      return;
+    }
+
+    const byCompany = new Map<string, typeof stale>();
+    for (const wo of stale) {
+      const list = byCompany.get(wo.companyId) ?? [];
+      list.push(wo);
+      byCompany.set(wo.companyId, list);
+    }
+
+    for (const [companyId, wos] of byCompany.entries()) {
+      for (const wo of wos) {
+        await this.notifications
+          .notifyManagers(
+            companyId,
+            NotificationType.WORK_ORDER_ASSIGNED,
+            `⏰ OS parada há +24h: ${wo.code}`,
+            `"${wo.title}" (${wo.priority}) — ${wo.unit.name} — sem atualização há mais de 24h`,
+            { workOrderId: wo.id },
+          )
+          .catch((err) => this.logger.error(`Escalonamento WO ${wo.id}: ${err}`));
+      }
+    }
+
+    this.logger.log(`[wo-escalation] ${stale.length} OS(s) escaladas`);
+  }
+
+  /**
+   * Roda todo dia às 11:00 — OS vencidas há mais de 3 dias → alerta crítico.
+   */
+  @Cron('0 11 * * *', { name: 'critical-overdue', timeZone: 'America/Sao_Paulo' })
+  async alertCriticallyOverdueWorkOrders() {
+    if (!await this.acquireLock('critical-overdue')) return;
+    this.logger.log('[critical-overdue] Verificando OS criticamente vencidas...');
+
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000);
+
+    const critical = await this.prisma.workOrder.findMany({
+      where: {
+        dueDate: { lt: threeDaysAgo },
+        status: { notIn: ['COMPLETED', 'CANCELLED'] },
+      },
+      take: 200,
+      include: {
+        company: { select: { id: true, name: true } },
+        unit: { select: { name: true } },
+        assignee: { select: { id: true, name: true } },
+      },
+    });
+
+    if (critical.length === 0) {
+      this.logger.log('[critical-overdue] Nenhuma OS criticamente vencida');
+      return;
+    }
+
+    const byCompany = new Map<string, typeof critical>();
+    for (const wo of critical) {
+      const list = byCompany.get(wo.companyId) ?? [];
+      list.push(wo);
+      byCompany.set(wo.companyId, list);
+    }
+
+    for (const [companyId, wos] of byCompany.entries()) {
+      await this.notifications
+        .notifyManagers(
+          companyId,
+          NotificationType.WORK_ORDER_ASSIGNED,
+          `🚨 ${wos.length} OS vencida(s) há mais de 3 dias`,
+          wos.map((w) => `${w.code} — ${w.title}`).join(', '),
+          { workOrderIds: wos.map((w) => w.id) },
+        )
+        .catch((err) => this.logger.error(`Alerta overdue crítico ${companyId}: ${err}`));
+
+      this.logger.log(`[critical-overdue] ${wos.length} OS críticas em ${wos[0].company.name}`);
+    }
   }
 
   /**

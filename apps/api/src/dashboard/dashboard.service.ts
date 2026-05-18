@@ -3,6 +3,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { UnitsService } from '../units/units.service';
 
+function trendPct(cur: number, prev: number): number {
+  if (prev === 0) return 0;
+  return Math.round(((cur - prev) / prev) * 100);
+}
+
 @Injectable()
 export class DashboardService {
   constructor(
@@ -19,10 +24,67 @@ export class DashboardService {
     return this.redis.getOrSet(cacheKey, () => this.computeKPIs(companyId, userId, userRole), 30);
   }
 
+  async getMyActions(userId: string, companyId: string) {
+    const now = new Date();
+    const todayEnd = new Date(now);
+    todayEnd.setHours(23, 59, 59, 999);
+    const in48h = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+
+    const unitIds = await this.units.getUserUnitIds(userId);
+
+    const [dueSchedules, urgentWorkOrders] = await Promise.all([
+      this.prisma.checklistSchedule.findMany({
+        where: {
+          companyId,
+          isActive: true,
+          nextDueAt: { lte: todayEnd },
+          checklist: { isActive: true },
+          OR: [
+            { assigneeId: userId },
+            ...(unitIds.length > 0
+              ? [{ assigneeId: null as unknown as string, checklist: { unitId: { in: unitIds } } }]
+              : []),
+          ],
+        },
+        include: {
+          checklist: { select: { id: true, name: true, type: true } },
+          asset: { select: { id: true, name: true } },
+        },
+        orderBy: { nextDueAt: 'asc' },
+        take: 10,
+      }),
+      this.prisma.workOrder.findMany({
+        where: {
+          companyId,
+          assigneeId: userId,
+          status: { notIn: ['COMPLETED', 'CANCELLED'] },
+          OR: [
+            { dueDate: { lte: in48h, not: null } },
+            { priority: 'CRITICAL' },
+          ],
+        },
+        include: {
+          unit: { select: { id: true, name: true } },
+          asset: { select: { id: true, name: true } },
+        },
+        orderBy: [{ priority: 'desc' }, { dueDate: 'asc' }],
+        take: 10,
+      }),
+    ]);
+
+    return {
+      dueSchedules,
+      urgentWorkOrders,
+      total: dueSchedules.length + urgentWorkOrders.length,
+    };
+  }
+
   private async computeKPIs(companyId: string, userId?: string, userRole?: string) {
     const now = new Date();
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999);
 
     let unitIds: string[] | undefined;
     if ((userRole === 'TECNICO' || userRole === 'CLIENTE') && userId) {
@@ -45,6 +107,10 @@ export class DashboardService {
       checklistsByType,
       woByStatus,
       incidentsByUnit,
+      // Tendências — período anterior
+      prevChecklistsMonth, prevCompletedExecutions,
+      prevCompletedThisMonth, prevNewWOs, prevNewIncidents,
+      newWOsThisMonth, newIncidentsThisMonth,
     ] = await Promise.all([
       this.prisma.asset.count({ where: { companyId, ...unitFilter } }),
       this.prisma.asset.count({ where: { companyId, status: 'ACTIVE', ...unitFilter } }),
@@ -121,24 +187,23 @@ export class DashboardService {
           nextMaintenanceAt: { lte: nextWeek },
           ...unitFilter,
         },
-        select: { id: true, name: true, code: true, category: true, nextMaintenanceAt: true,
-          unit: { select: { name: true } } },
+        select: {
+          id: true, name: true, code: true, category: true, nextMaintenanceAt: true,
+          unit: { select: { name: true } },
+        },
         orderBy: { nextMaintenanceAt: 'asc' }, take: 10,
       }),
 
-      // Checklists por tipo de checklist (execuções do mês)
       this.prisma.execution.findMany({
         where: { companyId, createdAt: { gte: startOfMonth }, ...execUnitFilter },
         include: { checklist: { select: { type: true } } },
         take: 500,
       }),
 
-      // OS por status
       this.prisma.workOrder.groupBy({
         by: ['status'], where: { companyId, ...unitFilter }, _count: { id: true },
       }),
 
-      // Unidades com mais ocorrências (top 5)
       this.prisma.incident.groupBy({
         by: ['unitId'],
         where: { companyId },
@@ -146,11 +211,40 @@ export class DashboardService {
         orderBy: { _count: { id: 'desc' } },
         take: 5,
       }),
+
+      // Tendências — mês anterior
+      this.prisma.execution.count({
+        where: { companyId, createdAt: { gte: prevMonthStart, lte: prevMonthEnd }, ...execUnitFilter },
+      }),
+      this.prisma.execution.count({
+        where: { companyId, status: 'COMPLETED', completedAt: { gte: prevMonthStart, lte: prevMonthEnd }, ...execUnitFilter },
+      }),
+      this.prisma.workOrder.count({
+        where: { companyId, status: 'COMPLETED', completedAt: { gte: prevMonthStart, lte: prevMonthEnd }, ...unitFilter },
+      }),
+      this.prisma.workOrder.count({
+        where: { companyId, createdAt: { gte: prevMonthStart, lte: prevMonthEnd }, ...unitFilter },
+      }),
+      this.prisma.incident.count({
+        where: { companyId, createdAt: { gte: prevMonthStart, lte: prevMonthEnd }, ...unitFilter },
+      }),
+      // Mês atual — novas OS e incidentes (para comparar com mês anterior)
+      this.prisma.workOrder.count({
+        where: { companyId, createdAt: { gte: startOfMonth }, ...unitFilter },
+      }),
+      this.prisma.incident.count({
+        where: { companyId, createdAt: { gte: startOfMonth }, ...unitFilter },
+      }),
     ]);
 
     const checklistCompletionRate =
       checklistsThisMonth > 0
         ? Math.round((completedExecutions / checklistsThisMonth) * 100)
+        : 0;
+
+    const prevChecklistCompletionRate =
+      prevChecklistsMonth > 0
+        ? Math.round((prevCompletedExecutions / prevChecklistsMonth) * 100)
         : 0;
 
     return {
@@ -160,6 +254,13 @@ export class DashboardService {
         overdueWorkOrders, completedThisMonth,
         checklistsThisMonth, checklistCompletionRate,
         openIncidents, criticalIncidents,
+        trends: {
+          newWorkOrders: { pct: trendPct(newWOsThisMonth, prevNewWOs), prev: prevNewWOs },
+          completedThisMonth: { pct: trendPct(completedThisMonth, prevCompletedThisMonth), prev: prevCompletedThisMonth },
+          checklistsThisMonth: { pct: trendPct(checklistsThisMonth, prevChecklistsMonth), prev: prevChecklistsMonth },
+          checklistCompletionRate: { pct: trendPct(checklistCompletionRate, prevChecklistCompletionRate), prev: prevChecklistCompletionRate },
+          newIncidents: { pct: trendPct(newIncidentsThisMonth, prevNewIncidents), prev: prevNewIncidents },
+        },
       },
       charts: {
         assetsByStatus: assetsByStatus.map((s) => ({ status: s.status, count: s._count.id })),
