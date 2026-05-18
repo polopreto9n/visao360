@@ -63,7 +63,7 @@ export function Sidebar({ mobile, onClose }: { mobile?: boolean; onClose?: () =>
               className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                 active
                   ? 'bg-blue-600 text-white'
-                  : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                  : 'text-slate-100 hover:bg-slate-700 hover:text-white'
               }`}
             >
               <span className="text-base">{item.icon}</span>
