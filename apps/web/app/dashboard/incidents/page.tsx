@@ -152,9 +152,48 @@ export default function IncidentsPage() {
   );
 }
 
+// Dicionário de palavras-chave por severidade — ordem importa (CRITICAL primeiro)
+const SEVERITY_KEYWORDS: [string, string[]][] = [
+  ['CRITICAL', ['incêndio', 'explosão', 'curto-circuito', 'inundação', 'emergência', 'colapso', 'desabamento', 'fogo', 'acidente', 'ferido', 'sem saída', 'pânico']],
+  ['HIGH',     ['vazamento', 'elétrico', 'elevador', 'estrutural', 'gás', 'sem energia', 'infiltração', 'quebrado', 'parado', 'não funciona', 'falha', 'risco de']],
+  ['MEDIUM',   ['ar condicionado', 'interfone', 'água quente', 'fechadura', 'iluminação', 'portão', 'bomba', 'barulho', 'intermitente', 'irregular']],
+  ['LOW',      ['pintura', 'limpeza', 'estético', 'desgaste', 'risco', 'adesivo', 'placa', 'sujeira']],
+];
+
+const SEV_SUGGESTION_LABELS: Record<string, string> = {
+  CRITICAL: '🔴 Crítico', HIGH: '🟠 Alto', MEDIUM: '🟡 Médio', LOW: '🟢 Baixo',
+};
+
+function suggestSeverity(text: string): string | null {
+  const lower = text.toLowerCase();
+  for (const [sev, words] of SEVERITY_KEYWORDS) {
+    for (const word of words) {
+      if (lower.includes(word)) return sev;
+    }
+  }
+  return null;
+}
+
 function CreateIncidentForm({ units, onSuccess }: { units: Unit[]; onSuccess: () => void }) {
   const [form, setForm] = useState({ title: '', description: '', unitId: '', severity: 'MEDIUM' });
   const [saving, setSaving] = useState(false);
+  const [suggestion, setSuggestion] = useState<string | null>(null);
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
+
+  // Detecta severidade sugerida ao digitar título ou descrição
+  useEffect(() => {
+    if (suggestionDismissed) return;
+    const text = `${form.title} ${form.description}`;
+    const sug = suggestSeverity(text);
+    setSuggestion(sug && sug !== form.severity ? sug : null);
+  }, [form.title, form.description, form.severity, suggestionDismissed]);
+
+  function applySuggestion() {
+    if (!suggestion) return;
+    setForm(f => ({ ...f, severity: suggestion }));
+    setSuggestion(null);
+    setSuggestionDismissed(true);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -172,13 +211,32 @@ function CreateIncidentForm({ units, onSuccess }: { units: Unit[]; onSuccess: ()
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">Título *</label>
         <input required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-          value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} placeholder="ex: Vazamento na bomba hidráulica" />
+          value={form.title} onChange={(e) => { setForm(f => ({ ...f, title: e.target.value })); setSuggestionDismissed(false); }}
+          placeholder="ex: Vazamento na bomba hidráulica" />
       </div>
       <div>
         <label className="block text-xs font-semibold text-slate-600 mb-1">Descrição *</label>
         <textarea required rows={4} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
-          value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Descreva o ocorrência em detalhes..." />
+          value={form.description} onChange={(e) => { setForm(f => ({ ...f, description: e.target.value })); setSuggestionDismissed(false); }}
+          placeholder="Descreva a ocorrência em detalhes..." />
       </div>
+
+      {/* Sugestão de severidade */}
+      {suggestion && (
+        <div className="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+          <span className="text-base">🤖</span>
+          <p className="text-sm text-amber-800 flex-1">
+            Severidade sugerida: <strong>{SEV_SUGGESTION_LABELS[suggestion]}</strong>
+          </p>
+          <button type="button" onClick={applySuggestion}
+            className="text-xs font-bold text-amber-700 bg-amber-100 hover:bg-amber-200 px-3 py-1 rounded-lg transition-colors">
+            Aplicar
+          </button>
+          <button type="button" onClick={() => setSuggestionDismissed(true)}
+            className="text-slate-400 hover:text-slate-600 text-lg leading-none">×</button>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1">Unidade *</label>
@@ -191,8 +249,10 @@ function CreateIncidentForm({ units, onSuccess }: { units: Unit[]; onSuccess: ()
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1">Severidade</label>
           <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
-            value={form.severity} onChange={(e) => setForm(f => ({ ...f, severity: e.target.value }))}>
-            {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((s) => <option key={s} value={s}>{s}</option>)}
+            value={form.severity} onChange={(e) => { setForm(f => ({ ...f, severity: e.target.value })); setSuggestionDismissed(true); }}>
+            {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((s) => (
+              <option key={s} value={s}>{SEV_SUGGESTION_LABELS[s]}</option>
+            ))}
           </select>
         </div>
       </div>

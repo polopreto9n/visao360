@@ -284,6 +284,22 @@ export default function WorkOrdersPage() {
 function CreateWOForm({ units, users, onSuccess }: { units: Unit[]; users: User[]; onSuccess: () => void }) {
   const [form, setForm] = useState({ title: '', description: '', unitId: '', priority: 'MEDIUM', assigneeId: '', dueDate: '' });
   const [saving, setSaving] = useState(false);
+  const [suggestions, setSuggestions] = useState<WorkOrder[]>([]);
+  const [suggestionDismissed, setSuggestionDismissed] = useState(false);
+
+  // Busca últimas OS da unidade selecionada para sugestão
+  useEffect(() => {
+    if (!form.unitId || suggestionDismissed) { setSuggestions([]); return; }
+    workOrdersApi.list({ unitId: form.unitId, limit: 3, status: 'COMPLETED' })
+      .then((r) => setSuggestions(r.data.data.slice(0, 3)))
+      .catch(() => setSuggestions([]));
+  }, [form.unitId, suggestionDismissed]);
+
+  function applySuggestion(wo: WorkOrder) {
+    setForm(f => ({ ...f, title: wo.title, description: wo.description, priority: wo.priority }));
+    setSuggestions([]);
+    setSuggestionDismissed(true);
+  }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -300,23 +316,15 @@ function CreateWOForm({ units, users, onSuccess }: { units: Unit[]; users: User[
     } finally { setSaving(false); }
   }
 
+  const PRIORITY_LABELS: Record<string, string> = { LOW: 'Baixa', MEDIUM: 'Média', HIGH: 'Alta', CRITICAL: 'Crítica' };
+
   return (
     <form onSubmit={submit} className="space-y-4">
-      <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Título *</label>
-        <input required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-          value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} />
-      </div>
-      <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Descrição *</label>
-        <textarea required rows={3} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
-          value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} />
-      </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1">Unidade *</label>
           <select required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
-            value={form.unitId} onChange={(e) => setForm(f => ({ ...f, unitId: e.target.value }))}>
+            value={form.unitId} onChange={(e) => { setForm(f => ({ ...f, unitId: e.target.value })); setSuggestionDismissed(false); }}>
             <option value="">Selecione...</option>
             {units.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
@@ -325,9 +333,48 @@ function CreateWOForm({ units, users, onSuccess }: { units: Unit[]; users: User[
           <label className="block text-xs font-semibold text-slate-600 mb-1">Prioridade</label>
           <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
             value={form.priority} onChange={(e) => setForm(f => ({ ...f, priority: e.target.value }))}>
-            {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((p) => <option key={p} value={p}>{p}</option>)}
+            {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((p) => (
+              <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+            ))}
           </select>
         </div>
+      </div>
+
+      {/* Sugestões baseadas no histórico da unidade */}
+      {suggestions.length > 0 && !form.title && (
+        <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 space-y-2">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-blue-700">💡 Baseado no histórico desta unidade:</p>
+            <button type="button" onClick={() => setSuggestionDismissed(true)}
+              className="text-slate-400 hover:text-slate-600 text-lg leading-none">×</button>
+          </div>
+          {suggestions.map((wo) => (
+            <button key={wo.id} type="button" onClick={() => applySuggestion(wo)}
+              className="w-full text-left flex items-center gap-3 p-2.5 rounded-lg bg-white hover:bg-blue-50 border border-blue-100 transition-colors group">
+              <span className="text-base flex-shrink-0">🔧</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">{wo.title}</p>
+                <p className="text-xs text-slate-400">Prioridade {PRIORITY_LABELS[wo.priority]}</p>
+              </div>
+              <span className="text-xs font-semibold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">Usar →</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Título *</label>
+        <input required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
+          placeholder="Descreva brevemente o problema ou serviço..." />
+      </div>
+      <div>
+        <label className="block text-xs font-semibold text-slate-600 mb-1">Descrição *</label>
+        <textarea required rows={3} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+          value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
+          placeholder="Detalhes do serviço, local exato, equipamentos envolvidos..." />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
         <div>
           <label className="block text-xs font-semibold text-slate-600 mb-1">Técnico responsável</label>
           <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
