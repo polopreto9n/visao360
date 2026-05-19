@@ -95,10 +95,10 @@ export default function IncidentsPage() {
               <Badge value={detail.status} />
             </div>
             <div>
-              <h3 className="font-bold text-gray-900 text-lg">{detail.title}</h3>
-              <p className="text-sm text-slate-600 mt-1">{detail.description}</p>
+              <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{detail.title}</h3>
+              <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{detail.description}</p>
             </div>
-            <div className="flex flex-wrap gap-4 text-xs text-slate-400">
+            <div className="flex flex-wrap gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
               <span>🏢 {detail.unit.name}</span>
               <span>👤 {detail.reporter.name}</span>
               <span>📅 {formatDateTime(detail.createdAt)}</span>
@@ -106,14 +106,15 @@ export default function IncidentsPage() {
             </div>
             {detail.photoUrls?.length > 0 && (
               <div>
-                <p className="text-xs font-semibold text-slate-500 mb-2">📷 Fotos ({detail.photoUrls.length})</p>
+                <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>📷 Fotos ({detail.photoUrls.length})</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {detail.photoUrls.map((url, idx) => (
                     <img
                       key={idx}
                       src={url}
                       alt={`Foto ${idx + 1}`}
-                      className="w-full h-32 object-cover rounded-xl border border-slate-100 cursor-pointer hover:opacity-90 transition-opacity"
+                      className="w-full h-32 object-cover rounded-xl cursor-pointer hover:opacity-90 transition-opacity"
+                      style={{ border: '1px solid var(--border)' }}
                       onClick={() => setLightbox(url)}
                     />
                   ))}
@@ -121,10 +122,11 @@ export default function IncidentsPage() {
               </div>
             )}
             {(STATUS_TRANSITIONS[detail.status] ?? []).length > 0 && (
-              <div className="flex gap-2 pt-2 border-t border-slate-100">
+              <div className="flex gap-2 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
                 {(STATUS_TRANSITIONS[detail.status] ?? []).map((t) => (
                   <button key={t.status} onClick={() => handleStatus(detail, t.status)}
-                    className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 rounded-lg transition-colors">
+                    className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+                    style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)', background: 'var(--surface)' }}>
                     {t.label}
                   </button>
                 ))}
@@ -136,8 +138,8 @@ export default function IncidentsPage() {
 
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900">Ocorrências</h1>
-          <p className="text-sm text-slate-500">{total} ocorrências registradas</p>
+          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Ocorrências</h1>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{total} ocorrências registradas</p>
         </div>
         <button onClick={() => setCreating(true)}
           className="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
@@ -146,10 +148,15 @@ export default function IncidentsPage() {
       </div>
 
       {/* Filtros de severidade */}
-      <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-3 flex-wrap">
+      <div className="rounded-xl border p-3 flex flex-wrap gap-1" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         {SEV_TABS.map((t) => (
           <button key={t.key} onClick={() => setSevFilter(t.key)}
-            className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${sevFilter === t.key ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}>
+            className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors"
+            style={
+              sevFilter === t.key
+                ? { background: 'var(--text-primary)', color: 'var(--bg)' }
+                : { background: 'var(--surface-2)', color: 'var(--text-secondary)' }
+            }>
             {t.label}
           </button>
         ))}
@@ -157,18 +164,25 @@ export default function IncidentsPage() {
 
       {/* Lista */}
       {loading ? (
-        <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-red-500 border-t-transparent rounded-full animate-spin" /></div>
+        <div className="flex justify-center py-20">
+          <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#ef4444', borderTopColor: 'transparent' }} />
+        </div>
       ) : incidents.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-16 text-center">
+        <div className="rounded-xl border p-16 text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <p className="text-4xl mb-3">✅</p>
-          <p className="text-lg font-semibold text-slate-700">Nenhum ocorrência registrado</p>
+          <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>Nenhum ocorrência registrado</p>
         </div>
       ) : (
         <div className="space-y-3">
           {incidents.map((inc) => {
             const transitions = STATUS_TRANSITIONS[inc.status] ?? [];
             return (
-              <div key={inc.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 cursor-pointer hover:border-slate-300 transition-colors" onClick={() => setDetail(inc)}>
+              <div
+                key={inc.id}
+                className="rounded-xl border p-5 cursor-pointer transition-colors"
+                style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}
+                onClick={() => setDetail(inc)}
+              >
                 <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -177,12 +191,12 @@ export default function IncidentsPage() {
                       </span>
                       <Badge value={inc.status} />
                       {inc.photoUrls?.length > 0 && (
-                        <span className="text-xs text-slate-400">📷 {inc.photoUrls.length} foto(s)</span>
+                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>📷 {inc.photoUrls.length} foto(s)</span>
                       )}
                     </div>
-                    <h3 className="font-bold text-gray-900">{inc.title}</h3>
-                    <p className="text-sm text-slate-500 mt-1 line-clamp-2">{inc.description}</p>
-                    <div className="flex flex-wrap gap-4 mt-2 text-xs text-slate-400">
+                    <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>{inc.title}</h3>
+                    <p className="text-sm mt-1 line-clamp-2" style={{ color: 'var(--text-muted)' }}>{inc.description}</p>
+                    <div className="flex flex-wrap gap-4 mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
                       <span>🏢 {inc.unit.name}</span>
                       <span>👤 {inc.reporter.name}</span>
                       <span>📅 {formatDateTime(inc.createdAt)}</span>
@@ -193,7 +207,8 @@ export default function IncidentsPage() {
                     <div className="flex gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                       {transitions.map((t) => (
                         <button key={t.status} onClick={() => handleStatus(inc, t.status)}
-                          className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 rounded-lg transition-colors">
+                          className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+                          style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)', background: 'var(--surface)' }}>
                           {t.label}
                         </button>
                       ))}
@@ -268,17 +283,22 @@ function CreateIncidentForm({ units, onSuccess }: { units: Unit[]; onSuccess: ()
     } finally { setSaving(false); }
   }
 
+  const inputStyle = { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
+  const labelStyle = { color: 'var(--text-secondary)' };
+
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Título *</label>
-        <input required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+        <label className="block text-xs font-semibold mb-1" style={labelStyle}>Título *</label>
+        <input required className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          style={inputStyle}
           value={form.title} onChange={(e) => { setForm(f => ({ ...f, title: e.target.value })); setSuggestionDismissed(false); }}
           placeholder="ex: Vazamento na bomba hidráulica" />
       </div>
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Descrição *</label>
-        <textarea required rows={4} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+        <label className="block text-xs font-semibold mb-1" style={labelStyle}>Descrição *</label>
+        <textarea required rows={4} className="w-full rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+          style={inputStyle}
           value={form.description} onChange={(e) => { setForm(f => ({ ...f, description: e.target.value })); setSuggestionDismissed(false); }}
           placeholder="Descreva a ocorrência em detalhes..." />
       </div>
@@ -295,22 +315,24 @@ function CreateIncidentForm({ units, onSuccess }: { units: Unit[]; onSuccess: ()
             Aplicar
           </button>
           <button type="button" onClick={() => setSuggestionDismissed(true)}
-            className="text-slate-400 hover:text-slate-600 text-lg leading-none">×</button>
+            className="text-lg leading-none" style={{ color: 'var(--text-muted)' }}>×</button>
         </div>
       )}
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Unidade *</label>
-          <select required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Unidade *</label>
+          <select required className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             value={form.unitId} onChange={(e) => setForm(f => ({ ...f, unitId: e.target.value }))}>
             <option value="">Selecione...</option>
             {units.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Severidade</label>
-          <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Severidade</label>
+          <select className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             value={form.severity} onChange={(e) => { setForm(f => ({ ...f, severity: e.target.value })); setSuggestionDismissed(true); }}>
             {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((s) => (
               <option key={s} value={s}>{SEV_SUGGESTION_LABELS[s]}</option>

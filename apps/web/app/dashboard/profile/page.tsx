@@ -78,16 +78,17 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-extrabold text-gray-900">Meu Perfil</h1>
+      <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Meu Perfil</h1>
 
       {/* Avatar + info */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm flex items-center gap-5">
+      <div className="rounded-xl border p-6 flex items-center gap-5"
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
         <div className="w-20 h-20 rounded-2xl bg-blue-600 flex items-center justify-center flex-shrink-0 shadow-lg">
           <span className="text-3xl font-black text-white">{user.name.charAt(0)}</span>
         </div>
         <div>
-          <h2 className="text-xl font-bold text-gray-900">{user.name}</h2>
-          <p className="text-slate-500 text-sm">{user.email}</p>
+          <h2 className="text-xl font-bold" style={{ color: 'var(--text-primary)' }}>{user.name}</h2>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{user.email}</p>
           <span className="inline-block mt-2 text-xs font-bold px-3 py-1 rounded-full"
             style={{ background: rc.bg, color: rc.color }}>
             {rc.label}
@@ -96,25 +97,32 @@ export default function ProfilePage() {
       </div>
 
       {/* Editar dados */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h2 className="text-base font-bold text-gray-900 mb-4">Dados pessoais</h2>
+      <div className="rounded-xl border p-6"
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+        <h2 className="text-base font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Dados pessoais</h2>
         <form onSubmit={saveProfile} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Nome *</label>
-            <input required className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Nome *</label>
+            <input required
+              className="w-full rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
               value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Telefone</label>
-            <input className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Telefone</label>
+            <input
+              className="w-full rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
               value={form.phone} onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))}
               placeholder="(11) 99999-0000" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail</label>
-            <input disabled className="w-full border border-slate-100 rounded-xl px-3 py-2.5 text-sm bg-slate-50 text-slate-400"
+            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>E-mail</label>
+            <input disabled
+              className="w-full rounded-xl px-3 py-2.5 text-sm"
+              style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
               value={user.email} />
-            <p className="text-xs text-slate-400 mt-1">O e-mail não pode ser alterado</p>
+            <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>O e-mail não pode ser alterado</p>
           </div>
           {msg && (
             <div className={`text-sm px-4 py-3 rounded-xl ${msg.startsWith('✅') ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
@@ -122,31 +130,39 @@ export default function ProfilePage() {
             </div>
           )}
           <button type="submit" disabled={saving}
-            className="bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm">
+            className="disabled:opacity-60 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm"
+            style={{ background: 'var(--accent)' }}>
             {saving ? 'Salvando...' : 'Salvar alterações'}
           </button>
         </form>
       </div>
 
       {/* Alterar senha */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h2 className="text-base font-bold text-gray-900 mb-4">Alterar senha</h2>
+      <div className="rounded-xl border p-6"
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+        <h2 className="text-base font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Alterar senha</h2>
         <form onSubmit={savePassword} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Senha atual *</label>
-            <input required type="password" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Senha atual *</label>
+            <input required type="password"
+              className="w-full rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
               value={pwForm.currentPassword} onChange={(e) => setPwForm(f => ({ ...f, currentPassword: e.target.value }))} />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Nova senha *</label>
-              <input required type="password" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Nova senha *</label>
+              <input required type="password"
+                className="w-full rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                 value={pwForm.newPassword} onChange={(e) => setPwForm(f => ({ ...f, newPassword: e.target.value }))}
                 placeholder="mín. 8 caracteres" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Confirmar *</label>
-              <input required type="password" className="w-full border border-slate-200 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Confirmar *</label>
+              <input required type="password"
+                className="w-full rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                 value={pwForm.confirm} onChange={(e) => setPwForm(f => ({ ...f, confirm: e.target.value }))} />
             </div>
           </div>
@@ -163,15 +179,16 @@ export default function ProfilePage() {
       </div>
 
       {/* Empresa */}
-      <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm">
-        <h2 className="text-base font-bold text-gray-900 mb-3">Empresa</h2>
+      <div className="rounded-xl border p-6"
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+        <h2 className="text-base font-bold mb-3" style={{ color: 'var(--text-primary)' }}>Empresa</h2>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
             <span className="text-blue-700 font-bold">{user.company.name.charAt(0)}</span>
           </div>
           <div>
-            <p className="font-semibold text-gray-900">{user.company.name}</p>
-            <p className="text-xs text-slate-400 font-mono">{user.companyId}</p>
+            <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{user.company.name}</p>
+            <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{user.companyId}</p>
           </div>
         </div>
       </div>

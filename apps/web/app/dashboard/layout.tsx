@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Menu } from 'lucide-react';
 import { isAuthenticated, getUser, saveSubscription } from '../../lib/auth';
 import { subscriptionsApi } from '../../lib/api';
 import { Sidebar } from '../../components/layout/Sidebar';
@@ -11,20 +12,16 @@ import { NotificationBell } from '../../components/layout/NotificationBell';
 function TrialBanner({ daysLeft }: { daysLeft: number }) {
   const urgent = daysLeft <= 3;
   return (
-    <div className={`flex items-center justify-between px-4 py-2 text-sm font-medium ${
-      urgent
-        ? 'bg-orange-500 text-white'
-        : 'bg-blue-600 text-white'
+    <div className={`flex items-center justify-between px-5 py-2.5 text-[13px] font-medium ${
+      urgent ? 'bg-orange-500 text-white' : 'bg-blue-600 text-white'
     }`}>
       <span>
         {urgent
-          ? `⚡ Trial encerra em ${daysLeft} dia(s)! Escolha um plano para não perder o acesso.`
+          ? `⚡ Trial encerra em ${daysLeft} dia(s) — escolha um plano para continuar.`
           : `🎯 Trial gratuito: ${daysLeft} dia(s) restante(s).`}
       </span>
-      <Link
-        href="/planos"
-        className="ml-4 px-3 py-1 bg-white text-blue-700 rounded-full text-xs font-bold hover:bg-blue-50 transition flex-shrink-0"
-      >
+      <Link href="/planos"
+        className="ml-4 px-3 py-1 bg-white text-blue-700 rounded-full text-xs font-bold hover:bg-blue-50 transition flex-shrink-0">
         Ver planos →
       </Link>
     </div>
@@ -33,12 +30,10 @@ function TrialBanner({ daysLeft }: { daysLeft: number }) {
 
 function PastDueBanner() {
   return (
-    <div className="flex items-center justify-between px-4 py-2 text-sm font-medium bg-yellow-500 text-white">
+    <div className="flex items-center justify-between px-5 py-2.5 text-[13px] font-medium bg-amber-500 text-white">
       <span>⚠️ Pagamento pendente. Regularize para manter o acesso completo.</span>
-      <Link
-        href="/recuperar"
-        className="ml-4 px-3 py-1 bg-white text-yellow-700 rounded-full text-xs font-bold hover:bg-yellow-50 transition flex-shrink-0"
-      >
+      <Link href="/recuperar"
+        className="ml-4 px-3 py-1 bg-white text-amber-700 rounded-full text-xs font-bold hover:bg-amber-50 transition flex-shrink-0">
         Regularizar →
       </Link>
     </div>
@@ -58,15 +53,9 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       const res = await subscriptionsApi.status();
       const { subscriptionStatus, trialDaysLeft: days } = res.data;
       saveSubscription(subscriptionStatus, days);
-      if (subscriptionStatus === 'TRIAL' && days !== null) {
-        setTrialDaysLeft(days);
-      }
-      if (subscriptionStatus === 'PAST_DUE') {
-        setIsPastDue(true);
-      }
-    } catch {
-      // 401 de subscription → interceptor redireciona para /recuperar automaticamente
-    }
+      if (subscriptionStatus === 'TRIAL' && days !== null) setTrialDaysLeft(days);
+      if (subscriptionStatus === 'PAST_DUE') setIsPastDue(true);
+    } catch {}
   }, []);
 
   useEffect(() => {
@@ -80,21 +69,21 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!ready) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg)' }}>
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-500">Carregando...</p>
+          <div className="w-8 h-8 rounded-full border-2 border-t-transparent animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+          <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>Carregando...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
+    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setSidebarOpen(false)} />
           <div className="absolute inset-y-0 left-0">
             <Sidebar mobile onClose={() => setSidebarOpen(false)} />
           </div>
@@ -102,41 +91,57 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       )}
 
       {/* Desktop sidebar */}
-      <Sidebar />
+      <div className="hidden lg:block">
+        <Sidebar />
+      </div>
 
       {/* Main */}
-      <div className="pl-56">
-        {/* Banners de assinatura */}
+      <div className="lg:pl-60">
+        {/* Banners */}
         {trialDaysLeft !== null && <TrialBanner daysLeft={trialDaysLeft} />}
         {isPastDue && <PastDueBanner />}
 
-        {/* Top bar */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center gap-4 px-4 lg:px-6 sticky top-0 z-20">
+        {/* Header */}
+        <header
+          className="h-[60px] flex items-center gap-4 px-5 sticky top-0 z-20 backdrop-blur-sm"
+          style={{
+            background: 'var(--header-bg)',
+            borderBottom: '1px solid var(--header-border)',
+          }}
+        >
           <button
             onClick={() => setSidebarOpen(true)}
-            className="lg:hidden p-2 rounded-lg hover:bg-slate-100 text-slate-600"
+            className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
+            style={{ color: 'var(--text-muted)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-2)')}
+            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
           >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
+            <Menu size={18} />
           </button>
+
           <div className="flex-1" />
-          <div className="flex items-center gap-2 sm:gap-3">
+
+          <div className="flex items-center gap-3">
             <NotificationBell />
-            <div className="hidden sm:flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2.5">
               <div className="text-right">
-                <p className="text-sm font-semibold text-gray-900 leading-none">{user?.name}</p>
-                <p className="text-xs text-gray-400 mt-0.5">{user?.company.name}</p>
+                <p className="text-[13px] font-semibold leading-none" style={{ color: 'var(--text-primary)' }}>
+                  {user?.name}
+                </p>
+                <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
+                  {user?.company.name}
+                </p>
               </div>
-              <div className="w-9 h-9 rounded-full bg-blue-600 flex items-center justify-center">
-                <span className="text-sm font-bold text-white">{user?.name.charAt(0)}</span>
+              <div className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold text-white"
+                style={{ background: 'var(--accent)' }}>
+                {user?.name.charAt(0).toUpperCase()}
               </div>
             </div>
           </div>
         </header>
 
         {/* Content */}
-        <main className="p-4 lg:p-6">{children}</main>
+        <main className="p-5 lg:p-7 max-w-[1400px]">{children}</main>
       </div>
     </div>
   );

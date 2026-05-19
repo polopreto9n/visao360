@@ -65,13 +65,13 @@ export default function ContaPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Minha Assinatura</h1>
-        <p className="text-gray-500 text-sm mt-1">
+        <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>Minha Assinatura</h1>
+        <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
           Gerencie seu plano e informações de cobrança.
         </p>
       </div>
 
-      {/* Status Card */}
+      {/* Status Card — keep semantic colors intact */}
       <div className={`border-2 rounded-2xl p-6 ${cfg.bg}`}>
         <div className="flex items-start gap-4">
           <div className="text-3xl">{cfg.icon}</div>
@@ -102,38 +102,39 @@ export default function ContaPage() {
       </div>
 
       {/* Detalhes */}
-      <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
-        <div className="flex items-center justify-between px-6 py-4">
-          <span className="text-sm text-gray-500">Plano atual</span>
-          <span className="text-sm font-semibold text-gray-900">
+      <div className="rounded-2xl border divide-y"
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderColor: 'var(--border)' }}>
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Plano atual</span>
+          <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
             {PLAN_LABELS[sub?.plan ?? ''] ?? sub?.plan}
           </span>
         </div>
-        <div className="flex items-center justify-between px-6 py-4">
-          <span className="text-sm text-gray-500">Valor</span>
-          <span className="text-sm font-semibold text-gray-900">
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderColor: 'var(--border)' }}>
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Valor</span>
+          <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
             {PLAN_PRICES[sub?.plan ?? ''] ?? '—'}
           </span>
         </div>
         {sub?.trialEndsAt && (
-          <div className="flex items-center justify-between px-6 py-4">
-            <span className="text-sm text-gray-500">Trial válido até</span>
-            <span className="text-sm font-semibold text-gray-900">
+          <div className="flex items-center justify-between px-6 py-4" style={{ borderColor: 'var(--border)' }}>
+            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Trial válido até</span>
+            <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
               {formatDate(sub.trialEndsAt)}
             </span>
           </div>
         )}
         {sub?.currentPeriodEnd && (
-          <div className="flex items-center justify-between px-6 py-4">
-            <span className="text-sm text-gray-500">Próxima cobrança</span>
-            <span className="text-sm font-semibold text-gray-900">
+          <div className="flex items-center justify-between px-6 py-4" style={{ borderColor: 'var(--border)' }}>
+            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Próxima cobrança</span>
+            <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
               {formatDate(sub.currentPeriodEnd)}
             </span>
           </div>
         )}
-        <div className="flex items-center justify-between px-6 py-4">
-          <span className="text-sm text-gray-500">Stripe Customer</span>
-          <span className="text-sm font-mono text-gray-400 text-xs">
+        <div className="flex items-center justify-between px-6 py-4" style={{ borderColor: 'var(--border)' }}>
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Stripe Customer</span>
+          <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
             {sub?.stripeCustomerId ?? 'Não configurado'}
           </span>
         </div>
@@ -144,7 +145,8 @@ export default function ContaPage() {
         {(sub?.subscriptionStatus === 'TRIAL' || sub?.subscriptionStatus === 'PAST_DUE') && (
           <Link
             href="/planos"
-            className="flex items-center justify-center gap-2 w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition"
+            className="flex items-center justify-center gap-2 w-full text-white font-semibold py-3 rounded-xl transition"
+            style={{ background: 'var(--accent)' }}
           >
             🚀 Ver planos e fazer upgrade
           </Link>
@@ -181,7 +183,8 @@ export default function ContaPage() {
       </div>
 
       {/* Info */}
-      <div className="bg-gray-50 rounded-xl p-4 text-sm text-gray-500 text-center">
+      <div className="rounded-xl p-4 text-sm text-center"
+        style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
         Dúvidas sobre cobrança?{' '}
         <a href="mailto:financeiro@visao360.com.br" className="text-blue-600 hover:underline">
           financeiro@visao360.com.br

@@ -88,25 +88,32 @@ export default function AssetsPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900">Equipamentos</h1>
-          <p className="text-sm text-slate-500">{total} equipamentos</p>
+          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Equipamentos</h1>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{total} equipamentos</p>
         </div>
         {canCreate && (
           <button onClick={() => setCreating(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+            className="text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            style={{ background: 'var(--accent)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+          >
             + Novo Equipamento
           </button>
         )}
       </div>
 
       {/* Filtros */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col sm:flex-row gap-3">
+      <div className="rounded-xl border p-4 flex flex-col sm:flex-row gap-3" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <input
-          className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          className="flex-1 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           placeholder="Buscar por nome, código ou marca..."
           value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
         />
-        <select className="border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+        <select
+          className="rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           value={unitFilter} onChange={(e) => { setUnitFilter(e.target.value); setPage(1); }}>
           <option value="">Todas as unidades</option>
           {units.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -114,9 +121,12 @@ export default function AssetsPage() {
         <div className="flex gap-1">
           {STATUS_FILTER.map((s) => (
             <button key={s} onClick={() => { setStatusFilter(s); setPage(1); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                statusFilter === s ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}>
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors"
+              style={
+                statusFilter === s
+                  ? { background: 'var(--accent)', color: '#fff' }
+                  : { background: 'var(--surface-2)', color: 'var(--text-secondary)' }
+              }>
               {STATUS_LABELS_SHORT[s]}
             </button>
           ))}
@@ -126,37 +136,45 @@ export default function AssetsPage() {
       {/* Grid de assets */}
       {loading ? (
         <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
         </div>
       ) : assets.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-16 text-center">
+        <div className="rounded-xl border p-16 text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <p className="text-4xl mb-3">🏗️</p>
-          <p className="text-lg font-semibold text-slate-700">Nenhum equipamento encontrado</p>
+          <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>Nenhum equipamento encontrado</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {assets.map((asset) => {
             const overdue = isOverdue(asset.nextMaintenanceAt) && asset.status === 'ACTIVE';
             return (
-              <div key={asset.id} className={`bg-white rounded-xl border shadow-sm hover:shadow-md transition-shadow p-5 ${overdue ? 'border-amber-200' : 'border-slate-200'}`}>
+              <div
+                key={asset.id}
+                className="rounded-xl border p-5 transition-shadow hover:shadow-md"
+                style={{
+                  background: 'var(--surface)',
+                  borderColor: overdue ? '#fcd34d' : 'var(--border)',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+              >
                 {/* Header do card */}
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div className="flex items-center gap-2">
                     <span className="text-2xl">{catIcon(asset.category)}</span>
                     <div>
-                      <p className="font-bold text-gray-900 leading-tight">{asset.name}</p>
-                      {asset.code && <p className="text-xs text-slate-400 font-mono">{asset.code}</p>}
+                      <p className="font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>{asset.name}</p>
+                      {asset.code && <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{asset.code}</p>}
                     </div>
                   </div>
                   <Badge value={asset.status} />
                 </div>
 
                 {/* Detalhes */}
-                <div className="space-y-1.5 text-sm text-slate-600 mb-4">
+                <div className="space-y-1.5 text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
                   <p>🏢 {asset.unit.name}</p>
                   <p>🏷️ {asset.category}{asset.brand ? ` · ${asset.brand}` : ''}{asset.model ? ` ${asset.model}` : ''}</p>
                   {asset.nextMaintenanceAt && (
-                    <p className={overdue ? 'text-red-600 font-semibold' : 'text-slate-500'}>
+                    <p style={{ color: overdue ? '#dc2626' : 'var(--text-muted)', fontWeight: overdue ? 600 : undefined }}>
                       🔧 {overdue ? '⚠️ VENCIDA — ' : 'Prox. manutenção: '}
                       {formatDate(asset.nextMaintenanceAt)}
                     </p>
@@ -177,21 +195,24 @@ export default function AssetsPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => openQR(asset)}
-                    className="flex-1 flex items-center justify-center gap-2 border border-blue-200 text-blue-700 hover:bg-blue-50 text-xs font-semibold py-2 rounded-xl transition-colors"
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2 rounded-xl transition-colors"
+                    style={{ border: '1px solid var(--border)', color: 'var(--accent)', background: 'var(--accent-soft)' }}
                   >
                     ⬛ QR Code
                   </button>
                   <button
                     onClick={() => downloadQR(asset)}
                     disabled={downloadingId === asset.id}
-                    className="flex-1 flex items-center justify-center gap-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold py-2 rounded-xl transition-colors disabled:opacity-60"
+                    className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2 rounded-xl transition-colors disabled:opacity-60"
+                    style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)', background: 'var(--surface)' }}
                   >
                     {downloadingId === asset.id ? '⏳...' : '⬇ PNG'}
                   </button>
                   {canCreate && (
                     <button
                       onClick={() => setEditing(asset)}
-                      className="px-3 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold rounded-xl transition-colors"
+                      className="px-3 text-xs font-semibold rounded-xl transition-colors"
+                      style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)', background: 'var(--surface)' }}
                       title="Editar equipamento"
                     >
                       ✏️
@@ -206,13 +227,19 @@ export default function AssetsPage() {
 
       {/* Paginação */}
       {total > 12 && (
-        <div className="flex items-center justify-between text-sm text-slate-600">
+        <div className="flex items-center justify-between text-sm" style={{ color: 'var(--text-secondary)' }}>
           <span>Mostrando {(page - 1) * 12 + 1}–{Math.min(page * 12, total)} de {total}</span>
           <div className="flex gap-2">
             <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40">← Anterior</button>
+              className="px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors"
+              style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-secondary)' }}>
+              ← Anterior
+            </button>
             <button disabled={page * 12 >= total} onClick={() => setPage(p => p + 1)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40">Próxima →</button>
+              className="px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors"
+              style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-secondary)' }}>
+              Próxima →
+            </button>
           </div>
         </div>
       )}
@@ -223,28 +250,30 @@ export default function AssetsPage() {
           <div className="text-center space-y-4">
             {qrLoading ? (
               <div className="flex justify-center py-12">
-                <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
               </div>
             ) : qrDataUrl ? (
               <div className="flex flex-col items-center gap-4">
-                <div className="bg-white p-3 rounded-xl border-2 border-slate-200 shadow-sm inline-block">
+                <div className="p-3 rounded-xl inline-block" style={{ background: '#fff', border: '2px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}>
                   <img src={qrDataUrl} alt={`QR Code ${qrAsset.name}`} className="w-52 h-52" />
                 </div>
-                <div className="text-sm text-slate-600 space-y-1">
-                  <p className="font-semibold text-gray-900">{qrAsset.name}</p>
-                  <p className="text-slate-500">{qrAsset.unit.name}</p>
-                  <p className="font-mono text-xs bg-slate-100 px-3 py-1 rounded-lg">{qrAsset.qrCode}</p>
+                <div className="text-sm space-y-1" style={{ color: 'var(--text-secondary)' }}>
+                  <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{qrAsset.name}</p>
+                  <p style={{ color: 'var(--text-muted)' }}>{qrAsset.unit.name}</p>
+                  <p className="font-mono text-xs px-3 py-1 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}>{qrAsset.qrCode}</p>
                 </div>
                 <div className="flex gap-2 w-full">
                   <a
                     href={qrDataUrl} download={`${qrAsset.code ?? qrAsset.id}-qr.png`}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors text-center"
+                    className="flex-1 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors text-center"
+                    style={{ background: 'var(--accent)' }}
                   >
                     ⬇ Baixar PNG
                   </a>
                   <button
                     onClick={() => { navigator.clipboard.writeText(qrAsset.qrCode); }}
-                    className="flex-1 border border-slate-200 hover:bg-slate-50 text-sm font-semibold py-2.5 rounded-xl transition-colors"
+                    className="flex-1 text-sm font-semibold py-2.5 rounded-xl transition-colors"
+                    style={{ border: '1px solid var(--border)', color: 'var(--text-primary)', background: 'var(--surface)' }}
                   >
                     📋 Copiar código
                   </button>
@@ -309,6 +338,9 @@ function RegisterMaintenanceForm({ asset, onSuccess }: { asset: Asset; onSuccess
     } finally { setSaving(false); }
   }
 
+  const inputStyle = { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
+  const labelStyle = { color: 'var(--text-secondary)' };
+
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800">
@@ -316,21 +348,23 @@ function RegisterMaintenanceForm({ asset, onSuccess }: { asset: Asset; onSuccess
         <p className="text-xs mt-0.5 text-green-600">O campo "Última manutenção" será atualizado automaticamente.</p>
       </div>
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Próxima manutenção *</label>
+        <label className="block text-xs font-semibold mb-1" style={labelStyle}>Próxima manutenção *</label>
         <input
           required type="date"
           min={today}
-          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500"
+          style={inputStyle}
           value={nextDate}
           onChange={(e) => setNextDate(e.target.value)}
         />
-        <p className="text-xs text-slate-400 mt-1">Defina quando deve ser feita a próxima manutenção.</p>
+        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Defina quando deve ser feita a próxima manutenção.</p>
       </div>
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Observações (opcional)</label>
+        <label className="block text-xs font-semibold mb-1" style={labelStyle}>Observações (opcional)</label>
         <textarea
           rows={3}
-          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+          style={inputStyle}
           placeholder="O que foi feito, peças trocadas, empresa responsável..."
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
@@ -386,47 +420,51 @@ function CreateAssetForm({ units, asset, onSuccess }: { units: Unit[]; asset?: A
   const f = (field: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) =>
     setForm((p) => ({ ...p, [field]: e.target.value }));
 
+  const inputStyle = { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
+  const labelStyle = { color: 'var(--text-secondary)' };
+
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Nome do equipamento *</label>
-          <input required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.name} onChange={f('name')} />
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Nome do equipamento *</label>
+          <input required className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" style={inputStyle} value={form.name} onChange={f('name')} />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Unidade *</label>
-          <select required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white outline-none focus:ring-2 focus:ring-blue-500" value={form.unitId} onChange={f('unitId')}>
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Unidade *</label>
+          <select required className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" style={inputStyle} value={form.unitId} onChange={f('unitId')}>
             <option value="">Selecione...</option>
             {units.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Categoria *</label>
-          <input required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.category} onChange={f('category')} placeholder="ex: Elevadores" />
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Categoria *</label>
+          <input required className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" style={inputStyle} value={form.category} onChange={f('category')} placeholder="ex: Elevadores" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Código interno</label>
-          <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.code} onChange={f('code')} placeholder="ex: ELV-003" />
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Código interno</label>
+          <input className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" style={inputStyle} value={form.code} onChange={f('code')} placeholder="ex: ELV-003" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Marca</label>
-          <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.brand} onChange={f('brand')} />
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Marca</label>
+          <input className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" style={inputStyle} value={form.brand} onChange={f('brand')} />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Modelo</label>
-          <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.model} onChange={f('model')} />
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Modelo</label>
+          <input className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" style={inputStyle} value={form.model} onChange={f('model')} />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Número de série</label>
-          <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.serialNumber} onChange={f('serialNumber')} />
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Número de série</label>
+          <input className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" style={inputStyle} value={form.serialNumber} onChange={f('serialNumber')} />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Próxima manutenção</label>
-          <input type="date" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" value={form.nextMaintenanceAt} onChange={f('nextMaintenanceAt')} />
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Próxima manutenção</label>
+          <input type="date" className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" style={inputStyle} value={form.nextMaintenanceAt} onChange={f('nextMaintenanceAt')} />
         </div>
       </div>
       <button type="submit" disabled={saving}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm">
+        className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+        style={{ background: 'var(--accent)' }}>
         {saving ? 'Salvando...' : isEditing ? '✓ Salvar alterações' : 'Cadastrar Equipamento'}
       </button>
     </form>

@@ -41,23 +41,27 @@ export default function UsersPage() {
   return (
     <div className="space-y-5">
       <div>
-        <h1 className="text-2xl font-extrabold text-gray-900">Usuários</h1>
-        <p className="text-sm text-slate-500">{total} usuários cadastrados</p>
+        <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Usuários</h1>
+        <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{total} usuários cadastrados</p>
       </div>
 
       {/* Filtros */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col sm:flex-row gap-3">
+      <div className="rounded-xl border p-4 flex flex-col sm:flex-row gap-3" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <input
-          className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          className="flex-1 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           placeholder="Buscar por nome ou e-mail..."
           value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); }}
         />
         <div className="flex gap-1">
           {ROLE_FILTER.map((r) => (
             <button key={r} onClick={() => { setRoleFilter(r); setPage(1); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                roleFilter === r ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}>
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors"
+              style={
+                roleFilter === r
+                  ? { background: 'var(--accent)', color: '#fff' }
+                  : { background: 'var(--surface-2)', color: 'var(--text-secondary)' }
+              }>
               {r ? ROLE_LABELS[r] : 'Todos'}
             </button>
           ))}
@@ -67,30 +71,33 @@ export default function UsersPage() {
       {/* Tabela */}
       {loading ? (
         <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
         </div>
       ) : (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+        <div className="rounded-xl border overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
           <div className="overflow-x-auto">
             <table className="w-full">
-              <thead className="bg-slate-50 border-b border-slate-200">
+              <thead style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
                 <tr>
                   {['Usuário', 'Role', 'Telefone', 'Último login', 'Status'].map((h) => (
-                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100">
+              <tbody>
                 {users.map((u) => (
-                  <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                  <tr key={u.id} className="transition-colors" style={{ borderBottom: '1px solid var(--border)' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-2)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+                  >
                     <td className="px-4 py-3.5">
                       <div className="flex items-center gap-3">
                         <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 ${ROLE_COLORS[u.role] ?? 'bg-gray-100'}`}>
                           <span className="text-sm font-bold">{u.name.charAt(0)}</span>
                         </div>
                         <div>
-                          <p className="text-sm font-semibold text-gray-900">{u.name}</p>
-                          <p className="text-xs text-slate-400">{u.id === user?.id ? '(você) ' : ''}{u.role === 'ADMIN' ? '⚙️ ' : ''}{u.email ?? ''}</p>
+                          <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{u.name}</p>
+                          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{u.id === user?.id ? '(você) ' : ''}{u.role === 'ADMIN' ? '⚙️ ' : ''}{u.email ?? ''}</p>
                         </div>
                       </div>
                     </td>
@@ -99,8 +106,8 @@ export default function UsersPage() {
                         {ROLE_LABELS[u.role] ?? u.role}
                       </span>
                     </td>
-                    <td className="px-4 py-3.5 text-sm text-slate-600">{u.phone ?? '—'}</td>
-                    <td className="px-4 py-3.5 text-sm text-slate-500">{formatDateTime(u.lastLoginAt)}</td>
+                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-secondary)' }}>{u.phone ?? '—'}</td>
+                    <td className="px-4 py-3.5 text-sm" style={{ color: 'var(--text-muted)' }}>{formatDateTime(u.lastLoginAt)}</td>
                     <td className="px-4 py-3.5">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${u.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
                         {u.isActive ? 'Ativo' : 'Inativo'}
@@ -112,19 +119,25 @@ export default function UsersPage() {
             </table>
           </div>
           {users.length === 0 && (
-            <div className="text-center py-16 text-slate-400">Nenhum usuário encontrado</div>
+            <div className="text-center py-16" style={{ color: 'var(--text-muted)' }}>Nenhum usuário encontrado</div>
           )}
         </div>
       )}
 
       {total > 20 && (
-        <div className="flex items-center justify-between text-sm text-slate-600">
+        <div className="flex items-center justify-between text-sm" style={{ color: 'var(--text-secondary)' }}>
           <span>Mostrando {(page - 1) * 20 + 1}–{Math.min(page * 20, total)} de {total}</span>
           <div className="flex gap-2">
             <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40">← Anterior</button>
+              className="px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors"
+              style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-secondary)' }}>
+              ← Anterior
+            </button>
             <button disabled={page * 20 >= total} onClick={() => setPage(p => p + 1)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40">Próxima →</button>
+              className="px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors"
+              style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-secondary)' }}>
+              Próxima →
+            </button>
           </div>
         </div>
       )}

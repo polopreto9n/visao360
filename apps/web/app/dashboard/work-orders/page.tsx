@@ -104,13 +104,16 @@ export default function WorkOrdersPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900">Ordens de Serviço</h1>
-          <p className="text-sm text-slate-500">{total} OS encontradas</p>
+          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Ordens de Serviço</h1>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{total} OS encontradas</p>
         </div>
         {canCreate && (
           <button
             onClick={() => setCreating(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors flex items-center gap-2"
+            className="text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors flex items-center gap-2"
+            style={{ background: 'var(--accent)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
           >
             + Nova OS
           </button>
@@ -118,9 +121,10 @@ export default function WorkOrdersPage() {
       </div>
 
       {/* Filtros */}
-      <div className="bg-white rounded-xl border border-slate-200 p-4 flex flex-col sm:flex-row gap-3">
+      <div className="rounded-xl border p-4 flex flex-col sm:flex-row gap-3" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
         <input
-          className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+          className="flex-1 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           placeholder="Buscar por código ou título..."
           value={search}
           onChange={(e) => { setSearch(e.target.value); setPage(1); }}
@@ -130,9 +134,12 @@ export default function WorkOrdersPage() {
             <button
               key={tab.key}
               onClick={() => { setStatusFilter(tab.key); setPage(1); }}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors ${
-                statusFilter === tab.key ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-              }`}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors"
+              style={
+                statusFilter === tab.key
+                  ? { background: 'var(--accent)', color: '#fff' }
+                  : { background: 'var(--surface-2)', color: 'var(--text-secondary)' }
+              }
             >
               {tab.label}
             </button>
@@ -143,13 +150,13 @@ export default function WorkOrdersPage() {
       {/* Lista */}
       {loading ? (
         <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
         </div>
       ) : orders.length === 0 ? (
-        <div className="bg-white rounded-xl border border-slate-200 p-16 text-center">
+        <div className="rounded-xl border p-16 text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
           <p className="text-4xl mb-3">🔧</p>
-          <p className="text-lg font-semibold text-slate-700">Nenhuma OS encontrada</p>
-          <p className="text-sm text-slate-400 mt-1">Tente ajustar os filtros ou criar uma nova OS</p>
+          <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>Nenhuma OS encontrada</p>
+          <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Tente ajustar os filtros ou criar uma nova OS</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -157,25 +164,37 @@ export default function WorkOrdersPage() {
             const overdue = isOverdue(wo.dueDate) && !['COMPLETED', 'CANCELLED'].includes(wo.status);
             const transitions = TRANSITIONS[wo.status] ?? [];
             return (
-              <div key={wo.id} className={`bg-white rounded-xl border shadow-sm p-5 ${overdue ? 'border-red-200 bg-red-50/30' : 'border-slate-200'}`}>
+              <div
+                key={wo.id}
+                className="rounded-xl border p-5"
+                style={{
+                  background: overdue ? 'color-mix(in srgb, var(--surface) 95%, #ef4444 5%)' : 'var(--surface)',
+                  borderColor: overdue ? '#fca5a5' : 'var(--border)',
+                  boxShadow: 'var(--shadow-sm)',
+                }}
+              >
                 <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                   {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className="text-xs font-mono text-slate-400">{wo.code}</span>
+                      <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{wo.code}</span>
                       <Badge value={wo.status} />
                       <Badge value={wo.priority} type="priority" />
                       {overdue && <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">VENCIDA</span>}
                     </div>
                     <Link href={`/dashboard/work-orders/${wo.id}`}>
-                      <h3 className="text-base font-bold text-gray-900 hover:text-blue-700 transition-colors">{wo.title}</h3>
+                      <h3 className="text-base font-bold transition-colors hover:text-blue-600" style={{ color: 'var(--text-primary)' }}>{wo.title}</h3>
                     </Link>
-                    <p className="text-sm text-slate-500 mt-1 line-clamp-2">{wo.description}</p>
-                    <div className="flex flex-wrap gap-4 mt-3 text-xs text-slate-500">
+                    <p className="text-sm mt-1 line-clamp-2" style={{ color: 'var(--text-muted)' }}>{wo.description}</p>
+                    <div className="flex flex-wrap gap-4 mt-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
                       <span>🏢 {wo.unit.name}</span>
                       {wo.asset && <span>🏗️ {wo.asset.name}</span>}
                       {wo.assignee && <span>👤 {wo.assignee.name}</span>}
-                      {wo.dueDate && <span className={overdue ? 'text-red-600 font-semibold' : ''}>📅 {formatDate(wo.dueDate)}</span>}
+                      {wo.dueDate && (
+                        <span style={{ color: overdue ? '#dc2626' : 'var(--text-secondary)', fontWeight: overdue ? 600 : undefined }}>
+                          📅 {formatDate(wo.dueDate)}
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -193,7 +212,8 @@ export default function WorkOrdersPage() {
                     {isAdmin && (
                       <button
                         onClick={() => setDeleting(wo)}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors bg-slate-100 hover:bg-red-100 hover:text-red-700 text-slate-500"
+                        className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors hover:bg-red-100 hover:text-red-700"
+                        style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}
                         title="Excluir OS"
                       >
                         🗑️
@@ -209,13 +229,19 @@ export default function WorkOrdersPage() {
 
       {/* Paginação */}
       {total > 15 && (
-        <div className="flex items-center justify-between text-sm text-slate-600">
+        <div className="flex items-center justify-between text-sm" style={{ color: 'var(--text-secondary)' }}>
           <span>Mostrando {(page - 1) * 15 + 1}–{Math.min(page * 15, total)} de {total}</span>
           <div className="flex gap-2">
             <button disabled={page === 1} onClick={() => setPage(p => p - 1)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40">← Anterior</button>
+              className="px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors"
+              style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-secondary)' }}>
+              ← Anterior
+            </button>
             <button disabled={page * 15 >= total} onClick={() => setPage(p => p + 1)}
-              className="px-3 py-1.5 rounded-lg border border-slate-200 hover:bg-slate-100 disabled:opacity-40">Próxima →</button>
+              className="px-3 py-1.5 rounded-lg disabled:opacity-40 transition-colors"
+              style={{ border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-secondary)' }}>
+              Próxima →
+            </button>
           </div>
         </div>
       )}
@@ -224,7 +250,7 @@ export default function WorkOrdersPage() {
       <Modal open={!!updating} onClose={() => { setUpdating(null); setStatusNote(''); }} title={`Atualizar OS ${updating?.code}`} size="sm">
         {updating && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">Selecione o novo status para a OS:</p>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Selecione o novo status para a OS:</p>
             <div className="flex flex-col gap-2">
               {(TRANSITIONS[updating.status] ?? []).map((t) => (
                 <button
@@ -237,9 +263,10 @@ export default function WorkOrdersPage() {
               ))}
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Observação (opcional)</label>
+              <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Observação (opcional)</label>
               <textarea
-                className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+                className="w-full rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                 rows={3} placeholder="Informe detalhes sobre a atualização..."
                 value={statusNote} onChange={(e) => setStatusNote(e.target.value)}
               />
@@ -252,16 +279,17 @@ export default function WorkOrdersPage() {
       <Modal open={!!deleting} onClose={() => setDeleting(null)} title="Excluir Ordem de Serviço" size="sm">
         {deleting && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               Tem certeza que deseja excluir permanentemente a OS <strong>{deleting.code}</strong>?
             </p>
-            <p className="text-sm font-semibold text-gray-900">{deleting.title}</p>
+            <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{deleting.title}</p>
             <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
               Esta ação não pode ser desfeita.
             </p>
             <div className="flex gap-3">
               <button onClick={() => setDeleting(null)}
-                className="flex-1 border border-slate-200 hover:bg-slate-50 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                style={{ border: '1px solid var(--border)', color: 'var(--text-primary)', background: 'var(--surface)' }}>
                 Cancelar
               </button>
               <button onClick={() => handleDelete(deleting)} disabled={deleteLoading}
@@ -317,21 +345,25 @@ function CreateWOForm({ units, users, onSuccess }: { units: Unit[]; users: User[
   }
 
   const PRIORITY_LABELS: Record<string, string> = { LOW: 'Baixa', MEDIUM: 'Média', HIGH: 'Alta', CRITICAL: 'Crítica' };
+  const inputStyle = { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
+  const labelStyle = { color: 'var(--text-secondary)' };
 
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Unidade *</label>
-          <select required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Unidade *</label>
+          <select required className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             value={form.unitId} onChange={(e) => { setForm(f => ({ ...f, unitId: e.target.value })); setSuggestionDismissed(false); }}>
             <option value="">Selecione...</option>
             {units.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Prioridade</label>
-          <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Prioridade</label>
+          <select className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             value={form.priority} onChange={(e) => setForm(f => ({ ...f, priority: e.target.value }))}>
             {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((p) => (
               <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
@@ -342,55 +374,61 @@ function CreateWOForm({ units, users, onSuccess }: { units: Unit[]; users: User[
 
       {/* Sugestões baseadas no histórico da unidade */}
       {suggestions.length > 0 && !form.title && (
-        <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 space-y-2">
+        <div className="rounded-xl border p-3 space-y-2" style={{ background: 'var(--accent-soft)', borderColor: 'var(--border)' }}>
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-blue-700">💡 Baseado no histórico desta unidade:</p>
+            <p className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>💡 Baseado no histórico desta unidade:</p>
             <button type="button" onClick={() => setSuggestionDismissed(true)}
-              className="text-slate-400 hover:text-slate-600 text-lg leading-none">×</button>
+              className="text-lg leading-none" style={{ color: 'var(--text-muted)' }}>×</button>
           </div>
           {suggestions.map((wo) => (
             <button key={wo.id} type="button" onClick={() => applySuggestion(wo)}
-              className="w-full text-left flex items-center gap-3 p-2.5 rounded-lg bg-white hover:bg-blue-50 border border-blue-100 transition-colors group">
+              className="w-full text-left flex items-center gap-3 p-2.5 rounded-lg transition-colors group"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)' }}>
               <span className="text-base flex-shrink-0">🔧</span>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">{wo.title}</p>
-                <p className="text-xs text-slate-400">Prioridade {PRIORITY_LABELS[wo.priority]}</p>
+                <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{wo.title}</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Prioridade {PRIORITY_LABELS[wo.priority]}</p>
               </div>
-              <span className="text-xs font-semibold text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">Usar →</span>
+              <span className="text-xs font-semibold opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" style={{ color: 'var(--accent)' }}>Usar →</span>
             </button>
           ))}
         </div>
       )}
 
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Título *</label>
-        <input required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+        <label className="block text-xs font-semibold mb-1" style={labelStyle}>Título *</label>
+        <input required className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          style={inputStyle}
           value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))}
           placeholder="Descreva brevemente o problema ou serviço..." />
       </div>
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Descrição *</label>
-        <textarea required rows={3} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+        <label className="block text-xs font-semibold mb-1" style={labelStyle}>Descrição *</label>
+        <textarea required rows={3} className="w-full rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+          style={inputStyle}
           value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
           placeholder="Detalhes do serviço, local exato, equipamentos envolvidos..." />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Técnico responsável</label>
-          <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Técnico responsável</label>
+          <select className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             value={form.assigneeId} onChange={(e) => setForm(f => ({ ...f, assigneeId: e.target.value }))}>
             <option value="">Não atribuído</option>
             {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Prazo</label>
-          <input type="date" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Prazo</label>
+          <input type="date" className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             value={form.dueDate} onChange={(e) => setForm(f => ({ ...f, dueDate: e.target.value }))} />
         </div>
       </div>
       <button type="submit" disabled={saving}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm">
+        className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+        style={{ background: 'var(--accent)' }}>
         {saving ? 'Criando...' : 'Criar Ordem de Serviço'}
       </button>
     </form>

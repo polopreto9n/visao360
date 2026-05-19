@@ -104,22 +104,25 @@ function KPICard({ label, value, sub, icon, accent, href, trend, positiveIsGood 
   trend?: { pct: number; prev: number }; positiveIsGood?: boolean;
 }) {
   const card = (
-    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm hover:shadow-md transition-all group">
+    <div className="rounded-2xl p-5 transition-all duration-200 group"
+      style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow-sm)' }}
+      onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow)'; (e.currentTarget as HTMLElement).style.transform = 'translateY(-1px)'; }}
+      onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = 'var(--shadow-sm)'; (e.currentTarget as HTMLElement).style.transform = 'translateY(0)'; }}
+    >
       <div className="flex items-start justify-between">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wide">{label}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>{label}</p>
           <div className="flex items-end gap-2 mt-2">
             <p className={`text-4xl font-black ${accent}`}>{value}</p>
-            <div className="mb-1">
-              <TrendBadge trend={trend} positiveIsGood={positiveIsGood} />
-            </div>
+            <div className="mb-1"><TrendBadge trend={trend} positiveIsGood={positiveIsGood} /></div>
           </div>
-          {sub && <p className="text-xs text-slate-400 mt-1.5">{sub}</p>}
+          {sub && <p className="text-[11px] mt-1.5" style={{ color: 'var(--text-muted)' }}>{sub}</p>}
           {trend && trend.prev > 0 && (
-            <p className="text-[10px] text-slate-300 mt-0.5">vs. {trend.prev} mês anterior</p>
+            <p className="text-[10px] mt-0.5" style={{ color: 'var(--text-muted)', opacity: 0.6 }}>vs. {trend.prev} mês anterior</p>
           )}
         </div>
-        <div className="w-12 h-12 rounded-xl flex items-center justify-center text-2xl bg-slate-50 group-hover:scale-110 transition-transform flex-shrink-0">
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center text-xl flex-shrink-0 group-hover:scale-110 transition-transform"
+          style={{ background: 'var(--surface-2)' }}>
           {icon}
         </div>
       </div>
@@ -173,7 +176,7 @@ function ProximasAcoes() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+      <div className="rounded-2xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
         <div className="flex items-center gap-2 mb-4">
           <h2 className="text-sm font-bold text-gray-900">Próximas Ações</h2>
         </div>
@@ -188,7 +191,7 @@ function ProximasAcoes() {
 
   if (!data || data.total === 0) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+      <div className="rounded-2xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
         <h2 className="text-sm font-bold text-gray-900 mb-4">Próximas Ações</h2>
         <div className="flex flex-col items-center justify-center py-8 gap-2">
           <span className="text-3xl">🎉</span>
@@ -199,7 +202,7 @@ function ProximasAcoes() {
   }
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+    <div className="rounded-2xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-bold text-gray-900">Próximas Ações</h2>
         <span className="text-xs bg-blue-600 text-white px-2 py-0.5 rounded-full font-bold">
@@ -290,11 +293,11 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
       </div>
     );
   }
-  if (!kpis) return <p className="text-slate-500 text-center mt-20">Erro ao carregar dados.</p>;
+  if (!kpis) return <p className="text-center mt-20" style={{ color: 'var(--text-muted)' }}>Erro ao carregar dados.</p>;
 
   const { summary, charts, recentActivity, alerts } = kpis;
   const insights = generateInsights(kpis);
@@ -375,7 +378,7 @@ export default function DashboardPage() {
           <ProximasAcoes />
 
           {/* Manutenções próximas (relevante para técnico) */}
-          <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+          <div className="rounded-2xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-sm font-bold text-gray-900">Manutenções Próximas</h2>
               {alerts.assetsNeedingMaintenance.length > 0 && (
@@ -417,7 +420,7 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
             {/* Barras — OS por Status */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+            <div className="rounded-2xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
               <h2 className="text-sm font-bold text-gray-900 mb-1">OS por Status</h2>
               <p className="text-xs text-slate-400 mb-4">Total: {summary.totalWorkOrders} ordens</p>
               {woStatusData.length === 0 ? (
@@ -442,7 +445,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Rosca — Checklists por Tipo */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+            <div className="rounded-2xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
               <h2 className="text-sm font-bold text-gray-900 mb-1">Checklists por Tipo</h2>
               <p className="text-xs text-slate-400 mb-2">Execuções do mês atual</p>
               {checklistTypeData.length === 0 ? (
@@ -475,7 +478,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Manutenções próximas */}
-            <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+            <div className="rounded-2xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
               <div className="flex items-center justify-between mb-4">
                 <h2 className="text-sm font-bold text-gray-900">Manutenções Próximas</h2>
                 {alerts.assetsNeedingMaintenance.length > 0 && (
@@ -526,7 +529,7 @@ export default function DashboardPage() {
             </div>
 
             <div className="space-y-6">
-              <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+              <div className="rounded-2xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
                 <h2 className="text-sm font-bold text-gray-900 mb-4">OS por Prioridade</h2>
                 {charts.woByPriority.length === 0 ? (
                   <p className="text-xs text-slate-400 text-center py-3">Nenhuma OS em aberto</p>
@@ -551,7 +554,7 @@ export default function DashboardPage() {
                 )}
               </div>
 
-              <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+              <div className="rounded-2xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
                 <h2 className="text-sm font-bold text-gray-900 mb-4">Ocorrências por Local</h2>
                 {incidentUnitData.length === 0 ? (
                   <p className="text-xs text-slate-400 text-center py-3">Nenhuma ocorrência registrada</p>
@@ -577,7 +580,7 @@ export default function DashboardPage() {
 
       {/* TECNICO — Atividade recente simplificada */}
       {isTecnicoOrCliente && (
-        <div className="bg-white rounded-2xl border border-slate-100 p-5 shadow-sm">
+        <div className="rounded-2xl p-5" style={{ background: "var(--surface)", border: "1px solid var(--border)", boxShadow: "var(--shadow-sm)" }}>
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-bold text-gray-900">Atividade Recente</h2>
             <Link href="/dashboard/checklists" className="text-xs text-blue-600 hover:underline font-semibold">Ver checklists →</Link>

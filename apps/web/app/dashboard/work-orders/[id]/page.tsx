@@ -82,7 +82,7 @@ export default function WorkOrderDetailPage() {
   }
 
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>;
-  if (!wo) return <div className="text-center py-20 text-slate-500">OS não encontrada</div>;
+  if (!wo) return <div className="text-center py-20" style={{ color: 'var(--text-muted)' }}>OS não encontrada</div>;
 
   const overdue = isOverdue(wo.dueDate) && !['COMPLETED', 'CANCELLED'].includes(wo.status);
   const transitions = TRANSITIONS[wo.status] ?? [];
@@ -90,24 +90,29 @@ export default function WorkOrderDetailPage() {
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-slate-500">
+      <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
         <Link href="/dashboard/work-orders" className="hover:text-blue-600">Ordens de Serviço</Link>
         <span>/</span>
-        <span className="text-gray-900 font-medium">{wo.code}</span>
+        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{wo.code}</span>
       </div>
 
       {/* Header */}
-      <div className={`bg-white rounded-xl border p-6 shadow-sm ${overdue ? 'border-red-200 bg-red-50/20' : 'border-slate-200'}`}>
+      <div className="rounded-xl border p-6"
+        style={{
+          background: overdue ? 'rgba(254,242,242,0.5)' : 'var(--surface)',
+          borderColor: overdue ? '#fca5a5' : 'var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}>
         <div className="flex flex-col sm:flex-row sm:items-start gap-4">
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              <span className="font-mono text-sm text-slate-400">{wo.code}</span>
+              <span className="font-mono text-sm" style={{ color: 'var(--text-muted)' }}>{wo.code}</span>
               <Badge value={wo.status} />
               <Badge value={wo.priority} type="priority" />
               {overdue && <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">⚠️ VENCIDA</span>}
             </div>
-            <h1 className="text-2xl font-extrabold text-gray-900">{wo.title}</h1>
-            <p className="text-slate-600 mt-2 leading-relaxed">{wo.description}</p>
+            <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>{wo.title}</h1>
+            <p className="mt-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{wo.description}</p>
           </div>
 
           {/* Ações de status */}
@@ -125,7 +130,8 @@ export default function WorkOrderDetailPage() {
               {canManage(user?.role ?? '') && wo.status !== 'COMPLETED' && wo.status !== 'CANCELLED' && (
                 <button
                   onClick={() => setTechModal(true)}
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
+                  className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                  style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}
                 >
                   👤 Reatribuir
                 </button>
@@ -139,8 +145,9 @@ export default function WorkOrderDetailPage() {
         {/* Info principal */}
         <div className="lg:col-span-2 space-y-5">
           {/* Timeline */}
-          <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
-            <h2 className="font-bold text-gray-900 mb-4">Timeline</h2>
+          <div className="rounded-xl border p-5"
+            style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+            <h2 className="font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Timeline</h2>
             <div className="space-y-3">
               {[
                 { label: 'Criada', date: wo.creator?.name ? `por ${wo.creator.name}` : undefined, value: formatDateTime(wo.unit?.name ? null : null), ts: wo.unit?.name },
@@ -151,36 +158,36 @@ export default function WorkOrderDetailPage() {
                 <div key={i} className="flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
                   <div>
-                    <p className="text-sm font-semibold text-gray-900">{item.label}</p>
-                    {item.date && <p className="text-xs text-slate-500">{item.date}</p>}
-                    {item.ts && <p className="text-xs text-slate-400">{formatDateTime(item.ts)}</p>}
+                    <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{item.label}</p>
+                    {item.date && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.date}</p>}
+                    {item.ts && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDateTime(item.ts)}</p>}
                   </div>
                 </div>
               ))}
               <div className="flex items-start gap-3">
                 <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
-                <div><p className="text-sm font-semibold text-gray-900">Criada</p>
-                  <p className="text-xs text-slate-500">por {wo.creator.name}</p></div>
+                <div><p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Criada</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>por {wo.creator.name}</p></div>
               </div>
               {wo.assignee && (
                 <div className="flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full bg-purple-500 mt-1.5 flex-shrink-0" />
-                  <div><p className="text-sm font-semibold text-gray-900">Atribuída</p>
-                    <p className="text-xs text-slate-500">para {wo.assignee.name}</p></div>
+                  <div><p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Atribuída</p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>para {wo.assignee.name}</p></div>
                 </div>
               )}
               {wo.startedAt && (
                 <div className="flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
-                  <div><p className="text-sm font-semibold text-gray-900">Iniciada</p>
-                    <p className="text-xs text-slate-400">{formatDateTime(wo.startedAt)}</p></div>
+                  <div><p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Iniciada</p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDateTime(wo.startedAt)}</p></div>
                 </div>
               )}
               {wo.completedAt && (
                 <div className="flex items-start gap-3">
                   <div className="w-2 h-2 rounded-full bg-green-500 mt-1.5 flex-shrink-0" />
-                  <div><p className="text-sm font-semibold text-gray-900">Concluída</p>
-                    <p className="text-xs text-slate-400">{formatDateTime(wo.completedAt)}</p></div>
+                  <div><p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Concluída</p>
+                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDateTime(wo.completedAt)}</p></div>
                 </div>
               )}
             </div>
@@ -189,8 +196,8 @@ export default function WorkOrderDetailPage() {
           {/* Notas */}
           {wo.notes && (
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-              <h2 className="font-bold text-gray-900 mb-2">📝 Observações</h2>
-              <p className="text-sm text-slate-700 leading-relaxed">{wo.notes}</p>
+              <h2 className="font-bold mb-2" style={{ color: 'var(--text-primary)' }}>📝 Observações</h2>
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{wo.notes}</p>
             </div>
           )}
         </div>
@@ -218,7 +225,7 @@ export default function WorkOrderDetailPage() {
             <InfoRow label="Técnico" value={
               wo.assignee
                 ? wo.assignee.name
-                : <span className="text-slate-400 text-sm">Não atribuído</span>
+                : <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Não atribuído</span>
             } />
           </InfoCard>
         </div>
@@ -228,16 +235,21 @@ export default function WorkOrderDetailPage() {
       <Modal open={!!statusModal} onClose={() => setStatusModal(null)} title={statusModal?.label ?? ''} size="sm">
         {statusModal && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">Deseja {statusModal.label.toLowerCase()} esta OS?</p>
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Deseja {statusModal.label.toLowerCase()} esta OS?</p>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Observação (opcional)</label>
-              <textarea className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none" rows={3}
+              <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Observação (opcional)</label>
+              <textarea
+                className="w-full rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none" rows={3}
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                 value={statusNote} onChange={(e) => setStatusNote(e.target.value)} placeholder="Informe detalhes..." />
             </div>
             <div className="flex gap-2">
-              <button onClick={() => setStatusModal(null)} className="flex-1 border border-slate-200 py-2.5 rounded-xl text-sm font-semibold hover:bg-slate-50">Cancelar</button>
+              <button onClick={() => setStatusModal(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold"
+                style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)', background: 'transparent' }}>Cancelar</button>
               <button onClick={() => handleStatusChange(statusModal.status)} disabled={saving}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white py-2.5 rounded-xl text-sm font-semibold">
+                className="flex-1 disabled:opacity-60 text-white py-2.5 rounded-xl text-sm font-semibold"
+                style={{ background: 'var(--accent)' }}>
                 {saving ? 'Salvando...' : 'Confirmar'}
               </button>
             </div>
@@ -250,13 +262,17 @@ export default function WorkOrderDetailPage() {
         <div className="space-y-2 max-h-80 overflow-y-auto">
           {users.filter((u) => u.role === 'TECNICO' || u.role === 'GESTOR').map((u) => (
             <button key={u.id} onClick={() => handleAssign(u.id)} disabled={saving}
-              className={`w-full flex items-center gap-3 p-3 rounded-xl text-left hover:bg-blue-50 transition-colors border ${wo.assignee?.id === u.id ? 'border-blue-500 bg-blue-50' : 'border-slate-100'}`}>
+              className="w-full flex items-center gap-3 p-3 rounded-xl text-left transition-colors border"
+              style={{
+                borderColor: wo.assignee?.id === u.id ? '#3b82f6' : 'var(--border)',
+                background: wo.assignee?.id === u.id ? '#eff6ff' : 'transparent',
+              }}>
               <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
                 <span className="font-bold text-blue-700 text-sm">{u.name.charAt(0)}</span>
               </div>
               <div>
-                <p className="font-semibold text-gray-900 text-sm">{u.name}</p>
-                <p className="text-xs text-slate-400">{u.role}</p>
+                <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{u.name}</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{u.role}</p>
               </div>
               {wo.assignee?.id === u.id && <span className="ml-auto text-blue-600 text-xs font-bold">Atual</span>}
             </button>
@@ -269,8 +285,9 @@ export default function WorkOrderDetailPage() {
 
 function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-sm">
-      <h2 className="text-xs font-bold text-slate-400 uppercase tracking-wide mb-3">{title}</h2>
+    <div className="rounded-xl border p-4"
+      style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+      <h2 className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--text-muted)' }}>{title}</h2>
       <div className="space-y-2">{children}</div>
     </div>
   );
@@ -279,8 +296,8 @@ function InfoCard({ title, children }: { title: string; children: React.ReactNod
 function InfoRow({ label, value }: { label: string; value: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <span className="text-xs text-slate-500">{label}</span>
-      <span className="text-sm font-medium text-gray-900 text-right">{value}</span>
+      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{label}</span>
+      <span className="text-sm font-medium text-right" style={{ color: 'var(--text-primary)' }}>{value}</span>
     </div>
   );
 }

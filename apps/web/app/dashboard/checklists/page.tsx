@@ -112,22 +112,35 @@ export default function ChecklistsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900">Checklists</h1>
-          <p className="text-sm text-slate-500">{checklists.length} templates ativos</p>
+          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Checklists</h1>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{checklists.length} templates ativos</p>
         </div>
         {canCreate && (
-          <button onClick={() => setCreating(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+          <button
+            onClick={() => setCreating(true)}
+            className="text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors text-white"
+            style={{ background: 'var(--accent)' }}
+            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+          >
             + Novo Checklist
           </button>
         )}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 bg-slate-100 rounded-xl p-1 w-fit">
+      <div className="flex gap-1 rounded-xl p-1 w-fit" style={{ background: 'var(--surface-2)' }}>
         {(['templates', 'history'] as const).map((t) => (
-          <button key={t} onClick={() => setTab(t)}
-            className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === t ? 'bg-white shadow-sm text-gray-900' : 'text-slate-500 hover:text-gray-700'}`}>
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            className="px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
+            style={
+              tab === t
+                ? { background: 'var(--surface)', color: 'var(--text-primary)', boxShadow: 'var(--shadow-sm)' }
+                : { color: 'var(--text-muted)' }
+            }
+          >
             {t === 'templates' ? '📋 Templates' : '📜 Histórico'}
           </button>
         ))}
@@ -135,14 +148,14 @@ export default function ChecklistsPage() {
 
       {loading ? (
         <div className="flex justify-center py-20">
-          <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
+          <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
         </div>
       ) : tab === 'templates' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {checklists.length === 0 && (
-            <div className="col-span-full bg-white rounded-xl border border-slate-200 p-16 text-center">
+            <div className="col-span-full rounded-xl border p-16 text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
               <p className="text-4xl mb-3">📋</p>
-              <p className="text-lg font-semibold text-slate-700">Nenhum checklist cadastrado</p>
+              <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>Nenhum checklist cadastrado</p>
             </div>
           )}
           {checklists.map((cl) => {
@@ -155,16 +168,20 @@ export default function ChecklistsPage() {
             const isSoon = diffDays !== null && diffDays > 0 && diffDays <= 3;
 
             return (
-              <div key={cl.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col gap-4">
+              <div
+                key={cl.id}
+                className="rounded-xl border p-5 flex flex-col gap-4 transition-shadow hover:shadow-md"
+                style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}
+              >
                 <div className="flex items-start justify-between gap-2">
                   <span className="text-2xl">{TYPE_ICONS[cl.type] ?? '📋'}</span>
                   <Badge value={cl.type} />
                 </div>
                 <div className="flex-1">
-                  <h3 className="font-bold text-gray-900">{cl.name}</h3>
-                  {cl.description && <p className="text-sm text-slate-500 mt-1 line-clamp-2">{cl.description}</p>}
+                  <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>{cl.name}</h3>
+                  {cl.description && <p className="text-sm mt-1 line-clamp-2" style={{ color: 'var(--text-muted)' }}>{cl.description}</p>}
                 </div>
-                <div className="flex items-center gap-3 text-xs text-slate-500 flex-wrap">
+                <div className="flex items-center gap-3 text-xs flex-wrap" style={{ color: 'var(--text-muted)' }}>
                   <span>📌 {cl.items.length} itens</span>
                   {cl.unit && <span>🏢 {cl.unit.name}</span>}
                   {cl.intervalDays && <span>🔄 A cada {cl.intervalDays}d</span>}
@@ -199,7 +216,10 @@ export default function ChecklistsPage() {
                 <div className="flex gap-2">
                   <button
                     onClick={() => startExecution(cl)}
-                    className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+                    className="flex-1 text-sm font-semibold py-2.5 rounded-xl transition-colors text-white"
+                    style={{ background: 'var(--accent)' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
+                    onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
                   >
                     ▶ Executar
                   </button>
@@ -207,17 +227,18 @@ export default function ChecklistsPage() {
                     <>
                       <button
                         onClick={() => setScheduling(cl)}
-                        className={`px-3 border text-sm font-semibold rounded-xl transition-colors ${
-                          sch ? 'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100' :
-                                'border-slate-200 hover:bg-slate-50 text-slate-600'
+                        className={`px-3 text-sm font-semibold rounded-xl transition-colors ${
+                          sch ? 'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100' : ''
                         }`}
+                        style={!sch ? { border: '1px solid var(--border)', color: 'var(--text-secondary)' } : undefined}
                         title={sch ? 'Editar agenda' : 'Agendar'}
                       >
                         {sch ? '🗓️' : '🗓️+'}
                       </button>
                       <button
                         onClick={() => setEditing(cl)}
-                        className="px-3 border border-slate-200 hover:bg-slate-50 text-slate-600 text-sm font-semibold rounded-xl transition-colors"
+                        className="px-3 text-sm font-semibold rounded-xl transition-colors"
+                        style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
                         title="Editar checklist"
                       >
                         ✏️
@@ -225,7 +246,8 @@ export default function ChecklistsPage() {
                       {isAdmin && (
                         <button
                           onClick={() => setDeletingCl(cl)}
-                          className="px-3 border border-slate-200 hover:bg-red-50 hover:border-red-200 hover:text-red-600 text-slate-400 text-sm font-semibold rounded-xl transition-colors"
+                          className="px-3 text-sm font-semibold rounded-xl transition-colors hover:bg-red-50 hover:border-red-200 hover:text-red-600"
+                          style={{ border: '1px solid var(--border)', color: 'var(--text-muted)' }}
                           title="Excluir checklist"
                         >
                           🗑️
@@ -241,9 +263,9 @@ export default function ChecklistsPage() {
       ) : (
         <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
           {executionGroups.length === 0 && (
-            <div className="bg-white rounded-xl border border-slate-200 p-16 text-center">
+            <div className="rounded-xl border p-16 text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
               <p className="text-4xl mb-3">📜</p>
-              <p className="text-lg font-semibold text-slate-700">Nenhuma execução registrada</p>
+              <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>Nenhuma execução registrada</p>
             </div>
           )}
           {executionGroups.map((group) => {
@@ -253,12 +275,12 @@ export default function ChecklistsPage() {
             const displayList = isExpanded ? group : [latest];
             const extra = group.length - 1;
             return (
-              <div key={checklistId} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-                <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+              <div key={checklistId} className="rounded-xl border overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+                <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}>
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-bold text-gray-900">{latest.checklist.name}</span>
+                    <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{latest.checklist.name}</span>
                     {group.length > 1 && (
-                      <span className="text-xs bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full font-semibold">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-semibold" style={{ background: 'var(--surface-3)', color: 'var(--text-secondary)' }}>
                         {group.length} execuções
                       </span>
                     )}
@@ -270,15 +292,16 @@ export default function ChecklistsPage() {
                         isExpanded ? next.delete(checklistId) : next.add(checklistId);
                         return next;
                       })}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-semibold transition-colors"
+                      className="text-xs font-semibold transition-colors"
+                      style={{ color: 'var(--accent)' }}
                     >
                       {isExpanded ? '▲ Recolher' : `▼ Ver mais ${extra} anterior${extra > 1 ? 'es' : ''}`}
                     </button>
                   )}
                 </div>
-                <div className="divide-y divide-slate-50">
+                <div style={{ borderTop: 'none' }}>
                   {displayList.map((ex) => (
-                    <div key={ex.id} className="p-4 flex items-start gap-4">
+                    <div key={ex.id} className="p-4 flex items-start gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
                       <Link href={`/dashboard/executions/${ex.id}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <Badge value={ex.status} />
@@ -289,18 +312,19 @@ export default function ChecklistsPage() {
                             }`}>{ex.score}% conformidade</span>
                           )}
                         </div>
-                        <div className="flex flex-wrap gap-3 text-xs text-slate-500">
+                        <div className="flex flex-wrap gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
                           <span>👤 {ex.user.name}</span>
                           {ex.asset && <span>🏗️ {ex.asset.name}</span>}
                           <span>📌 {ex._count.items} itens</span>
                         </div>
                       </Link>
                       <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                        <p className="text-xs text-slate-400">{formatDateTime(ex.completedAt ?? ex.startedAt)}</p>
-                        <Link href={`/dashboard/executions/${ex.id}`} className="text-xs text-blue-500">Ver →</Link>
+                        <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDateTime(ex.completedAt ?? ex.startedAt)}</p>
+                        <Link href={`/dashboard/executions/${ex.id}`} className="text-xs" style={{ color: 'var(--accent)' }}>Ver →</Link>
                         {isAdmin && (
                           <button onClick={() => setDeletingEx(ex)}
-                            className="text-xs text-slate-300 hover:text-red-500 transition-colors"
+                            className="text-xs transition-colors hover:text-red-500"
+                            style={{ color: 'var(--text-muted)' }}
                             title="Excluir">🗑️</button>
                         )}
                       </div>
@@ -310,7 +334,7 @@ export default function ChecklistsPage() {
               </div>
             );
           })}
-          <p className="text-center text-xs text-slate-400 py-2">
+          <p className="text-center text-xs py-2" style={{ color: 'var(--text-muted)' }}>
             {executionGroups.length} checklist{executionGroups.length !== 1 ? 's' : ''} · {executions.length} execução{executions.length !== 1 ? 'ões' : ''} no total
           </p>
         </div>
@@ -350,7 +374,7 @@ export default function ChecklistsPage() {
       <Modal open={!!deletingEx} onClose={() => setDeletingEx(null)} title="Excluir do Histórico" size="sm">
         {deletingEx && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               Excluir esta execução de <strong>{deletingEx.checklist.name}</strong> por <strong>{deletingEx.user.name}</strong>?
             </p>
             <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
@@ -358,7 +382,8 @@ export default function ChecklistsPage() {
             </p>
             <div className="flex gap-3">
               <button onClick={() => setDeletingEx(null)}
-                className="flex-1 border border-slate-200 hover:bg-slate-50 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                style={{ border: '1px solid var(--border)', color: 'var(--text-primary)', background: 'var(--surface)' }}>
                 Cancelar
               </button>
               <button onClick={() => handleDeleteExecution(deletingEx)} disabled={deleteExLoading}
@@ -374,7 +399,7 @@ export default function ChecklistsPage() {
       <Modal open={!!deletingCl} onClose={() => setDeletingCl(null)} title="Excluir Checklist" size="sm">
         {deletingCl && (
           <div className="space-y-4">
-            <p className="text-sm text-slate-600">
+            <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
               Tem certeza que deseja desativar o checklist <strong>{deletingCl.name}</strong>?
             </p>
             <p className="text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">
@@ -382,7 +407,8 @@ export default function ChecklistsPage() {
             </p>
             <div className="flex gap-3">
               <button onClick={() => setDeletingCl(null)}
-                className="flex-1 border border-slate-200 hover:bg-slate-50 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                style={{ border: '1px solid var(--border)', color: 'var(--text-primary)', background: 'var(--surface)' }}>
                 Cancelar
               </button>
               <button onClick={() => handleDeleteChecklist(deletingCl)} disabled={deleteClLoading}
@@ -487,38 +513,46 @@ function CreateChecklistForm({
     PREVENTIVE: 'Preventivo', CORRECTIVE: 'Corretivo', INSPECTION: 'Inspeção', AUDIT: 'Auditoria',
   };
 
+  const inputStyle = { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
+  const labelStyle = { color: 'var(--text-secondary)' };
+
   return (
     <form onSubmit={submit} className="space-y-5">
       {/* Metadados */}
       <div className="grid grid-cols-2 gap-3">
         <div className="col-span-2">
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Nome do checklist *</label>
-          <input required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Nome do checklist *</label>
+          <input required className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
             placeholder="ex: Inspeção Mensal — Elevadores" />
         </div>
         <div className="col-span-2">
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Descrição</label>
-          <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Descrição</label>
+          <input className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))}
             placeholder="Descrição opcional do checklist" />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Tipo</label>
-          <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Tipo</label>
+          <select className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             value={form.type} onChange={(e) => setForm(f => ({ ...f, type: e.target.value }))}>
             {Object.entries(TYPE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
           </select>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Periodicidade (dias)</label>
-          <input type="number" min="1" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Periodicidade (dias)</label>
+          <input type="number" min="1" className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             value={form.intervalDays} onChange={(e) => setForm(f => ({ ...f, intervalDays: e.target.value }))}
             placeholder="ex: 30" />
         </div>
         <div className="col-span-2">
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Unidade</label>
-          <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Unidade</label>
+          <select className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             value={form.unitId} onChange={(e) => setForm(f => ({ ...f, unitId: e.target.value }))}>
             <option value="">Todas as unidades</option>
             {units.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
@@ -530,45 +564,46 @@ function CreateChecklistForm({
       <div>
         <div className="flex items-center justify-between mb-2">
           <div>
-            <label className="text-xs font-semibold text-slate-600">Itens do checklist *</label>
-            <span className="ml-2 text-xs text-slate-400">{items.length} item(ns)</span>
+            <label className="text-xs font-semibold" style={labelStyle}>Itens do checklist *</label>
+            <span className="ml-2 text-xs" style={{ color: 'var(--text-muted)' }}>{items.length} item(ns)</span>
           </div>
           <button type="button" onClick={addItem}
-            className="text-xs text-blue-600 hover:text-blue-800 font-semibold">
+            className="text-xs font-semibold" style={{ color: 'var(--accent)' }}>
             + Adicionar item
           </button>
         </div>
 
         <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
           {items.map((item, idx) => (
-            <div key={idx} className="flex items-start gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+            <div key={idx} className="flex items-start gap-2 p-3 rounded-xl" style={{ background: 'var(--surface-2)', border: '1px solid var(--border)' }}>
               {/* Ordem e reordenação */}
               <div className="flex flex-col gap-0.5 flex-shrink-0 mt-1">
                 <button type="button" onClick={() => moveItem(idx, -1)} disabled={idx === 0}
-                  className="text-slate-300 hover:text-slate-600 disabled:opacity-30 text-xs leading-none">▲</button>
-                <span className="text-xs font-bold text-slate-400 text-center">{idx + 1}</span>
+                  className="disabled:opacity-30 text-xs leading-none" style={{ color: 'var(--text-muted)' }}>▲</button>
+                <span className="text-xs font-bold text-center" style={{ color: 'var(--text-muted)' }}>{idx + 1}</span>
                 <button type="button" onClick={() => moveItem(idx, 1)} disabled={idx === items.length - 1}
-                  className="text-slate-300 hover:text-slate-600 disabled:opacity-30 text-xs leading-none">▼</button>
+                  className="disabled:opacity-30 text-xs leading-none" style={{ color: 'var(--text-muted)' }}>▼</button>
               </div>
 
               <div className="flex-1 space-y-2">
-                <input required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none bg-white"
+                <input required className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  style={inputStyle}
                   value={item.question}
                   onChange={(e) => updateItem(idx, 'question', e.target.value)}
                   placeholder="Pergunta do checklist..." />
                 <div className="flex flex-wrap gap-3">
-                  <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+                  <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none" style={{ color: 'var(--text-secondary)' }}>
                     <input type="checkbox" checked={item.requiresPhoto}
                       onChange={(e) => updateItem(idx, 'requiresPhoto', e.target.checked)} className="rounded" />
                     📷 Exige foto
                   </label>
-                  <label className="flex items-center gap-1.5 text-xs text-slate-600 cursor-pointer select-none">
+                  <label className="flex items-center gap-1.5 text-xs cursor-pointer select-none" style={{ color: 'var(--text-secondary)' }}>
                     <input type="checkbox" checked={item.requiresNote}
                       onChange={(e) => updateItem(idx, 'requiresNote', e.target.checked)} className="rounded" />
                     📝 Exige nota
                   </label>
                   <div className="flex items-center gap-1.5">
-                    <span className="text-xs text-slate-500">✅ Conforme se:</span>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>✅ Conforme se:</span>
                     <button
                       type="button"
                       onClick={() => updateItem(idx, 'expectedAnswer', !item.expectedAnswer)}
@@ -586,7 +621,8 @@ function CreateChecklistForm({
 
               <button type="button" onClick={() => removeItem(idx)}
                 disabled={items.length === 1}
-                className="text-slate-300 hover:text-red-500 disabled:opacity-20 mt-1 flex-shrink-0 text-lg leading-none transition-colors"
+                className="disabled:opacity-20 mt-1 flex-shrink-0 text-lg leading-none transition-colors hover:text-red-500"
+                style={{ color: 'var(--text-muted)' }}
                 title="Remover item">
                 ×
               </button>
@@ -596,7 +632,8 @@ function CreateChecklistForm({
       </div>
 
       <button type="submit" disabled={saving}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm">
+        className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+        style={{ background: 'var(--accent)' }}>
         {saving
           ? 'Salvando...'
           : isEditing
@@ -671,13 +708,16 @@ function ScheduleForm({
   }
 
   const technicians = users.filter((u) => ['TECNICO', 'GESTOR', 'ADMIN'].includes(u.role) && u.isActive);
+  const inputStyle = { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
+  const labelStyle = { color: 'var(--text-secondary)' };
 
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Nome da agenda (opcional)</label>
+        <label className="block text-xs font-semibold mb-1" style={labelStyle}>Nome da agenda (opcional)</label>
         <input
-          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          style={inputStyle}
           placeholder={`ex: ${checklist.name} — Torre A`}
           value={form.name}
           onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
@@ -685,9 +725,10 @@ function ScheduleForm({
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Técnico responsável</label>
+        <label className="block text-xs font-semibold mb-1" style={labelStyle}>Técnico responsável</label>
         <select
-          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+          className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          style={inputStyle}
           value={form.assigneeId}
           onChange={(e) => setForm(f => ({ ...f, assigneeId: e.target.value }))}
         >
@@ -700,34 +741,37 @@ function ScheduleForm({
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Próxima execução *</label>
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Próxima execução *</label>
           <input
             required
             type="date"
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             value={form.nextDueAt}
             min={new Date().toISOString().split('T')[0]}
             onChange={(e) => setForm(f => ({ ...f, nextDueAt: e.target.value }))}
           />
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Repetir a cada (dias)</label>
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Repetir a cada (dias)</label>
           <input
             type="number"
             min="1"
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             placeholder="ex: 30"
             value={form.repeatDays}
             onChange={(e) => setForm(f => ({ ...f, repeatDays: e.target.value }))}
           />
-          <p className="text-xs text-slate-400 mt-0.5">Deixe vazio para execução única</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Deixe vazio para execução única</p>
         </div>
       </div>
 
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">🔔 Aviso antecipado</label>
+        <label className="block text-xs font-semibold mb-1" style={labelStyle}>🔔 Aviso antecipado</label>
         <select
-          className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+          className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          style={inputStyle}
           value={form.reminderDaysBefore}
           onChange={(e) => setForm(f => ({ ...f, reminderDaysBefore: e.target.value }))}
         >
@@ -739,31 +783,33 @@ function ScheduleForm({
           <option value="7">1 semana antes</option>
           <option value="14">2 semanas antes</option>
         </select>
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
           O técnico receberá uma notificação push no celular nessa antecedência.
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">🔓 Liberar antes (dias)</label>
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>🔓 Liberar antes (dias)</label>
           <input
             type="number" min="0"
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             value={form.releaseBeforeDays}
             onChange={(e) => setForm(f => ({ ...f, releaseBeforeDays: e.target.value }))}
           />
-          <p className="text-xs text-slate-400 mt-0.5">Dias antes do vencimento que fica disponível</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Dias antes do vencimento que fica disponível</p>
         </div>
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">⏳ Tolerância (dias)</label>
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>⏳ Tolerância (dias)</label>
           <input
             type="number" min="0"
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
             value={form.toleranceDays}
             onChange={(e) => setForm(f => ({ ...f, toleranceDays: e.target.value }))}
           />
-          <p className="text-xs text-slate-400 mt-0.5">Dias após o vencimento antes de expirar</p>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>Dias após o vencimento antes de expirar</p>
         </div>
       </div>
 
@@ -797,7 +843,8 @@ function ScheduleForm({
         <button
           type="submit"
           disabled={saving}
-          className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+          className="flex-1 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+          style={{ background: 'var(--accent)' }}
         >
           {saving ? 'Salvando...' : existingSchedule ? '✓ Atualizar agenda' : '✓ Criar agenda'}
         </button>
@@ -855,15 +902,17 @@ function ExecutionModal({ checklist, executionId, onClose }: {
         <div className="text-center space-y-4">
           <div className="text-6xl">{score >= 80 ? '✅' : score >= 60 ? '⚠️' : '❌'}</div>
           <div>
-            <p className="text-3xl font-extrabold text-gray-900">{score}%</p>
-            <p className="text-sm text-slate-500 mt-1">de conformidade</p>
+            <p className="text-3xl font-extrabold" style={{ color: 'var(--text-primary)' }}>{score}%</p>
+            <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>de conformidade</p>
           </div>
           <p className={`text-sm font-semibold ${score >= 80 ? 'text-green-700' : score >= 60 ? 'text-amber-700' : 'text-red-700'}`}>
             {score >= 80 ? 'Excelente — todos os itens em conformidade' :
              score >= 60 ? 'Atenção — alguns itens precisam de correção' :
              'Crítico — muitos itens fora de conformidade'}
           </p>
-          <button onClick={onClose} className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl transition-colors">
+          <button onClick={onClose}
+            className="w-full text-white font-semibold py-3 rounded-xl transition-colors"
+            style={{ background: 'var(--accent)' }}>
             Concluir
           </button>
         </div>
@@ -876,30 +925,30 @@ function ExecutionModal({ checklist, executionId, onClose }: {
       <div className="space-y-5">
         {/* Progress */}
         <div>
-          <div className="flex justify-between text-xs text-slate-500 mb-1.5">
+          <div className="flex justify-between text-xs mb-1.5" style={{ color: 'var(--text-muted)' }}>
             <span>Item {current + 1} de {items.length}</span>
             <span>{answeredCount} respondidos</span>
           </div>
-          <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
-            <div className="h-2 bg-blue-600 rounded-full transition-all duration-300" style={{ width: `${progress}%` }} />
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--surface-3)' }}>
+            <div className="h-2 rounded-full transition-all duration-300" style={{ width: `${progress}%`, background: 'var(--accent)' }} />
           </div>
         </div>
 
         {/* Item */}
-        <div className="bg-slate-50 rounded-xl p-5 space-y-4">
+        <div className="rounded-xl p-5 space-y-4" style={{ background: 'var(--surface-2)' }}>
           <div className="flex items-start gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style={{ background: 'var(--accent)' }}>
               <span className="text-sm font-bold text-white">{item.order}</span>
             </div>
             <div>
-              <p className="font-semibold text-gray-900">{item.question}</p>
-              {item.description && <p className="text-sm text-slate-500 mt-1">{item.description}</p>}
+              <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{item.question}</p>
+              {item.description && <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>{item.description}</p>}
             </div>
           </div>
 
           {/* Resposta esperada */}
-          <p className="text-xs text-slate-400">
-            Resposta conforme: <span className="font-semibold text-slate-600">{item.expectedAnswer ? 'SIM' : 'NÃO'}</span>
+          <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
+            Resposta conforme: <span className="font-semibold" style={{ color: 'var(--text-secondary)' }}>{item.expectedAnswer ? 'SIM' : 'NÃO'}</span>
           </p>
 
           {/* Botões Sim / Não com indicação de conformidade */}
@@ -927,7 +976,8 @@ function ExecutionModal({ checklist, executionId, onClose }: {
           {(item.requiresNote || (answers[item.id]?.answer !== null && answers[item.id]?.answer !== item.expectedAnswer)) && (
             <textarea
               rows={3}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+              className="w-full rounded-xl px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
               placeholder={item.requiresNote ? 'Observação obrigatória...' : 'Descreva o problema encontrado...'}
               value={answers[item.id]?.notes ?? ''}
               onChange={(e) => setNote(item.id, e.target.value)}
@@ -940,12 +990,14 @@ function ExecutionModal({ checklist, executionId, onClose }: {
           <button
             disabled={current === 0}
             onClick={() => setCurrent(c => c - 1)}
-            className="flex-1 border border-slate-200 hover:bg-slate-50 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 transition-colors"
+            className="flex-1 py-2.5 rounded-xl text-sm font-semibold disabled:opacity-40 transition-colors"
+            style={{ border: '1px solid var(--border)', color: 'var(--text-primary)', background: 'var(--surface)' }}
           >← Anterior</button>
           {current < items.length - 1 ? (
             <button
               onClick={() => setCurrent(c => c + 1)}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
+              className="flex-1 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
+              style={{ background: 'var(--accent)' }}
             >Próximo →</button>
           ) : (
             <button
@@ -962,10 +1014,17 @@ function ExecutionModal({ checklist, executionId, onClose }: {
               key={it.id}
               onClick={() => setCurrent(idx)}
               className={`w-3 h-3 rounded-full transition-all ${
-                idx === current ? 'bg-blue-600 scale-125' :
-                answers[it.id]?.answer === null ? 'bg-slate-200' :
+                idx === current ? 'scale-125' :
+                answers[it.id]?.answer === null ? '' :
                 answers[it.id]?.answer === it.expectedAnswer ? 'bg-green-400' : 'bg-red-400'
               }`}
+              style={
+                idx === current
+                  ? { background: 'var(--accent)' }
+                  : answers[it.id]?.answer === null
+                  ? { background: 'var(--surface-3)' }
+                  : undefined
+              }
             />
           ))}
         </div>
@@ -973,8 +1032,10 @@ function ExecutionModal({ checklist, executionId, onClose }: {
         {/* Notas gerais (último item) */}
         {current === items.length - 1 && (
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Observações gerais (opcional)</label>
-            <textarea rows={2} className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Observações gerais (opcional)</label>
+            <textarea rows={2}
+              className="w-full rounded-xl px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
               placeholder="Observações gerais sobre a inspeção..."
               value={globalNotes} onChange={(e) => setGlobalNotes(e.target.value)} />
           </div>

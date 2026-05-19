@@ -2,12 +2,173 @@
 @tailwind components;
 @tailwind utilities;
 
-@layer utilities {
-  .scrollbar-hide::-webkit-scrollbar {
-    display: none;
-  }
-  .scrollbar-hide {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+/* ─── Design Tokens — Corporate Clean (padrão) ───────────────────────── */
+:root {
+  --bg: #F8FAFC;
+  --surface: #FFFFFF;
+  --surface-2: #F1F5F9;
+  --surface-3: #E2E8F0;
+  --border: #E2E8F0;
+  --border-subtle: rgba(0,0,0,0.06);
+  --accent: #2563EB;
+  --accent-hover: #1D4ED8;
+  --accent-soft: #EFF6FF;
+  --text-primary: #0F172A;
+  --text-secondary: #475569;
+  --text-muted: #94A3B8;
+  --text-accent: #2563EB;
+  --sidebar-bg: #0F172A;
+  --sidebar-item: rgba(255,255,255,0.06);
+  --sidebar-item-active: #2563EB;
+  --sidebar-text: #94A3B8;
+  --sidebar-text-active: #FFFFFF;
+  --sidebar-border: rgba(255,255,255,0.07);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.04);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+  --radius: 12px;
+  --radius-sm: 8px;
+  --radius-lg: 16px;
+  --header-bg: rgba(255,255,255,0.9);
+  --header-border: #E2E8F0;
+}
+
+/* ─── Tema 2 — Dark Pro ──────────────────────────────────────────────── */
+.theme-dark {
+  --bg: #0A0F1E;
+  --surface: #111827;
+  --surface-2: #1E293B;
+  --surface-3: #273548;
+  --border: rgba(255,255,255,0.07);
+  --border-subtle: rgba(255,255,255,0.04);
+  --accent: #3B82F6;
+  --accent-hover: #2563EB;
+  --accent-soft: rgba(59,130,246,0.12);
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --text-muted: #475569;
+  --text-accent: #60A5FA;
+  --sidebar-bg: #080D1A;
+  --sidebar-item: rgba(255,255,255,0.04);
+  --sidebar-item-active: rgba(59,130,246,0.18);
+  --sidebar-text: #64748B;
+  --sidebar-text-active: #F1F5F9;
+  --sidebar-border: rgba(255,255,255,0.05);
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.3), 0 1px 2px rgba(0,0,0,0.2);
+  --shadow: 0 4px 6px -1px rgba(0,0,0,0.4), 0 2px 4px -2px rgba(0,0,0,0.3);
+  --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.5), 0 4px 6px -4px rgba(0,0,0,0.3);
+  --header-bg: rgba(8,13,26,0.95);
+  --header-border: rgba(255,255,255,0.06);
+}
+
+/* ─── Tema 3 — Glass Premium ─────────────────────────────────────────── */
+.theme-glass {
+  --bg: linear-gradient(135deg, #EEF2FF 0%, #F0F9FF 50%, #F5F3FF 100%);
+  --surface: rgba(255,255,255,0.72);
+  --surface-2: rgba(255,255,255,0.5);
+  --surface-3: rgba(255,255,255,0.35);
+  --border: rgba(255,255,255,0.6);
+  --border-subtle: rgba(255,255,255,0.4);
+  --accent: #6366F1;
+  --accent-hover: #4F46E5;
+  --accent-soft: rgba(99,102,241,0.1);
+  --text-primary: #1E1B4B;
+  --text-secondary: #4338CA;
+  --text-muted: #818CF8;
+  --text-accent: #6366F1;
+  --sidebar-bg: rgba(15,10,50,0.85);
+  --sidebar-item: rgba(255,255,255,0.06);
+  --sidebar-item-active: rgba(99,102,241,0.25);
+  --sidebar-text: rgba(165,180,252,0.7);
+  --sidebar-text-active: #FFFFFF;
+  --sidebar-border: rgba(255,255,255,0.08);
+  --shadow-sm: 0 2px 8px rgba(99,102,241,0.08), 0 1px 3px rgba(0,0,0,0.06);
+  --shadow: 0 8px 25px rgba(99,102,241,0.12), 0 4px 6px rgba(0,0,0,0.05);
+  --shadow-lg: 0 20px 40px rgba(99,102,241,0.15), 0 8px 16px rgba(0,0,0,0.06);
+  --header-bg: rgba(255,255,255,0.7);
+  --header-border: rgba(255,255,255,0.5);
+}
+
+/* ─── Base Styles ─────────────────────────────────────────────────────── */
+html {
+  font-feature-settings: "cv11", "ss01";
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text-primary);
+  transition: background 0.3s ease, color 0.3s ease;
+}
+
+.theme-glass body {
+  background: var(--bg);
+  background-attachment: fixed;
+}
+
+/* ─── Glass card base ─────────────────────────────────────────────────── */
+.theme-glass .glass-card {
+  background: var(--surface);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--border);
+}
+
+/* ─── Sidebar transitions ─────────────────────────────────────────────── */
+.sidebar-transition {
+  transition: background 0.3s ease, border-color 0.3s ease;
+}
+
+/* ─── Scrollbar refinado ───────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 99px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* ─── Focus ring premium ───────────────────────────────────────────────── */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* ─── Animated gradient badge ──────────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+.shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.15) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+}
+
+/* ─── Skeleton loading ─────────────────────────────────────────────────── */
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+.skeleton {
+  background: var(--surface-2);
+  border-radius: var(--radius-sm);
+  animation: pulse-soft 1.8s ease-in-out infinite;
 }

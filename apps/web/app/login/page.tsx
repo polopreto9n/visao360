@@ -86,30 +86,32 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4" style={{ background: 'var(--bg)' }}>
       <div className="w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
+              style={{ background: 'var(--accent)' }}>
               <span className="text-2xl font-black text-white">V</span>
             </div>
-            <span className="text-2xl font-black text-white">
-              Visão<span className="text-blue-400">360</span>
+            <span className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>
+              Visão<span className="text-blue-500">360</span>
             </span>
           </Link>
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
+        <div className="rounded-2xl p-8"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}>
           {step === 'email' && (
             <>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1">Bem-vindo de volta</h2>
-              <p className="text-gray-500 mb-6">Informe seu e-mail para continuar</p>
+              <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Bem-vindo de volta</h2>
+              <p className="mb-6" style={{ color: 'var(--text-muted)' }}>Informe seu e-mail para continuar</p>
 
               <form onSubmit={handleFindCompanies} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                     E-mail
                   </label>
                   <input
@@ -118,7 +120,8 @@ export default function LoginPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="seu@email.com.br"
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   />
                 </div>
 
@@ -131,7 +134,8 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition"
+                  className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition"
+                  style={{ background: 'var(--accent)' }}
                 >
                   {loading ? 'Buscando...' : 'Continuar →'}
                 </button>
@@ -143,12 +147,13 @@ export default function LoginPage() {
             <>
               <button
                 onClick={() => setStep('email')}
-                className="text-gray-400 hover:text-gray-600 text-sm mb-4 flex items-center gap-1"
+                className="text-sm mb-4 flex items-center gap-1 transition-colors"
+                style={{ color: 'var(--text-muted)' }}
               >
                 ← Voltar
               </button>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1">Selecione a empresa</h2>
-              <p className="text-gray-500 mb-6 text-sm">
+              <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Selecione a empresa</h2>
+              <p className="mb-6 text-sm" style={{ color: 'var(--text-muted)' }}>
                 {email} está em {companies.length} empresa(s)
               </p>
 
@@ -160,7 +165,8 @@ export default function LoginPage() {
                       setSelectedCompany(company);
                       setStep('password');
                     }}
-                    className="w-full flex items-center gap-4 p-4 border-2 border-gray-200 hover:border-blue-500 hover:bg-blue-50 rounded-xl transition text-left group"
+                    className="w-full flex items-center gap-4 p-4 border-2 rounded-xl transition text-left group hover:border-blue-500"
+                    style={{ borderColor: 'var(--border)' }}
                   >
                     <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center flex-shrink-0">
                       <span className="text-blue-700 font-bold text-lg">
@@ -168,10 +174,10 @@ export default function LoginPage() {
                       </span>
                     </div>
                     <div>
-                      <p className="font-semibold text-gray-900 group-hover:text-blue-700">
+                      <p className="font-semibold group-hover:text-blue-700" style={{ color: 'var(--text-primary)' }}>
                         {company.name}
                       </p>
-                      <p className="text-xs text-gray-400">{company.id}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{company.id}</p>
                     </div>
                   </button>
                 ))}
@@ -183,33 +189,35 @@ export default function LoginPage() {
             <>
               <button
                 onClick={() => setStep(companies.length > 1 ? 'company' : 'email')}
-                className="text-gray-400 hover:text-gray-600 text-sm mb-4 flex items-center gap-1"
+                className="text-sm mb-4 flex items-center gap-1 transition-colors"
+                style={{ color: 'var(--text-muted)' }}
               >
                 ← Voltar
               </button>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1">Entrar</h2>
+              <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Entrar</h2>
               <div className="flex items-center gap-2 mb-6">
                 <div className="w-6 h-6 rounded bg-blue-100 flex items-center justify-center">
                   <span className="text-blue-700 font-bold text-xs">
                     {selectedCompany.name.charAt(0)}
                   </span>
                 </div>
-                <p className="text-gray-500 text-sm">{selectedCompany.name}</p>
+                <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{selectedCompany.name}</p>
               </div>
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">E-mail</label>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>E-mail</label>
                   <input
                     type="email"
                     value={email}
                     disabled
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-gray-50 text-gray-500"
+                    className="w-full px-4 py-3 rounded-xl"
+                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Senha</label>
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Senha</label>
                   <input
                     type="password"
                     value={password}
@@ -217,7 +225,8 @@ export default function LoginPage() {
                     placeholder="••••••••"
                     required
                     autoFocus
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    className="w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   />
                 </div>
 
@@ -230,7 +239,8 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition"
+                  className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition"
+                  style={{ background: 'var(--accent)' }}
                 >
                   {loading ? 'Entrando...' : 'Entrar na plataforma'}
                 </button>
@@ -240,16 +250,17 @@ export default function LoginPage() {
         </div>
 
         {/* Criar conta */}
-        <p className="text-center mt-6 text-slate-400 text-sm">
+        <p className="text-center mt-6 text-sm" style={{ color: 'var(--text-muted)' }}>
           Não tem uma conta?{' '}
-          <Link href="/cadastro" className="text-blue-400 hover:text-blue-300 font-medium">
+          <Link href="/cadastro" className="text-blue-500 hover:text-blue-400 font-medium">
             Criar grátis — 14 dias de trial
           </Link>
         </p>
 
         {/* Dev hint */}
         {process.env.NODE_ENV !== 'production' && (
-          <div className="mt-4 bg-yellow-500/10 border border-yellow-500/20 rounded-xl p-4 text-xs text-yellow-200">
+          <div className="mt-4 rounded-xl p-4 text-xs border"
+            style={{ background: 'var(--surface-2)', borderColor: 'var(--border)', color: 'var(--text-secondary)' }}>
             <strong>🔑 Credenciais de desenvolvimento:</strong>
             <br />
             admin@visao360.com.br / admin@123

@@ -70,39 +70,44 @@ export default function CadastroPage() {
     }
   }
 
+  const inputClass = "w-full px-4 py-3 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 transition text-sm";
+  const inputStyle = { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 flex items-center justify-center px-4 py-12">
+    <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: 'var(--bg)' }}>
       <div className="w-full max-w-lg">
         {/* Logo */}
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center shadow-lg">
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center shadow-lg"
+              style={{ background: 'var(--accent)' }}>
               <span className="text-2xl font-black text-white">V</span>
             </div>
-            <span className="text-2xl font-black text-white">
-              Visão<span className="text-blue-400">360</span>
+            <span className="text-2xl font-black" style={{ color: 'var(--text-primary)' }}>
+              Visão<span className="text-blue-500">360</span>
             </span>
           </Link>
-          <p className="text-slate-400 mt-3 text-sm">
+          <p className="mt-3 text-sm" style={{ color: 'var(--text-muted)' }}>
             14 dias grátis · Sem cartão de crédito
           </p>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-2xl p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-1">Criar sua conta</h2>
-          <p className="text-gray-500 mb-6 text-sm">
+        <div className="rounded-2xl p-8"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}>
+          <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Criar sua conta</h2>
+          <p className="mb-6 text-sm" style={{ color: 'var(--text-muted)' }}>
             Comece seu trial gratuito de 14 dias agora mesmo.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             {/* Empresa */}
-            <div className="pb-2 mb-2 border-b border-gray-100">
-              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-3">
+            <div className="pb-2 mb-2 border-b" style={{ borderColor: 'var(--border)' }}>
+              <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-3">
                 Dados da empresa
               </p>
               <div className="space-y-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                     Nome da empresa *
                   </label>
                   <input
@@ -111,12 +116,13 @@ export default function CadastroPage() {
                     onChange={set('companyName')}
                     placeholder="Ex: João Gestão Predial"
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
+                    className={inputClass}
+                    style={inputStyle}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                       E-mail da empresa *
                     </label>
                     <input
@@ -125,11 +131,12 @@ export default function CadastroPage() {
                       onChange={set('companyEmail')}
                       placeholder="contato@empresa.com"
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
+                      className={inputClass}
+                      style={inputStyle}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                       CNPJ (opcional)
                     </label>
                     <input
@@ -137,7 +144,8 @@ export default function CadastroPage() {
                       value={form.cnpj}
                       onChange={set('cnpj')}
                       placeholder="00.000.000/0001-00"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
+                      className={inputClass}
+                      style={inputStyle}
                     />
                   </div>
                 </div>
@@ -146,13 +154,13 @@ export default function CadastroPage() {
 
             {/* Responsável */}
             <div>
-              <p className="text-xs font-semibold text-blue-600 uppercase tracking-wide mb-3">
+              <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-3">
                 Seu acesso (proprietário)
               </p>
               <div className="space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                       Seu nome *
                     </label>
                     <input
@@ -161,11 +169,12 @@ export default function CadastroPage() {
                       onChange={set('ownerName')}
                       placeholder="João Silva"
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
+                      className={inputClass}
+                      style={inputStyle}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                       Telefone
                     </label>
                     <input
@@ -173,12 +182,13 @@ export default function CadastroPage() {
                       value={form.phone}
                       onChange={set('phone')}
                       placeholder="(11) 99999-0001"
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
+                      className={inputClass}
+                      style={inputStyle}
                     />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                  <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                     E-mail de login *
                   </label>
                   <input
@@ -187,12 +197,13 @@ export default function CadastroPage() {
                     onChange={set('ownerEmail')}
                     placeholder="voce@email.com"
                     required
-                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
+                    className={inputClass}
+                    style={inputStyle}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                       Senha *
                     </label>
                     <input
@@ -202,11 +213,12 @@ export default function CadastroPage() {
                       placeholder="Mín. 8 caracteres"
                       required
                       minLength={8}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
+                      className={inputClass}
+                      style={inputStyle}
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                    <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
                       Confirmar senha *
                     </label>
                     <input
@@ -215,7 +227,8 @@ export default function CadastroPage() {
                       onChange={set('confirmPassword')}
                       placeholder="••••••••"
                       required
-                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition text-sm"
+                      className={inputClass}
+                      style={inputStyle}
                     />
                   </div>
                 </div>
@@ -231,20 +244,21 @@ export default function CadastroPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition mt-2"
+              className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition mt-2"
+              style={{ background: 'var(--accent)' }}
             >
               {loading ? 'Criando conta...' : 'Criar conta grátis →'}
             </button>
 
-            <p className="text-xs text-center text-gray-400">
+            <p className="text-xs text-center" style={{ color: 'var(--text-muted)' }}>
               Ao criar uma conta você concorda com os nossos Termos de Uso.
             </p>
           </form>
         </div>
 
-        <p className="text-center mt-6 text-slate-400 text-sm">
+        <p className="text-center mt-6 text-sm" style={{ color: 'var(--text-muted)' }}>
           Já tem uma conta?{' '}
-          <Link href="/login" className="text-blue-400 hover:text-blue-300 font-medium">
+          <Link href="/login" className="text-blue-500 hover:text-blue-400 font-medium">
             Entrar
           </Link>
         </p>

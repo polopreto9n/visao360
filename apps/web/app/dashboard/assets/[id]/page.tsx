@@ -60,7 +60,6 @@ function buildTimeline(
 
   for (const ex of executions) {
     const score = ex.score;
-    const scoreColor = score === null ? '' : score >= 80 ? 'text-green-700' : score >= 60 ? 'text-amber-600' : 'text-red-600';
     events.push({
       id: ex.id,
       kind: 'execution',
@@ -132,7 +131,7 @@ export default function AssetDetailPage() {
       <div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" />
     </div>
   );
-  if (!asset) return <div className="text-center py-20 text-slate-500">Equipamento não encontrado</div>;
+  if (!asset) return <div className="text-center py-20" style={{ color: 'var(--text-muted)' }}>Equipamento não encontrado</div>;
 
   const maint = isOverdue(asset.nextMaintenanceAt) && asset.status === 'ACTIVE';
   const CATEGORY_ICONS: Record<string, string> = {
@@ -147,53 +146,60 @@ export default function AssetDetailPage() {
   return (
     <div className="space-y-6 max-w-5xl">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm text-slate-500">
+      <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
         <Link href="/dashboard/assets" className="hover:text-blue-600">Equipamentos</Link>
         <span>/</span>
-        <span className="text-gray-900 font-medium">{asset.code ?? asset.name}</span>
+        <span className="font-medium" style={{ color: 'var(--text-primary)' }}>{asset.code ?? asset.name}</span>
       </div>
 
       {/* Header */}
-      <div className={`bg-white rounded-xl border p-6 shadow-sm ${maint ? 'border-amber-200' : 'border-slate-200'}`}>
+      <div className="rounded-xl border p-6"
+        style={{
+          background: 'var(--surface)',
+          borderColor: maint ? '#fcd34d' : 'var(--border)',
+          boxShadow: 'var(--shadow-sm)',
+        }}>
         <div className="flex flex-col sm:flex-row gap-6">
           <div className="flex-1">
             <div className="flex items-start gap-4 mb-4">
               <span className="text-4xl">{icon}</span>
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-1">
-                  {asset.code && <span className="font-mono text-sm text-slate-400">{asset.code}</span>}
+                  {asset.code && <span className="font-mono text-sm" style={{ color: 'var(--text-muted)' }}>{asset.code}</span>}
                   <Badge value={asset.status} />
                   {maint && <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">⚠️ Manutenção VENCIDA</span>}
                 </div>
-                <h1 className="text-2xl font-extrabold text-gray-900">{asset.name}</h1>
-                <p className="text-sm text-slate-500 mt-0.5">{asset.category} · {asset.unit.name}</p>
+                <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>{asset.name}</h1>
+                <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{asset.category} · {asset.unit.name}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
-              {asset.brand && <div><p className="text-xs text-slate-400">Marca</p><p className="font-semibold">{asset.brand}</p></div>}
-              {asset.model && <div><p className="text-xs text-slate-400">Modelo</p><p className="font-semibold">{asset.model}</p></div>}
-              {asset.serialNumber && <div><p className="text-xs text-slate-400">Nº de série</p><p className="font-semibold">{asset.serialNumber}</p></div>}
-              {asset.installDate && <div><p className="text-xs text-slate-400">Instalado em</p><p className="font-semibold">{formatDate(asset.installDate)}</p></div>}
-              {asset.lastMaintenanceAt && <div><p className="text-xs text-slate-400">Última manutenção</p><p className="font-semibold">{formatDate(asset.lastMaintenanceAt)}</p></div>}
+              {asset.brand && <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Marca</p><p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{asset.brand}</p></div>}
+              {asset.model && <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Modelo</p><p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{asset.model}</p></div>}
+              {asset.serialNumber && <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Nº de série</p><p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{asset.serialNumber}</p></div>}
+              {asset.installDate && <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Instalado em</p><p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{formatDate(asset.installDate)}</p></div>}
+              {asset.lastMaintenanceAt && <div><p className="text-xs" style={{ color: 'var(--text-muted)' }}>Última manutenção</p><p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{formatDate(asset.lastMaintenanceAt)}</p></div>}
               {asset.nextMaintenanceAt && (
                 <div>
-                  <p className="text-xs text-slate-400">Próxima manutenção</p>
-                  <p className={`font-semibold ${maint ? 'text-red-600' : ''}`}>{formatDate(asset.nextMaintenanceAt)}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Próxima manutenção</p>
+                  <p className={`font-semibold ${maint ? 'text-red-600' : ''}`}
+                    style={maint ? {} : { color: 'var(--text-primary)' }}>{formatDate(asset.nextMaintenanceAt)}</p>
                 </div>
               )}
             </div>
 
             {asset.description && (
-              <p className="text-sm text-slate-600 mt-4 p-3 bg-slate-50 rounded-lg">{asset.description}</p>
+              <p className="text-sm mt-4 p-3 rounded-lg" style={{ color: 'var(--text-secondary)', background: 'var(--surface-2)' }}>{asset.description}</p>
             )}
           </div>
 
           {qrDataUrl && (
             <div className="flex-shrink-0">
-              <div className="bg-white border-2 border-slate-200 rounded-xl p-3 text-center">
+              <div className="border-2 rounded-xl p-3 text-center"
+                style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
                 <img src={qrDataUrl} alt="QR Code" className="w-36 h-36" />
-                <p className="text-xs text-slate-400 mt-2 font-mono">{asset.qrCode.substring(0, 16)}...</p>
+                <p className="text-xs mt-2 font-mono" style={{ color: 'var(--text-muted)' }}>{asset.qrCode.substring(0, 16)}...</p>
                 <a href={qrDataUrl} download={`${asset.code ?? asset.id}-qr.png`}
                   className="mt-2 block text-xs text-blue-600 hover:underline">⬇ Baixar QR Code</a>
               </div>
@@ -203,39 +209,41 @@ export default function AssetDetailPage() {
       </div>
 
       {/* Timeline do Equipamento */}
-      <div className="bg-white rounded-xl border border-slate-200 p-5 shadow-sm">
+      <div className="rounded-xl border p-5"
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="font-bold text-gray-900">Histórico do Equipamento</h2>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>Histórico do Equipamento</h2>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
               {executions.length} execuções · {workOrders.length} ordens de serviço
             </p>
           </div>
           {timeline.length === 0 && (
-            <span className="text-xs text-slate-400">Nenhum registro ainda</span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Nenhum registro ainda</span>
           )}
         </div>
 
         {timeline.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 gap-2">
             <span className="text-3xl">📭</span>
-            <p className="text-sm text-slate-400">Nenhum histórico registrado para este equipamento</p>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Nenhum histórico registrado para este equipamento</p>
           </div>
         ) : (
           <div className="relative">
             {/* Linha vertical */}
-            <div className="absolute left-4 top-0 bottom-0 w-px bg-slate-200" />
+            <div className="absolute left-4 top-0 bottom-0 w-px" style={{ background: 'var(--border)' }} />
 
             <div className="space-y-3">
               {visibleTimeline.map((ev) => {
                 const content = (
                   <div className={`ml-10 flex items-start gap-3 p-3.5 rounded-xl border transition-colors ${ev.href ? 'hover:shadow-sm cursor-pointer' : ''} ${ev.accent}`}>
-                    <div className="absolute left-2 w-5 h-5 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center text-xs">
+                    <div className="absolute left-2 w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center text-xs"
+                      style={{ background: 'var(--surface)' }}>
                       {ev.icon}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{ev.title}</p>
-                      <p className="text-xs text-slate-500 mt-0.5">{ev.sub}</p>
+                      <p className="text-sm font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{ev.title}</p>
+                      <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{ev.sub}</p>
                     </div>
                     <div className="flex flex-col items-end gap-1 flex-shrink-0">
                       {ev.status && <Badge value={ev.status} />}
@@ -244,7 +252,7 @@ export default function AssetDetailPage() {
                           {ev.score}%
                         </span>
                       )}
-                      <p className="text-xs text-slate-400">{formatDateTime(ev.date)}</p>
+                      <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDateTime(ev.date)}</p>
                     </div>
                   </div>
                 );
@@ -272,11 +280,13 @@ export default function AssetDetailPage() {
       {/* Ações rápidas */}
       <div className="flex flex-wrap gap-3">
         <Link href="/dashboard/work-orders"
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+          className="text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+          style={{ background: 'var(--accent)' }}>
           + Abrir OS para este equipamento
         </Link>
         <Link href="/dashboard/checklists"
-          className="border border-slate-200 hover:bg-slate-50 text-slate-700 px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors">
+          className="border px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+          style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'transparent' }}>
           ✅ Executar Checklist
         </Link>
       </div>

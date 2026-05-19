@@ -56,16 +56,16 @@ export default function ExecutionDetailPage() {
 
       {/* Cabeçalho */}
       <div className="flex items-start gap-4">
-        <button onClick={() => router.back()} className="text-slate-400 hover:text-slate-700 mt-1 transition-colors">
+        <button onClick={() => router.back()} className="mt-1 transition-colors" style={{ color: 'var(--text-muted)' }}>
           ← Voltar
         </button>
         <div className="flex-1">
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <Badge value={execution.status} />
-            <span className="text-xs text-slate-400">{TYPE_LABELS[execution.checklist.type] ?? execution.checklist.type}</span>
+            <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{TYPE_LABELS[execution.checklist.type] ?? execution.checklist.type}</span>
           </div>
-          <h1 className="text-2xl font-extrabold text-gray-900">{execution.checklist.name}</h1>
-          <div className="flex flex-wrap gap-4 mt-2 text-sm text-slate-500">
+          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>{execution.checklist.name}</h1>
+          <div className="flex flex-wrap gap-4 mt-2 text-sm" style={{ color: 'var(--text-muted)' }}>
             <span>👤 {execution.user.name}</span>
             {execution.asset && <span>🏗️ {execution.asset.name}</span>}
             {execution.completedAt && <span>📅 {formatDateTime(execution.completedAt)}</span>}
@@ -75,21 +75,25 @@ export default function ExecutionDetailPage() {
 
       {/* KPIs */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
+        <div className="rounded-xl border p-4 text-center"
+          style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
           <p className={`text-3xl font-extrabold ${score >= 80 ? 'text-green-600' : score >= 60 ? 'text-amber-500' : 'text-red-600'}`}>{score}%</p>
-          <p className="text-xs text-slate-500 mt-1">Conformidade</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Conformidade</p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
+        <div className="rounded-xl border p-4 text-center"
+          style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
           <p className="text-3xl font-extrabold text-green-600">{okCount}</p>
-          <p className="text-xs text-slate-500 mt-1">Conformes</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Conformes</p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
+        <div className="rounded-xl border p-4 text-center"
+          style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
           <p className="text-3xl font-extrabold text-red-600">{nokCount}</p>
-          <p className="text-xs text-slate-500 mt-1">Não Conformes</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Não Conformes</p>
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 p-4 text-center">
-          <p className="text-3xl font-extrabold text-slate-700">{photosAll.length}</p>
-          <p className="text-xs text-slate-500 mt-1">Foto(s)</p>
+        <div className="rounded-xl border p-4 text-center"
+          style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+          <p className="text-3xl font-extrabold" style={{ color: 'var(--text-secondary)' }}>{photosAll.length}</p>
+          <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>Foto(s)</p>
         </div>
       </div>
 
@@ -103,9 +107,11 @@ export default function ExecutionDetailPage() {
 
       {/* Assinatura digital */}
       {execution.signatureUrl && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 className="text-sm font-semibold text-slate-700 mb-3">✍️ Assinatura do Responsável</h2>
-          <div className="bg-slate-50 rounded-xl border border-slate-100 p-4 flex items-center justify-center min-h-[120px]">
+        <div className="rounded-xl border p-5"
+          style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+          <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>✍️ Assinatura do Responsável</h2>
+          <div className="rounded-xl border p-4 flex items-center justify-center min-h-[120px]"
+            style={{ background: 'var(--surface-2)', borderColor: 'var(--border)' }}>
             <img
               src={execution.signatureUrl}
               alt="Assinatura digital"
@@ -113,21 +119,23 @@ export default function ExecutionDetailPage() {
               onClick={() => setLightbox(execution.signatureUrl!)}
             />
           </div>
-          <p className="text-xs text-slate-400 mt-2">Assinatura de {execution.user.name} — {formatDateTime(execution.completedAt ?? execution.createdAt)}</p>
+          <p className="text-xs mt-2" style={{ color: 'var(--text-muted)' }}>Assinatura de {execution.user.name} — {formatDateTime(execution.completedAt ?? execution.createdAt)}</p>
         </div>
       )}
 
       {/* Galeria de fotos */}
       {photosAll.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 p-5">
-          <h2 className="text-sm font-semibold text-slate-700 mb-3">📷 Fotos capturadas ({photosAll.length})</h2>
+        <div className="rounded-xl border p-5"
+          style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+          <h2 className="text-sm font-semibold mb-3" style={{ color: 'var(--text-secondary)' }}>📷 Fotos capturadas ({photosAll.length})</h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {photosAll.map((p, idx) => (
               <div key={idx} className="group relative">
                 <img
                   src={p.url}
                   alt={p.question}
-                  className="w-full h-36 object-cover rounded-xl border border-slate-100 cursor-pointer group-hover:opacity-90 transition-opacity"
+                  className="w-full h-36 object-cover rounded-xl cursor-pointer group-hover:opacity-90 transition-opacity"
+                  style={{ border: '1px solid var(--border)' }}
                   onClick={() => setLightbox(p.url)}
                 />
                 <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent rounded-b-xl px-2 py-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -140,18 +148,20 @@ export default function ExecutionDetailPage() {
       )}
 
       {/* Tabela de itens */}
-      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-        <div className="px-5 py-4 border-b border-slate-100">
-          <h2 className="text-sm font-semibold text-slate-700">📋 Respostas por item ({sortedItems.length} itens)</h2>
+      <div className="rounded-xl border overflow-hidden"
+        style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+        <div className="px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
+          <h2 className="text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>📋 Respostas por item ({sortedItems.length} itens)</h2>
         </div>
-        <div className="divide-y divide-slate-100">
+        <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
           {sortedItems.map((item) => {
             const resp = itemsMap[item.id];
             const answered = resp?.answer !== null && resp?.answer !== undefined;
             const isConform = answered && resp.answer === item.expectedAnswer;
             const isNonConform = answered && resp.answer !== item.expectedAnswer;
             return (
-              <div key={item.id} className={`px-5 py-4 flex gap-4 ${isNonConform ? 'bg-red-50/40' : ''}`}>
+              <div key={item.id} className={`px-5 py-4 flex gap-4 ${isNonConform ? 'bg-red-50/40' : ''}`}
+                style={{ borderColor: 'var(--border)' }}>
                 {/* Ícone de status */}
                 <div className="flex-shrink-0 mt-0.5">
                   {!answered ? (
@@ -165,20 +175,20 @@ export default function ExecutionDetailPage() {
 
                 {/* Conteúdo */}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">{item.question}</p>
+                  <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{item.question}</p>
 
                   {resp?.notes && (
-                    <p className="text-xs text-slate-500 mt-1 bg-slate-50 rounded-lg px-2 py-1">
+                    <p className="text-xs mt-1 rounded-lg px-2 py-1" style={{ color: 'var(--text-muted)', background: 'var(--surface-2)' }}>
                       📝 {resp.notes}
                     </p>
                   )}
 
                   <div className="flex flex-wrap gap-2 mt-1">
                     {item.requiresPhoto && (
-                      <span className="text-xs text-slate-400">📷 Exige foto</span>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>📷 Exige foto</span>
                     )}
                     {item.requiresNote && (
-                      <span className="text-xs text-slate-400">📝 Exige nota</span>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>📝 Exige nota</span>
                     )}
                   </div>
                 </div>
@@ -189,7 +199,8 @@ export default function ExecutionDetailPage() {
                     <img
                       src={resp.photoUrl}
                       alt={item.question}
-                      className="w-16 h-16 object-cover rounded-lg border border-slate-200 cursor-pointer hover:opacity-80 transition-opacity"
+                      className="w-16 h-16 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                      style={{ border: '1px solid var(--border)' }}
                       onClick={() => setLightbox(resp.photoUrl!)}
                     />
                   </div>
@@ -198,7 +209,7 @@ export default function ExecutionDetailPage() {
                 {/* Resposta + status */}
                 <div className="flex-shrink-0 text-right space-y-1">
                   {!answered ? (
-                    <span className="text-xs text-slate-400">—</span>
+                    <span className="text-xs" style={{ color: 'var(--text-muted)' }}>—</span>
                   ) : (
                     <>
                       <span className={`block text-xs font-bold px-2 py-0.5 rounded-full ${
@@ -207,7 +218,7 @@ export default function ExecutionDetailPage() {
                       <span className={`block text-xs font-bold px-2 py-0.5 rounded-full ${
                         isConform ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
                       }`}>{isConform ? '✅ Conforme' : '❌ Não Conforme'}</span>
-                      <span className="block text-xs text-slate-400">Esp: {item.expectedAnswer ? 'SIM' : 'NÃO'}</span>
+                      <span className="block text-xs" style={{ color: 'var(--text-muted)' }}>Esp: {item.expectedAnswer ? 'SIM' : 'NÃO'}</span>
                     </>
                   )}
                 </div>

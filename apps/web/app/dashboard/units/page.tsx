@@ -59,20 +59,22 @@ export default function UnitsPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold text-gray-900">Condomínios</h1>
-          <p className="text-sm text-slate-500">{total} unidades cadastradas</p>
+          <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Condomínios</h1>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{total} unidades cadastradas</p>
         </div>
         {canCreate && (
           <button onClick={() => setCreating(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+            className="text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
+            style={{ background: 'var(--accent)' }}>
             + Novo Condomínio
           </button>
         )}
       </div>
 
-      <div className="bg-white rounded-xl border border-slate-200 p-4">
+      <div className="rounded-xl border p-4" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
         <input
-          className="w-full max-w-md border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          className="w-full max-w-md rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           placeholder="Buscar por nome ou código..."
           value={search} onChange={(e) => setSearch(e.target.value)}
         />
@@ -85,21 +87,22 @@ export default function UnitsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {units.length === 0 && (
-            <div className="col-span-full bg-white rounded-xl border border-slate-200 p-16 text-center">
+            <div className="col-span-full rounded-xl border p-16 text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
               <p className="text-4xl mb-3">🏢</p>
-              <p className="text-lg font-semibold text-slate-700">Nenhum condomínio encontrado</p>
+              <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>Nenhum condomínio encontrado</p>
             </div>
           )}
           {units.map((unit) => (
-            <div key={unit.id} className="bg-white rounded-xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow p-5 flex flex-col gap-4">
+            <div key={unit.id} className="rounded-xl border hover:shadow-md transition-shadow p-5 flex flex-col gap-4"
+              style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
                     <span className="text-xl">🏢</span>
                   </div>
                   <div>
-                    <h3 className="font-bold text-gray-900">{unit.name}</h3>
-                    {unit.code && <p className="text-xs font-mono text-slate-400">{unit.code}</p>}
+                    <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>{unit.name}</h3>
+                    {unit.code && <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{unit.code}</p>}
                   </div>
                 </div>
                 <span className={`text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0 ${unit.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
@@ -108,10 +111,10 @@ export default function UnitsPage() {
               </div>
 
               {unit.address && (
-                <p className="text-sm text-slate-500 line-clamp-1">📍 {unit.address}</p>
+                <p className="text-sm line-clamp-1" style={{ color: 'var(--text-muted)' }}>📍 {unit.address}</p>
               )}
 
-              <div className="flex items-center gap-4 text-xs text-slate-500">
+              <div className="flex items-center gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
                 <span>🏗️ {unit._count?.assets ?? 0} equipamentos</span>
                 <span>📋 {unit._count?.checklists ?? 0} checklists</span>
                 {(unit._count?.workOrders ?? 0) > 0 && (
@@ -122,7 +125,7 @@ export default function UnitsPage() {
               {/* Responsáveis */}
               <div>
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-xs font-semibold text-slate-600">👤 Responsáveis</p>
+                  <p className="text-xs font-semibold" style={{ color: 'var(--text-secondary)' }}>👤 Responsáveis</p>
                   {canCreate && (
                     <button onClick={() => setAssigning(unit)}
                       className="text-xs text-blue-600 hover:text-blue-800 font-semibold">
@@ -131,18 +134,19 @@ export default function UnitsPage() {
                   )}
                 </div>
                 {(unit.users ?? []).length === 0 ? (
-                  <p className="text-xs text-slate-400 italic">Nenhum responsável atribuído</p>
+                  <p className="text-xs italic" style={{ color: 'var(--text-muted)' }}>Nenhum responsável atribuído</p>
                 ) : (
                   <div className="flex flex-col gap-1.5">
                     {unit.users.map((u) => (
-                      <div key={u.id} className="flex items-center justify-between gap-2 bg-slate-50 rounded-lg px-3 py-1.5">
+                      <div key={u.id} className="flex items-center justify-between gap-2 rounded-lg px-3 py-1.5"
+                        style={{ background: 'var(--surface-2)' }}>
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center flex-shrink-0">
                             <span className="text-white text-xs font-bold">{u.name[0]}</span>
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold text-gray-800 truncate">{u.name}</p>
-                            <p className="text-xs text-slate-400 truncate">{u.email}</p>
+                            <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>{u.name}</p>
+                            <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{u.email}</p>
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -163,7 +167,10 @@ export default function UnitsPage() {
 
               {canCreate && (
                 <button onClick={() => setEditing(unit)}
-                  className="w-full border border-slate-200 hover:bg-slate-50 text-sm font-semibold text-slate-600 py-2 rounded-xl transition-colors">
+                  className="w-full border text-sm font-semibold py-2 rounded-xl transition-colors"
+                  style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'transparent' }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-2)')}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                   ✏️ Editar
                 </button>
               )}
@@ -221,29 +228,38 @@ function UnitForm({ unit, onSuccess }: { unit?: Unit; onSuccess: () => void }) {
   return (
     <form onSubmit={submit} className="space-y-4">
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Nome *</label>
-        <input required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Nome *</label>
+        <input required
+          className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           value={form.name} onChange={f('name')} placeholder="ex: Condomínio Jardim das Flores" />
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs font-semibold text-slate-600 mb-1">Código</label>
-          <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Código</label>
+          <input
+            className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
             value={form.code} onChange={f('code')} placeholder="ex: COND-003" />
         </div>
       </div>
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Endereço</label>
-        <input className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Endereço</label>
+        <input
+          className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           value={form.address} onChange={f('address')} placeholder="Rua, número, bairro, cidade" />
       </div>
       <div>
-        <label className="block text-xs font-semibold text-slate-600 mb-1">Descrição</label>
-        <textarea className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none" rows={3}
+        <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Descrição</label>
+        <textarea
+          className="w-full rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none" rows={3}
+          style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
           value={form.description} onChange={f('description')} placeholder="Informações adicionais..." />
       </div>
       <button type="submit" disabled={saving}
-        className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm">
+        className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+        style={{ background: 'var(--accent)' }}>
         {saving ? 'Salvando...' : unit ? 'Salvar alterações' : 'Criar Condomínio'}
       </button>
     </form>
@@ -294,10 +310,13 @@ function AssignUserForm({ unit, allUsers, onSuccess }: {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-1 bg-slate-100 rounded-xl p-1">
+      <div className="flex gap-1 rounded-xl p-1" style={{ background: 'var(--surface-2)' }}>
         {(['existing', 'new'] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)}
-            className={`flex-1 py-2 rounded-lg text-sm font-semibold transition-colors ${tab === t ? 'bg-white shadow-sm text-gray-900' : 'text-slate-500 hover:text-gray-700'}`}>
+            className="flex-1 py-2 rounded-lg text-sm font-semibold transition-colors"
+            style={tab === t
+              ? { background: 'var(--surface)', boxShadow: 'var(--shadow-sm)', color: 'var(--text-primary)' }
+              : { color: 'var(--text-muted)' }}>
             {t === 'existing' ? '👤 Existente' : '➕ Criar novo'}
           </button>
         ))}
@@ -306,12 +325,14 @@ function AssignUserForm({ unit, allUsers, onSuccess }: {
       {tab === 'existing' ? (
         <form onSubmit={assignExisting} className="space-y-4">
           {available.length === 0 ? (
-            <div className="text-center py-6 text-slate-400 text-sm">Todos os usuários já estão atribuídos.</div>
+            <div className="text-center py-6 text-sm" style={{ color: 'var(--text-muted)' }}>Todos os usuários já estão atribuídos.</div>
           ) : (
             <>
               <div>
-                <label className="block text-xs font-semibold text-slate-600 mb-1">Usuário *</label>
-                <select required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+                <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Usuário *</label>
+                <select required
+                  className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                   value={selectedId} onChange={(e) => setSelectedId(e.target.value)}>
                   <option value="">Selecione...</option>
                   {available.map((u) => (
@@ -322,7 +343,8 @@ function AssignUserForm({ unit, allUsers, onSuccess }: {
                 </select>
               </div>
               <button type="submit" disabled={saving || !selectedId}
-                className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm">
+                className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
+                style={{ background: 'var(--accent)' }}>
                 {saving ? 'Atribuindo...' : '✓ Atribuir como responsável'}
               </button>
             </>
@@ -334,24 +356,32 @@ function AssignUserForm({ unit, allUsers, onSuccess }: {
             Cria um novo usuário e já o atribui a este condomínio.
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">Nome *</label>
-            <input required className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Nome *</label>
+            <input required
+              className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
               value={newUser.name} onChange={nu('name')} placeholder="ex: João Silva" />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-600 mb-1">E-mail *</label>
-            <input required type="email" className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>E-mail *</label>
+            <input required type="email"
+              className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
               value={newUser.email} onChange={nu('email')} placeholder="joao@condominio.com.br" />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Senha *</label>
-              <input required type="password" minLength={6} className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Senha *</label>
+              <input required type="password" minLength={6}
+                className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                 value={newUser.password} onChange={nu('password')} placeholder="mín. 6 caracteres" />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-600 mb-1">Função</label>
-              <select className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none"
+              <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Função</label>
+              <select
+                className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                 value={newUser.role} onChange={nu('role')}>
                 <option value="TECNICO">Técnico / Zelador</option>
                 <option value="GESTOR">Gestor</option>
