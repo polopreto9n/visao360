@@ -10,6 +10,7 @@ import { api } from '../../../lib/api';
 interface Incident {
   id: string; title: string; description: string; severity: string; status: string;
   createdAt: string; resolvedAt: string | null;
+  photoUrls: string[];
   unit: { id: string; name: string };
   reporter: { id: string; name: string };
 }
@@ -37,6 +38,8 @@ export default function IncidentsPage() {
   const [sevFilter, setSevFilter] = useState('');
   const [creating, setCreating] = useState(false);
   const [selected, setSelected] = useState<Incident | null>(null);
+  const [detail, setDetail] = useState<Incident | null>(null);
+  const [lightbox, setLightbox] = useState<string | null>(null);
   const user = getUser();
 
   const load = useCallback(async () => {
@@ -60,6 +63,7 @@ export default function IncidentsPage() {
       await api.patch(`/incidents/${incident.id}/status`, { status });
       load();
       setSelected(null);
+      setDetail(null);
     } catch (e: unknown) {
       alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro');
     }
@@ -75,6 +79,61 @@ export default function IncidentsPage() {
 
   return (
     <div className="space-y-5">
+      {/* Lightbox */}
+      {lightbox && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="Foto ampliada" className="max-w-full max-h-full rounded-xl object-contain" />
+        </div>
+      )}
+
+      {/* Modal detalhe da ocorrência */}
+      <Modal open={!!detail} onClose={() => setDetail(null)} title="Detalhes da Ocorrência" size="md">
+        {detail && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap gap-2 items-center">
+              <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${SEV_COLORS[detail.severity] ?? ''}`}>{SEV_LABELS[detail.severity] ?? detail.severity}</span>
+              <Badge value={detail.status} />
+            </div>
+            <div>
+              <h3 className="font-bold text-gray-900 text-lg">{detail.title}</h3>
+              <p className="text-sm text-slate-600 mt-1">{detail.description}</p>
+            </div>
+            <div className="flex flex-wrap gap-4 text-xs text-slate-400">
+              <span>🏢 {detail.unit.name}</span>
+              <span>👤 {detail.reporter.name}</span>
+              <span>📅 {formatDateTime(detail.createdAt)}</span>
+              {detail.resolvedAt && <span>✅ Resolvido em {formatDateTime(detail.resolvedAt)}</span>}
+            </div>
+            {detail.photoUrls?.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-500 mb-2">📷 Fotos ({detail.photoUrls.length})</p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {detail.photoUrls.map((url, idx) => (
+                    <img
+                      key={idx}
+                      src={url}
+                      alt={`Foto ${idx + 1}`}
+                      className="w-full h-32 object-cover rounded-xl border border-slate-100 cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => setLightbox(url)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            {(STATUS_TRANSITIONS[detail.status] ?? []).length > 0 && (
+              <div className="flex gap-2 pt-2 border-t border-slate-100">
+                {(STATUS_TRANSITIONS[detail.status] ?? []).map((t) => (
+                  <button key={t.status} onClick={() => handleStatus(detail, t.status)}
+                    className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 rounded-lg transition-colors">
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </Modal>
+
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900">Ocorrências</h1>
@@ -109,7 +168,7 @@ export default function IncidentsPage() {
           {incidents.map((inc) => {
             const transitions = STATUS_TRANSITIONS[inc.status] ?? [];
             return (
-              <div key={inc.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+              <div key={inc.id} className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 cursor-pointer hover:border-slate-300 transition-colors" onClick={() => setDetail(inc)}>
                 <div className="flex flex-col sm:flex-row sm:items-start gap-4">
                   <div className="flex-1 min-w-0">
                     <div className="flex flex-wrap items-center gap-2 mb-2">
@@ -117,6 +176,9 @@ export default function IncidentsPage() {
                         {SEV_LABELS[inc.severity] ?? inc.severity}
                       </span>
                       <Badge value={inc.status} />
+                      {inc.photoUrls?.length > 0 && (
+                        <span className="text-xs text-slate-400">📷 {inc.photoUrls.length} foto(s)</span>
+                      )}
                     </div>
                     <h3 className="font-bold text-gray-900">{inc.title}</h3>
                     <p className="text-sm text-slate-500 mt-1 line-clamp-2">{inc.description}</p>
@@ -128,7 +190,7 @@ export default function IncidentsPage() {
                     </div>
                   </div>
                   {transitions.length > 0 && (
-                    <div className="flex gap-2 flex-shrink-0">
+                    <div className="flex gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
                       {transitions.map((t) => (
                         <button key={t.status} onClick={() => handleStatus(inc, t.status)}
                           className="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-xs font-semibold text-slate-700 rounded-lg transition-colors">

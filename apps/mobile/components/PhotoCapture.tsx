@@ -72,12 +72,12 @@ export function PhotoCapture({
     try {
       const url = await uploadApi.uploadPhoto(uri, 'executions');
       onPhotosChange([...photos, url]);
-    } catch {
-      // Offline: usar URI local como placeholder
-      onPhotosChange([...photos, uri]);
+    } catch (err: unknown) {
+      const msg =
+        err instanceof Error ? err.message : 'Erro desconhecido';
       Alert.alert(
-        'Foto salva localmente',
-        'Sem conexão. A foto será enviada ao servidor quando reconectar.',
+        'Falha no envio',
+        `Não foi possível enviar a foto. Verifique a conexão e tente novamente.\n\nDetalhe: ${msg}`,
         [{ text: 'OK' }],
       );
     } finally {
