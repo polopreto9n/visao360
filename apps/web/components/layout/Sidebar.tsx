@@ -105,29 +105,29 @@ export function Sidebar({ mobile, onClose }: { mobile?: boolean; onClose?: () =>
             </Link>
           );
         })}
-      </nav>
 
-      {/* Theme Picker */}
-      <div className="px-3 pb-3 flex-shrink-0" style={{ borderTop: '1px solid var(--sidebar-border)', paddingTop: '12px' }}>
-        <p className="text-[10px] font-semibold uppercase tracking-widest mb-2 px-1" style={{ color: 'var(--sidebar-text)' }}>
-          Tema
-        </p>
-        <div className="flex gap-1.5">
-          {THEMES.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTheme(t)}
-              title={THEME_LABELS[t].name}
-              className="flex-1 h-6 rounded-md transition-all duration-150 border-2"
-              style={{
-                background: THEME_LABELS[t].preview,
-                borderColor: theme === t ? 'var(--accent)' : 'transparent',
-                opacity: theme === t ? 1 : 0.4,
-              }}
-            />
-          ))}
+        {/* Theme Picker */}
+        <div className="mt-3 pt-3" style={{ borderTop: '1px solid var(--sidebar-border)' }}>
+          <p className="text-[10px] font-semibold uppercase tracking-widest mb-2 px-1" style={{ color: 'var(--sidebar-text)' }}>
+            Tema
+          </p>
+          <div className="flex gap-1.5 px-1">
+            {THEMES.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTheme(t)}
+                title={THEME_LABELS[t].name}
+                className="flex-1 h-6 rounded-md transition-all duration-150 border-2"
+                style={{
+                  background: THEME_LABELS[t].preview,
+                  borderColor: theme === t ? 'var(--accent)' : 'transparent',
+                  opacity: theme === t ? 1 : 0.45,
+                }}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      </nav>
 
       {/* User */}
       <div className="p-3 flex-shrink-0" style={{ borderTop: '1px solid var(--sidebar-border)' }}>
