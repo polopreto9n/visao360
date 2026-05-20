@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { IncidentsService } from './incidents.service';
 import { CreateIncidentDto } from './dto/create-incident.dto';
@@ -38,5 +38,11 @@ export class IncidentsController {
   @ApiOperation({ summary: 'Atualizar status do incidente' })
   updateStatus(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser, @Body() dto: UpdateIncidentStatusDto) {
     return this.svc.updateStatus(id, u.companyId, dto);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Remover ocorrência (ADMIN/OWNER)' })
+  remove(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
+    return this.svc.remove(id, u.companyId, u.role);
   }
 }

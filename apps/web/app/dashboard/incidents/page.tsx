@@ -41,6 +41,7 @@ export default function IncidentsPage() {
   const [detail, setDetail] = useState<Incident | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const user = getUser();
+  const canDelete = user?.role === 'OWNER' || user?.role === 'ADMIN';
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -57,6 +58,17 @@ export default function IncidentsPage() {
   useEffect(() => {
     unitsApi.list().then((r) => setUnits(r.data.data)).catch(() => {});
   }, []);
+
+  async function handleDelete(incident: Incident) {
+    if (!confirm(`Excluir a ocorrência "${incident.title}"? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await api.delete(`/incidents/${incident.id}`);
+      load();
+      setDetail(null);
+    } catch (e: unknown) {
+      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir');
+    }
+  }
 
   async function handleStatus(incident: Incident, status: string) {
     try {
@@ -121,17 +133,22 @@ export default function IncidentsPage() {
                 </div>
               </div>
             )}
-            {(STATUS_TRANSITIONS[detail.status] ?? []).length > 0 && (
-              <div className="flex gap-2 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
-                {(STATUS_TRANSITIONS[detail.status] ?? []).map((t) => (
-                  <button key={t.status} onClick={() => handleStatus(detail, t.status)}
-                    className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
-                    style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)', background: 'var(--surface)' }}>
-                    {t.label}
-                  </button>
-                ))}
-              </div>
-            )}
+            <div className="flex items-center gap-2 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
+              {(STATUS_TRANSITIONS[detail.status] ?? []).map((t) => (
+                <button key={t.status} onClick={() => handleStatus(detail, t.status)}
+                  className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
+                  style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)', background: 'var(--surface)' }}>
+                  {t.label}
+                </button>
+              ))}
+              {canDelete && (
+                <button onClick={() => handleDelete(detail)}
+                  className="ml-auto px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors text-red-600 hover:bg-red-50"
+                  style={{ border: '1px solid #fca5a5' }}>
+                  🗑 Excluir
+                </button>
+              )}
+            </div>
           </div>
         )}
       </Modal>

@@ -110,6 +110,15 @@ export class IncidentsService {
     return incident;
   }
 
+  async remove(id: string, companyId: string, role: string) {
+    if (!['OWNER', 'ADMIN'].includes(role)) {
+      throw new BadRequestException('Apenas ADMIN ou OWNER podem excluir ocorrências');
+    }
+    const incident = await this.findOne(id, companyId);
+    await this.prisma.incident.delete({ where: { id: incident.id } });
+    return { success: true };
+  }
+
   async updateStatus(id: string, companyId: string, dto: UpdateIncidentStatusDto) {
     const incident = await this.findOne(id, companyId);
 
