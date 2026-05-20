@@ -67,6 +67,25 @@ export function Sidebar({ mobile, onClose }: { mobile?: boolean; onClose?: () =>
         )}
       </div>
 
+      {/* Theme Picker */}
+      <div className="px-4 py-2.5 flex items-center gap-2 flex-shrink-0"
+        style={{ borderBottom: '1px solid var(--sidebar-border)' }}>
+        <span className="text-[10px] font-semibold uppercase tracking-widest flex-shrink-0"
+          style={{ color: 'var(--sidebar-text)' }}>Tema</span>
+        <div className="flex gap-1.5 flex-1">
+          {THEMES.map((t) => (
+            <button key={t} onClick={() => setTheme(t)} title={THEME_LABELS[t].name}
+              className="flex-1 h-4 rounded transition-all duration-150 border-2"
+              style={{
+                background: THEME_LABELS[t].preview,
+                borderColor: theme === t ? 'var(--accent)' : 'transparent',
+                opacity: theme === t ? 1 : 0.45,
+              }}
+            />
+          ))}
+        </div>
+      </div>
+
       {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto scrollbar-hide">
         {filtered.map((item) => {
@@ -107,19 +126,6 @@ export function Sidebar({ mobile, onClose }: { mobile?: boolean; onClose?: () =>
         })}
 
       </nav>
-
-      {/* Theme Picker */}
-      <div className="px-3 py-3 flex-shrink-0" style={{ borderTop: '1px solid var(--sidebar-border)' }}>
-        <p className="text-[10px] font-semibold uppercase tracking-widest mb-2" style={{ color: 'var(--sidebar-text)' }}>Tema</p>
-        <div className="flex gap-1.5">
-          {THEMES.map((t) => (
-            <button key={t} onClick={() => setTheme(t)} title={THEME_LABELS[t].name}
-              className="flex-1 h-5 rounded transition-all duration-150 border-2"
-              style={{ background: THEME_LABELS[t].preview, borderColor: theme === t ? 'var(--accent)' : 'transparent', opacity: theme === t ? 1 : 0.4 }}
-            />
-          ))}
-        </div>
-      </div>
 
       {/* User */}
       <div className="p-3 flex-shrink-0" style={{ borderTop: '1px solid var(--sidebar-border)' }}>
