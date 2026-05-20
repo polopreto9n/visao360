@@ -108,7 +108,7 @@ export function Sidebar({ mobile, onClose }: { mobile?: boolean; onClose?: () =>
       </nav>
 
       {/* Theme Picker */}
-      <div className="px-3 pb-3" style={{ borderTop: '1px solid var(--sidebar-border)', paddingTop: '12px' }}>
+      <div className="px-3 pb-3 flex-shrink-0" style={{ borderTop: '1px solid var(--sidebar-border)', paddingTop: '12px' }}>
         <p className="text-[10px] font-semibold uppercase tracking-widest mb-2 px-1" style={{ color: 'var(--sidebar-text)' }}>
           Tema
         </p>
