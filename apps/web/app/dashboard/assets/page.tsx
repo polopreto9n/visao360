@@ -36,6 +36,17 @@ export default function AssetsPage() {
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const user = getUser();
   const canCreate = canManage(user?.role ?? '');
+  const canDelete = user?.role === 'OWNER' || user?.role === 'ADMIN';
+
+  async function handleDelete(asset: Asset) {
+    if (!confirm(`Excluir o equipamento "${asset.name}"? Esta ação não pode ser desfeita.`)) return;
+    try {
+      await assetsApi.remove(asset.id);
+      load();
+    } catch (e: unknown) {
+      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir');
+    }
+  }
 
   /** Baixa o QR Code como PNG usando a data URL base64 (evita problema de auth) */
   async function downloadQR(asset: Asset) {
@@ -216,6 +227,16 @@ export default function AssetsPage() {
                       title="Editar equipamento"
                     >
                       ✏️
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      onClick={() => handleDelete(asset)}
+                      className="px-3 text-xs font-semibold rounded-xl transition-colors hover:bg-red-50"
+                      style={{ border: '1px solid #fca5a5', color: '#dc2626', background: 'var(--surface)' }}
+                      title="Excluir equipamento"
+                    >
+                      🗑
                     </button>
                   )}
                 </div>

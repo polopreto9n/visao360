@@ -292,6 +292,7 @@ export const assetsApi = {
   update: (id: string, data: Record<string, unknown>) => api.patch<Asset>(`/assets/${id}`, data),
   qrData: (id: string) => api.get<{ qrCode: string; qrData: string; dataUrl: string }>(`/assets/${id}/qr-data`),
   qrImageUrl: (id: string) => `${API_URL}/assets/${id}/qr-image`,
+  remove: (id: string) => api.delete(`/assets/${id}`),
 };
 
 export const checklistsApi = {
