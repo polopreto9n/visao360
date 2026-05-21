@@ -4,7 +4,7 @@ dockerfilePath = "apps/web/Dockerfile"
 buildArgs = { NEXT_PUBLIC_API_URL = "https://visao360-api-production.up.railway.app/api/v1" }
 
 [deploy]
-startCommand = "node server.js"
+startCommand = "node apps/web/server.js"
 healthcheckPath = "/"
 healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"

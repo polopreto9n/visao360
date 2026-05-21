@@ -11,14 +11,15 @@ WORKDIR /app
 
 # Copiar apenas manifests para cache de camada de dependências
 COPY package*.json ./
-COPY turbo.json ./
 COPY tsconfig.base.json ./
 COPY packages/database/package.json ./packages/database/
 COPY packages/shared/package.json   ./packages/shared/
-COPY packages/ui/package.json       ./packages/ui/
 COPY apps/api/package.json          ./apps/api/
 
-RUN npm install --legacy-peer-deps --prefer-offline
+RUN npm ci --legacy-peer-deps --prefer-offline \
+    --workspace=@visao360/api \
+    --workspace=@visao360/database \
+    --workspace=@visao360/shared
 
 # ── Stage 2: Builder ───────────────────────────────────────────────────────────
 FROM deps AS builder
@@ -29,7 +30,26 @@ COPY apps/api/ ./apps/api/
 RUN npx prisma generate --schema=packages/database/prisma/schema.prisma && \
     cd apps/api && npx nest build
 
-# ── Stage 3: Production ────────────────────────────────────────────────────────
+# Stage 3: Production dependencies
+FROM node:20-slim AS production-deps
+
+RUN apt-get update && apt-get install -y --no-install-recommends openssl && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY package*.json ./
+COPY packages/database/package.json ./packages/database/
+COPY packages/shared/package.json   ./packages/shared/
+COPY apps/api/package.json          ./apps/api/
+
+RUN npm ci --omit=dev --legacy-peer-deps --prefer-offline \
+    --workspace=@visao360/api \
+    --workspace=@visao360/database \
+    --workspace=@visao360/shared
+
+# Stage 4: Production
 FROM node:20-slim AS production
 
 RUN apt-get update && apt-get install -y --no-install-recommends openssl curl && \
@@ -45,7 +65,7 @@ ENV PORT=3001
 
 # Copiar artefatos de build (apenas o necessário para runtime)
 COPY --from=builder --chown=nestjs:nodejs /app/apps/api/dist          ./dist
-COPY --from=builder --chown=nestjs:nodejs /app/node_modules           ./node_modules
+COPY --from=production-deps --chown=nestjs:nodejs /app/node_modules   ./node_modules
 # Prisma schema + migrations — necessários para prisma migrate deploy
 COPY --from=builder --chown=nestjs:nodejs /app/packages/database/prisma ./prisma
 # Prisma client gerado

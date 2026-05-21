@@ -17,6 +17,7 @@
     "@radix-ui/react-select": "^2.0.0",
     "@radix-ui/react-separator": "^1.0.3",
     "@radix-ui/react-toast": "^1.1.5",
+    "@supabase/supabase-js": "^2.105.4",
     "@visao360/shared": "*",
     "@visao360/ui": "*",
     "axios": "^1.7.2",

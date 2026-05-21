@@ -3,12 +3,14 @@ FROM node:20-slim AS deps
 
 WORKDIR /app
 COPY package*.json ./
-COPY turbo.json ./
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/ui/package.json ./packages/ui/
 COPY apps/web/package.json ./apps/web/
 
-RUN npm install --legacy-peer-deps
+RUN npm ci --legacy-peer-deps \
+    --workspace=@visao360/web \
+    --workspace=@visao360/shared \
+    --workspace=@visao360/ui
 
 # ── Stage 2: Builder ──────────────────────────────────────────────────────────
 FROM node:20-slim AS builder
