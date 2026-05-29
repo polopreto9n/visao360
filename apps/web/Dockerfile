@@ -53,6 +53,8 @@ WORKDIR /app
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/standalone ./
 # Static files: devem ficar em apps/web/.next/static/ (relativo ao server.js)
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./apps/web/.next/static
+# O server standalone pode resolver /_next/static a partir de /app em alguns hosts.
+COPY --from=builder --chown=nextjs:nodejs /app/apps/web/.next/static ./.next/static
 # Public: relativo ao server.js
 COPY --from=builder --chown=nextjs:nodejs /app/apps/web/public ./apps/web/public
 

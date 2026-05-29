@@ -1,3 +1,26 @@
+function getApiConnectOrigins() {
+  const origins = new Set();
+
+  if (process.env.NEXT_PUBLIC_API_URL) {
+    try {
+      origins.add(new URL(process.env.NEXT_PUBLIC_API_URL).origin);
+    } catch {
+      // Ignore malformed local overrides and keep the CSP valid.
+    }
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    origins.add('http://localhost:3001');
+    origins.add('http://127.0.0.1:3001');
+  }
+
+  return [...origins].join(' ');
+}
+
+function shouldUpgradeInsecureRequests() {
+  return process.env.NEXTAUTH_URL?.startsWith('https://') ?? false;
+}
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: 'standalone',
@@ -32,10 +55,10 @@ const nextConfig = {
               "font-src 'self'",
               // Usa apenas a origin (sem path) — CSP sem trailing slash faz match exato
               // https://example.com/api/v1 bloquearia /api/v1/auth/login (path diferente)
-              `connect-src 'self' ${(() => { try { return process.env.NEXT_PUBLIC_API_URL ? new URL(process.env.NEXT_PUBLIC_API_URL).origin : ''; } catch { return ''; } })()} https://*.supabase.co wss://*.supabase.co`,
+              `connect-src 'self' ${getApiConnectOrigins()} https://*.supabase.co wss://*.supabase.co`,
               "form-action 'self'",
               "frame-ancestors 'none'",
-              process.env.NODE_ENV === 'production' ? 'upgrade-insecure-requests' : '',
+              shouldUpgradeInsecureRequests() ? 'upgrade-insecure-requests' : '',
             ]
               .filter(Boolean)
               .join('; '),
