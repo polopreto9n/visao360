@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "367151128007",
+    "project_id": "visao360-c1734",
+    "storage_bucket": "visao360-c1734.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:367151128007:android:4ac57a785ad0ab7537cde2",
+        "android_client_info": {
+          "package_name": "com.visao360.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCR8QVuqUP2Nu7hGioQ-PZJVvQWCQBUt9k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

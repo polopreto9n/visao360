@@ -50,7 +50,7 @@ async function registerForPush() {
       await Notifications.setNotificationChannelAsync('visao360', {
         name: 'Visão360',
         description: 'Alertas de checklists, manutenções e ordens de serviço',
-        importance: Notifications.AndroidImportance.MAX,   // aparece na tela bloqueada
+        importance: Notifications.AndroidImportance.MAX,
         vibrationPattern: [0, 300, 200, 300],
         lightColor: '#2563eb',
         lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
@@ -62,20 +62,28 @@ async function registerForPush() {
 
     const { status: existing } = await Notifications.getPermissionsAsync();
     let finalStatus = existing;
+    console.log('[Push] Permission status:', existing);
 
     if (existing !== 'granted') {
       const { status } = await Notifications.requestPermissionsAsync();
       finalStatus = status;
     }
 
-    if (finalStatus !== 'granted') return;
+    if (finalStatus !== 'granted') {
+      console.log('[Push] Permission denied:', finalStatus);
+      return;
+    }
 
     const projectId = Constants.expoConfig?.extra?.eas?.projectId as string | undefined;
+    console.log('[Push] Getting token for projectId:', projectId);
+
     const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     const token = tokenData.data;
+    console.log('[Push] Token obtained:', token?.substring(0, 30));
 
-    await api.post('/push/register', { token, platform: Platform.OS });
-  } catch {
-    // Push não crítico — ignora falha silenciosamente
+    const response = await api.post('/push/register', { token, platform: Platform.OS });
+    console.log('[Push] Registered:', response.status);
+  } catch (err) {
+    console.error('[Push] Registration failed:', err instanceof Error ? err.message : String(err));
   }
 }

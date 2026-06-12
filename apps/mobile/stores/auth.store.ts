@@ -4,6 +4,7 @@ import { authApi, AuthUser, Company } from '../services/api';
 
 const TOKEN_KEY = 'visao360_token';
 const USER_KEY = 'visao360_user';
+const REFRESH_KEY = 'visao360_refresh';
 
 interface AuthState {
   token: string | null;
@@ -61,7 +62,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
       await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
       await SecureStore.setItemAsync(USER_KEY, JSON.stringify(user));
-      if (refreshToken) await SecureStore.setItemAsync('visao360_refresh', refreshToken);
+      if (refreshToken) await SecureStore.setItemAsync(REFRESH_KEY, refreshToken);
 
       set({ token: accessToken, user, isLoading: false });
     } catch (err: unknown) {
@@ -74,8 +75,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
-    await SecureStore.deleteItemAsync(TOKEN_KEY);
-    await SecureStore.deleteItemAsync(USER_KEY);
+    await Promise.all([
+      SecureStore.deleteItemAsync(TOKEN_KEY),
+      SecureStore.deleteItemAsync(USER_KEY),
+      SecureStore.deleteItemAsync(REFRESH_KEY),
+    ]);
     set({ token: null, user: null, companies: [] });
   },
 
