@@ -20,6 +20,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED=1
+# package-lock.json gerado com npm 11 (Windows) tem formato que o patcher de
+# lockfile do Next 14 (npm 10) nao consegue ler — pula o patch automatico.
+ENV NEXT_IGNORE_INCORRECT_LOCKFILE=1
 ARG NEXT_PUBLIC_API_URL=https://visao360-api-production.up.railway.app/api/v1
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 
