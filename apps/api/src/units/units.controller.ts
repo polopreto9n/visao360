@@ -28,13 +28,19 @@ export class UnitsController {
   @Get()
   @ApiOperation({ summary: 'Listar unidades' })
   findAll(@CurrentUser() u: AuthenticatedUser, @Query() q: PaginationDto) {
-    return this.svc.findAll(u.companyId, q);
+    return this.svc.findAll(u.companyId, q, u.id, u.role);
+  }
+
+  @Get('options')
+  @ApiOperation({ summary: 'Listar opções de condomínios disponíveis' })
+  findOptions(@CurrentUser() u: AuthenticatedUser) {
+    return this.svc.findOptions(u.companyId, u.id, u.role);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obter unidade por ID' })
   findOne(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
-    return this.svc.findOne(id, u.companyId);
+    return this.svc.findOne(id, u.companyId, u.id, u.role);
   }
 
   @Patch(':id')

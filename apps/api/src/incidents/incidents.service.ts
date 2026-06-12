@@ -1,9 +1,10 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { IncidentSeverity, IncidentStatus, NotificationType, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginationDto, paginated } from '../common/dto/pagination.dto';
 import { PushService } from '../push/push.service';
 import { NotificationsService } from '../notifications/notifications.service';
+import { UnitsService } from '../units/units.service';
 import { CreateIncidentDto } from './dto/create-incident.dto';
 import { UpdateIncidentStatusDto, INCIDENT_TRANSITIONS } from './dto/update-incident.dto';
 
@@ -22,11 +23,26 @@ export class IncidentsService {
     private readonly prisma: PrismaService,
     private readonly push: PushService,
     private readonly notifications: NotificationsService,
+    private readonly units: UnitsService,
   ) {}
 
-  async create(companyId: string, reporterId: string, dto: CreateIncidentDto) {
+  private isScopedRole(userRole?: string) {
+    return userRole === Role.TECNICO || userRole === Role.CLIENTE;
+  }
+
+  private async getScopedUnitIds(userId?: string, userRole?: string) {
+    if (!this.isScopedRole(userRole) || !userId) return undefined;
+    return this.units.getUserUnitIds(userId);
+  }
+
+  async create(companyId: string, reporterId: string, dto: CreateIncidentDto, reporterRole?: string) {
     const unit = await this.prisma.unit.findFirst({ where: { id: dto.unitId, companyId } });
     if (!unit) throw new NotFoundException('Unidade não encontrada');
+
+    const scopedUnitIds = await this.getScopedUnitIds(reporterId, reporterRole);
+    if (scopedUnitIds && !scopedUnitIds.includes(dto.unitId)) {
+      throw new ForbiddenException('Voce nao pode registrar ocorrencia nesta unidade');
+    }
 
     const incident = await this.prisma.incident.create({
       data: { ...dto, companyId, reporterId, photoUrls: dto.photoUrls ?? [] },
@@ -78,12 +94,20 @@ export class IncidentsService {
   async findAll(
     companyId: string,
     dto: PaginationDto & { status?: IncidentStatus; severity?: IncidentSeverity; unitId?: string },
+    userId?: string,
+    userRole?: string,
   ) {
+    const scopedUnitIds = await this.getScopedUnitIds(userId, userRole);
+    if (scopedUnitIds) {
+      if (scopedUnitIds.length === 0) return paginated([], 0, dto);
+      if (dto.unitId && !scopedUnitIds.includes(dto.unitId)) return paginated([], 0, dto);
+    }
+
     const where = {
       companyId,
       ...(dto.status ? { status: dto.status } : {}),
       ...(dto.severity ? { severity: dto.severity as IncidentSeverity } : {}),
-      ...(dto.unitId ? { unitId: dto.unitId } : {}),
+      ...(dto.unitId ? { unitId: dto.unitId } : scopedUnitIds ? { unitId: { in: scopedUnitIds } } : {}),
       ...(dto.search
         ? { OR: [{ title: { contains: dto.search, mode: 'insensitive' as const } },
                  { description: { contains: dto.search, mode: 'insensitive' as const } }] }
@@ -102,11 +126,15 @@ export class IncidentsService {
     return paginated(data, total, dto);
   }
 
-  async findOne(id: string, companyId: string) {
+  async findOne(id: string, companyId: string, userId?: string, userRole?: string) {
     const incident = await this.prisma.incident.findFirst({
       where: { id, companyId }, include: INCLUDE,
     });
     if (!incident) throw new NotFoundException('Ocorrência não encontrada');
+    const scopedUnitIds = await this.getScopedUnitIds(userId, userRole);
+    if (scopedUnitIds && !scopedUnitIds.includes(incident.unitId)) {
+      throw new ForbiddenException('Ocorrencia nao pertence a uma unidade atribuida a voce');
+    }
     return incident;
   }
 
@@ -119,8 +147,11 @@ export class IncidentsService {
     return { success: true };
   }
 
-  async updateStatus(id: string, companyId: string, dto: UpdateIncidentStatusDto) {
-    const incident = await this.findOne(id, companyId);
+  async updateStatus(id: string, companyId: string, dto: UpdateIncidentStatusDto, userId?: string, userRole?: string) {
+    if (userRole === Role.CLIENTE) {
+      throw new ForbiddenException('Clientes nao podem atualizar status de ocorrencias');
+    }
+    const incident = await this.findOne(id, companyId, userId, userRole);
 
     if (dto.status) {
       const allowed = INCIDENT_TRANSITIONS[incident.status] ?? [];

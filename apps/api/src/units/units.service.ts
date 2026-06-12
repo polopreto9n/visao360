@@ -1,4 +1,5 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
 import { PaginationDto, paginated } from '../common/dto/pagination.dto';
@@ -30,9 +31,19 @@ export class UnitsService {
     return this.prisma.unit.create({ data: { ...dto, companyId } });
   }
 
-  async findAll(companyId: string, dto: PaginationDto) {
+  private isScopedRole(userRole?: string) {
+    return userRole === Role.TECNICO || userRole === Role.CLIENTE;
+  }
+
+  async findAll(companyId: string, dto: PaginationDto, userId?: string, userRole?: string) {
+    const scopedUnitIds = this.isScopedRole(userRole) && userId
+      ? await this.getUserUnitIds(userId)
+      : undefined;
+    if (scopedUnitIds && scopedUnitIds.length === 0) return paginated([], 0, dto);
+
     const where = {
       companyId, isActive: true,
+      ...(scopedUnitIds ? { id: { in: scopedUnitIds } } : {}),
       ...(dto.search
         ? { OR: [{ name: { contains: dto.search, mode: 'insensitive' as const } },
                  { code: { contains: dto.search, mode: 'insensitive' as const } }] }
@@ -43,7 +54,7 @@ export class UnitsService {
       this.prisma.unit.findMany({
         where,
         include: {
-          users: { select: UNIT_USERS_SELECT },
+          ...(scopedUnitIds ? {} : { users: { select: UNIT_USERS_SELECT } }),
           _count: { select: { assets: true, checklists: true, workOrders: true } },
         },
         orderBy: { name: 'asc' },
@@ -55,11 +66,36 @@ export class UnitsService {
     return paginated(data, total, dto);
   }
 
-  async findOne(id: string, companyId: string) {
+  async findOptions(companyId: string, userId?: string, userRole?: string) {
+    const dashboardScopedRole = this.isScopedRole(userRole) || userRole === Role.GESTOR;
+    const scopedUnitIds = dashboardScopedRole && userId
+      ? await this.getUserUnitIds(userId)
+      : undefined;
+    if (scopedUnitIds && scopedUnitIds.length === 0) return [];
+
+    return this.prisma.unit.findMany({
+      where: {
+        companyId,
+        isActive: true,
+        ...(scopedUnitIds ? { id: { in: scopedUnitIds } } : {}),
+      },
+      select: { id: true, name: true, code: true },
+      orderBy: { name: 'asc' },
+    });
+  }
+
+  async findOne(id: string, companyId: string, userId?: string, userRole?: string) {
+    if (this.isScopedRole(userRole) && userId) {
+      const unitIds = await this.getUserUnitIds(userId);
+      if (!unitIds.includes(id)) {
+        throw new ForbiddenException('Unidade nao atribuida a voce');
+      }
+    }
+
     const unit = await this.prisma.unit.findFirst({
       where: { id, companyId },
       include: {
-        users: { select: UNIT_USERS_SELECT },
+        ...(this.isScopedRole(userRole) ? {} : { users: { select: UNIT_USERS_SELECT } }),
         assets: { where: { status: 'ACTIVE' }, select: { id: true, name: true, category: true, status: true } },
         _count: { select: { assets: true, workOrders: true, incidents: true } },
       },

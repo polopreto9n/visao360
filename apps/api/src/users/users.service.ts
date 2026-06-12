@@ -22,9 +22,14 @@ export class UsersService {
     private readonly units: UnitsService,
   ) {}
 
-  async findAll(companyId: string, dto: PaginationDto) {
+  private canManageUsers(role: Role) {
+    return role === Role.ADMIN || role === Role.GESTOR || (role as string) === 'OWNER';
+  }
+
+  async findAll(companyId: string, dto: PaginationDto & { role?: Role }) {
     const where = {
       companyId,
+      ...(dto.role ? { role: dto.role } : {}),
       ...(dto.search
         ? { OR: [{ name: { contains: dto.search, mode: 'insensitive' as const } },
                  { email: { contains: dto.search, mode: 'insensitive' as const } }] }
@@ -43,7 +48,11 @@ export class UsersService {
     return paginated(data, total, dto);
   }
 
-  async findOne(id: string, companyId: string) {
+  async findOne(id: string, companyId: string, requestingRole?: Role, requestingId?: string) {
+    if (requestingRole && requestingId && !this.canManageUsers(requestingRole) && id !== requestingId) {
+      throw new ForbiddenException('Voce so pode acessar o proprio perfil');
+    }
+
     const user = await this.prisma.user.findFirst({
       where: { id, companyId }, select: USER_SELECT,
     });
@@ -59,9 +68,14 @@ export class UsersService {
     requestingId: string,
   ) {
     const target = await this.findOne(id, companyId);
+    const canManage = this.canManageUsers(requestingRole);
+
+    if (!canManage && id !== requestingId) {
+      throw new ForbiddenException('Voce so pode atualizar o proprio perfil');
+    }
 
     // OWNER não pode ter seu role alterado por ninguém (nem por outro OWNER)
-    if ((target.role as string) === 'OWNER') {
+    if ((target.role as string) === 'OWNER' && (dto.role || dto.isActive === false)) {
       throw new ForbiddenException(
         'O role OWNER não pode ser alterado. Transfira a titularidade pelo painel de conta.',
       );
@@ -79,9 +93,14 @@ export class UsersService {
       }
     }
 
-    // TECNICO só edita a si mesmo (campos limitados)
-    if (requestingRole === Role.TECNICO && id !== requestingId) {
-      throw new ForbiddenException('Técnicos só podem editar o próprio perfil');
+    // Perfis operacionais so editam campos seguros do proprio perfil.
+    if (!canManage) {
+      const { name, phone, avatarUrl } = dto;
+      return this.prisma.user.update({
+        where: { id },
+        data: { name, phone, avatarUrl },
+        select: USER_SELECT,
+      });
     }
 
     const updated = await this.prisma.user.update({

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { PushService } from '../push/push.service';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -20,7 +20,44 @@ export class ChecklistSchedulesService {
     private readonly notifications: NotificationsService,
   ) {}
 
+  private async validateRefs(companyId: string, dto: {
+    checklistId?: string;
+    assetId?: string | null;
+    assigneeId?: string | null;
+  }) {
+    if (dto.checklistId) {
+      const checklist = await this.prisma.checklist.findFirst({
+        where: { id: dto.checklistId, companyId },
+        select: { id: true, unitId: true, assetId: true },
+      });
+      if (!checklist) throw new NotFoundException('Checklist nao encontrado');
+
+      if (dto.assetId) {
+        const asset = await this.prisma.asset.findFirst({
+          where: { id: dto.assetId, companyId },
+          select: { id: true, unitId: true },
+        });
+        if (!asset) throw new NotFoundException('Equipamento nao encontrado');
+        if (checklist.assetId && checklist.assetId !== asset.id) {
+          throw new BadRequestException('Agenda aponta para equipamento diferente do checklist');
+        }
+        if (checklist.unitId && checklist.unitId !== asset.unitId) {
+          throw new BadRequestException('Equipamento nao pertence a unidade do checklist');
+        }
+      }
+    } else if (dto.assetId) {
+      const asset = await this.prisma.asset.findFirst({ where: { id: dto.assetId, companyId } });
+      if (!asset) throw new NotFoundException('Equipamento nao encontrado');
+    }
+
+    if (dto.assigneeId) {
+      const user = await this.prisma.user.findFirst({ where: { id: dto.assigneeId, companyId } });
+      if (!user) throw new NotFoundException('Tecnico nao encontrado');
+    }
+  }
+
   async create(companyId: string, dto: CreateChecklistScheduleDto) {
+    await this.validateRefs(companyId, dto);
     const checklist = await this.prisma.checklist.findFirst({ where: { id: dto.checklistId, companyId } });
     if (!checklist) throw new NotFoundException('Checklist não encontrado');
 
@@ -129,6 +166,7 @@ export class ChecklistSchedulesService {
 
   async update(id: string, companyId: string, dto: UpdateChecklistScheduleDto) {
     const previous = await this.findOne(id, companyId);
+    await this.validateRefs(companyId, dto);
     const updated = await this.prisma.checklistSchedule.update({
       where: { id },
       data: {

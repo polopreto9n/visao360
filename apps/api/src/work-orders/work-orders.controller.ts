@@ -40,7 +40,7 @@ export class WorkOrdersController {
   @Get(':id')
   @ApiOperation({ summary: 'Obter OS por ID' })
   findOne(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
-    return this.svc.findOne(id, u.companyId);
+    return this.svc.findOne(id, u.companyId, u.id, u.role);
   }
 
   @Patch(':id/status')

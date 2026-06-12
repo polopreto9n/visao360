@@ -50,19 +50,19 @@ export class AssetsController {
   @Get(':id/checklists')
   @ApiOperation({ summary: 'Checklists vinculados ao equipamento' })
   getChecklists(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
-    return this.svc.getChecklists(id, u.companyId);
+    return this.svc.getChecklists(id, u.companyId, u.id, u.role);
   }
 
   @Get(':id/history')
   @ApiOperation({ summary: 'Histórico de execuções e OS do equipamento' })
   getHistory(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
-    return this.svc.getHistory(id, u.companyId);
+    return this.svc.getHistory(id, u.companyId, u.id, u.role);
   }
 
   @Patch(':id/status')
   @ApiOperation({ summary: 'Atualizar status do equipamento' })
   updateStatus(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser, @Body() dto: UpdateAssetStatusDto) {
-    return this.svc.updateStatus(id, u.companyId, dto.status);
+    return this.svc.updateStatus(id, u.companyId, dto.status, u.id, u.role);
   }
 
   @Get(':id/qr-image')
@@ -73,13 +73,13 @@ export class AssetsController {
     @CurrentUser() u: AuthenticatedUser,
     @Res() res: Response,
   ) {
-    return this.svc.streamQRCodeImage(id, u.companyId, res);
+    return this.svc.streamQRCodeImage(id, u.companyId, res, u.id, u.role);
   }
 
   @Get(':id/qr-data')
   @ApiOperation({ summary: 'QR Code em base64 para exibição no frontend' })
   qrData(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
-    return this.svc.getQRCodeDataUrl(id, u.companyId);
+    return this.svc.getQRCodeDataUrl(id, u.companyId, u.id, u.role);
   }
 
   @Patch(':id')

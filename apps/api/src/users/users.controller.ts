@@ -18,7 +18,7 @@ export class UsersController {
   constructor(private readonly svc: UsersService) {}
 
   @Get()
-  @Roles(Role.ADMIN, Role.GESTOR)
+  @Roles(Role.OWNER, Role.ADMIN, Role.GESTOR)
   @ApiOperation({ summary: "Listar usuarios (filtros: search, role)" })
   findAll(@CurrentUser() u: AuthenticatedUser, @Query() q: ListUsersDto) {
     return this.svc.findAll(u.companyId, q);
@@ -27,7 +27,7 @@ export class UsersController {
   @Get(":id")
   @ApiOperation({ summary: "Obter usuario por ID" })
   findOne(@Param("id") id: string, @CurrentUser() u: AuthenticatedUser) {
-    return this.svc.findOne(id, u.companyId);
+    return this.svc.findOne(id, u.companyId, u.role as Role, u.id);
   }
 
   @Patch(":id")

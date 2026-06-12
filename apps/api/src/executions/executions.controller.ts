@@ -21,19 +21,19 @@ export class ExecutionsController {
   @Post()
   @ApiOperation({ summary: 'Iniciar execucao de um checklist' })
   start(@CurrentUser() u: AuthenticatedUser, @Body() dto: StartExecutionDto) {
-    return this.svc.start(u.companyId, u.id, dto);
+    return this.svc.start(u.companyId, u.id, dto, u.role);
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar execucoes (filtros: status, checklistId, userId)' })
   findAll(@CurrentUser() u: AuthenticatedUser, @Query() q: ListExecutionsDto) {
-    return this.svc.findAll(u.companyId, q);
+    return this.svc.findAll(u.companyId, q, u.id, u.role);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obter execucao com todos os itens respondidos' })
   findOne(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
-    return this.svc.findOne(id, u.companyId);
+    return this.svc.findOne(id, u.companyId, u.id, u.role);
   }
 
   @Patch(':id/complete')

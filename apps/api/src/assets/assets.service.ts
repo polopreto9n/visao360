@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { Response } from 'express';
 import * as QRCode from 'qrcode';
-import { AssetStatus } from '@prisma/client';
+import { AssetStatus, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UnitsService } from '../units/units.service';
 import { paginated } from '../common/dto/pagination.dto';
@@ -24,6 +24,15 @@ export class AssetsService {
     private readonly units: UnitsService,
   ) {}
 
+  private isScopedRole(userRole?: string) {
+    return userRole === Role.TECNICO || userRole === Role.CLIENTE;
+  }
+
+  private async getScopedUnitIds(userId?: string, userRole?: string) {
+    if (!this.isScopedRole(userRole) || !userId) return undefined;
+    return this.units.getUserUnitIds(userId);
+  }
+
   async create(companyId: string, dto: CreateAssetDto) {
     // Verificar que a unidade pertence à empresa
     const unit = await this.prisma.unit.findFirst({ where: { id: dto.unitId, companyId } });
@@ -36,15 +45,15 @@ export class AssetsService {
   }
 
   async findAll(companyId: string, dto: ListAssetsDto, userId?: string, userRole?: string) {
-    let unitIds: string[] | undefined;
-    if ((userRole === 'TECNICO' || userRole === 'CLIENTE') && userId) {
-      const ids = await this.units.getUserUnitIds(userId);
-      if (ids.length > 0) unitIds = ids;
+    const scopedUnitIds = await this.getScopedUnitIds(userId, userRole);
+    if (scopedUnitIds) {
+      if (scopedUnitIds.length === 0) return paginated([], 0, dto);
+      if (dto.unitId && !scopedUnitIds.includes(dto.unitId)) return paginated([], 0, dto);
     }
 
     const where = {
       companyId,
-      ...(dto.unitId ? { unitId: dto.unitId } : unitIds ? { unitId: { in: unitIds } } : {}),
+      ...(dto.unitId ? { unitId: dto.unitId } : scopedUnitIds ? { unitId: { in: scopedUnitIds } } : {}),
       ...(dto.category ? { category: { contains: dto.category, mode: 'insensitive' as const } } : {}),
       ...(dto.status ? { status: dto.status } : {}),
       ...(dto.search
@@ -89,6 +98,21 @@ export class AssetsService {
     return asset;
   }
 
+  private async assertAssetAccess(id: string, companyId: string, userId?: string, userRole?: string) {
+    const asset = await this.prisma.asset.findFirst({
+      where: { id, companyId },
+      include: { unit: { select: { id: true, name: true, address: true } } },
+    });
+    if (!asset) throw new NotFoundException('Equipamento nao encontrado');
+
+    const scopedUnitIds = await this.getScopedUnitIds(userId, userRole);
+    if (scopedUnitIds && !scopedUnitIds.includes(asset.unitId)) {
+      throw new ForbiddenException('Equipamento nao pertence a uma unidade atribuida a voce');
+    }
+
+    return asset;
+  }
+
   async findByQRCode(qrCode: string, companyId: string, userId?: string, userRole?: string) {
     const asset = await this.prisma.asset.findFirst({
       where: { qrCode, companyId },
@@ -123,8 +147,8 @@ export class AssetsService {
   }
 
   /** Gera imagem PNG do QR Code e envia diretamente na response */
-  async streamQRCodeImage(id: string, companyId: string, res: Response) {
-    const asset = await this.findOne(id, companyId);
+  async streamQRCodeImage(id: string, companyId: string, res: Response, userId?: string, userRole?: string) {
+    const asset = await this.findOne(id, companyId, userId, userRole);
     const qrData = `visao360://asset/${companyId}/${asset.id}?qr=${asset.qrCode}`;
 
     res.setHeader('Content-Type', 'image/png');
@@ -140,9 +164,8 @@ export class AssetsService {
     });
   }
 
-  async getChecklists(id: string, companyId: string) {
-    const asset = await this.prisma.asset.findFirst({ where: { id, companyId } });
-    if (!asset) throw new NotFoundException('Equipamento não encontrado');
+  async getChecklists(id: string, companyId: string, userId?: string, userRole?: string) {
+    const asset = await this.assertAssetAccess(id, companyId, userId, userRole);
 
     const CHECKLIST_INCLUDE = {
       items: {
@@ -176,9 +199,8 @@ export class AssetsService {
     });
   }
 
-  async getHistory(id: string, companyId: string) {
-    const asset = await this.prisma.asset.findFirst({ where: { id, companyId } });
-    if (!asset) throw new NotFoundException('Equipamento não encontrado');
+  async getHistory(id: string, companyId: string, userId?: string, userRole?: string) {
+    await this.assertAssetAccess(id, companyId, userId, userRole);
 
     const [executions, workOrders] = await Promise.all([
       this.prisma.execution.findMany({
@@ -206,9 +228,11 @@ export class AssetsService {
     return { executions, workOrders };
   }
 
-  async updateStatus(id: string, companyId: string, status: AssetStatus) {
-    const asset = await this.prisma.asset.findFirst({ where: { id, companyId } });
-    if (!asset) throw new NotFoundException('Equipamento não encontrado');
+  async updateStatus(id: string, companyId: string, status: AssetStatus, userId?: string, userRole?: string) {
+    if (userRole === Role.CLIENTE) {
+      throw new ForbiddenException('Clientes não podem alterar status de equipamentos');
+    }
+    await this.assertAssetAccess(id, companyId, userId, userRole);
     return this.prisma.asset.update({
       where: { id },
       data: {
@@ -220,8 +244,8 @@ export class AssetsService {
   }
 
   /** Retorna URL de dados base64 do QR Code */
-  async getQRCodeDataUrl(id: string, companyId: string) {
-    const asset = await this.findOne(id, companyId);
+  async getQRCodeDataUrl(id: string, companyId: string, userId?: string, userRole?: string) {
+    const asset = await this.findOne(id, companyId, userId, userRole);
     const qrData = `visao360://asset/${companyId}/${asset.id}?qr=${asset.qrCode}`;
     const dataUrl = await QRCode.toDataURL(qrData, {
       width: 300,

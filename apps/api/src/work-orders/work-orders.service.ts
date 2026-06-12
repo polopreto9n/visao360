@@ -44,6 +44,15 @@ export class WorkOrdersService {
     return `OS-${year}-${suffix}`;
   }
 
+  private isScopedRole(userRole?: string) {
+    return userRole === Role.TECNICO || userRole === Role.CLIENTE;
+  }
+
+  private async getScopedUnitIds(userId?: string, userRole?: string) {
+    if (!this.isScopedRole(userRole) || !userId) return undefined;
+    return this.units.getUserUnitIds(userId);
+  }
+
   async create(companyId: string, creatorId: string, dto: CreateWorkOrderDto) {
     const [unit, assignee] = await Promise.all([
       this.prisma.unit.findFirst({ where: { id: dto.unitId, companyId } }),
@@ -62,6 +71,9 @@ export class WorkOrdersService {
     if (dto.assetId) {
       const asset = await this.prisma.asset.findFirst({ where: { id: dto.assetId, companyId } });
       if (!asset) throw new NotFoundException('Equipamento não encontrado');
+      if (asset.unitId !== dto.unitId) {
+        throw new BadRequestException('O equipamento informado nao pertence a unidade da OS');
+      }
     }
     const code = this.generateCode();
     const wo = await this.prisma.workOrder.create({
@@ -93,20 +105,28 @@ export class WorkOrdersService {
 
   async findAll(
     companyId: string,
-    dto: PaginationDto & { status?: WorkOrderStatus; unitId?: string; assigneeId?: string; priority?: string; overdue?: boolean },
+    dto: PaginationDto & {
+      status?: WorkOrderStatus;
+      unitId?: string;
+      assigneeId?: string;
+      assetId?: string;
+      priority?: string;
+      overdue?: boolean;
+    },
     userId?: string,
     userRole?: string,
   ) {
-    let unitIds: string[] | undefined;
-    if ((userRole === 'TECNICO' || userRole === 'CLIENTE') && userId) {
-      const ids = await this.units.getUserUnitIds(userId);
-      if (ids.length > 0) unitIds = ids;
+    const scopedUnitIds = await this.getScopedUnitIds(userId, userRole);
+    if (scopedUnitIds) {
+      if (scopedUnitIds.length === 0) return paginated([], 0, dto);
+      if (dto.unitId && !scopedUnitIds.includes(dto.unitId)) return paginated([], 0, dto);
     }
 
     const where: Record<string, unknown> = {
       companyId,
       ...(dto.status ? { status: dto.status } : {}),
-      ...(dto.unitId ? { unitId: dto.unitId } : unitIds ? { unitId: { in: unitIds } } : {}),
+      ...(dto.unitId ? { unitId: dto.unitId } : scopedUnitIds ? { unitId: { in: scopedUnitIds } } : {}),
+      ...(dto.assetId ? { assetId: dto.assetId } : {}),
       // CLIENTE não filtra por assignee — pode ver todas as OS da sua unidade
       ...(dto.assigneeId && userRole !== 'CLIENTE' ? { assigneeId: dto.assigneeId } : {}),
       ...(dto.priority ? { priority: dto.priority } : {}),
@@ -128,14 +148,21 @@ export class WorkOrdersService {
     });
   }
 
-  async findOne(id: string, companyId: string) {
+  async findOne(id: string, companyId: string, userId?: string, userRole?: string) {
     const wo = await this.prisma.workOrder.findFirst({ where: { id, companyId }, include: WO_INCLUDE });
     if (!wo) throw new NotFoundException('Ordem de servico nao encontrada');
+    const scopedUnitIds = await this.getScopedUnitIds(userId, userRole);
+    if (scopedUnitIds && !scopedUnitIds.includes(wo.unitId)) {
+      throw new ForbiddenException('OS nao pertence a uma unidade atribuida a voce');
+    }
     return wo;
   }
 
   async updateStatus(id: string, companyId: string, userId: string, userRole: Role, dto: UpdateStatusDto) {
-    const wo = await this.findOne(id, companyId);
+    if (userRole === Role.CLIENTE) {
+      throw new ForbiddenException('Clientes nao podem atualizar status de OS');
+    }
+    const wo = await this.findOne(id, companyId, userId, userRole);
     if (userRole === Role.TECNICO && wo.assigneeId !== userId) {
       throw new ForbiddenException('Tecnicos so podem atualizar OS atribuidas a eles');
     }

@@ -21,6 +21,10 @@ export class ListWorkOrdersDto extends PaginationDto {
   @IsString() @IsOptional()
   assigneeId?: string;
 
+  @ApiPropertyOptional()
+  @IsString() @IsOptional()
+  assetId?: string;
+
   @ApiPropertyOptional({ description: 'Filtrar somente OSs com prazo vencido' })
   @IsBoolean() @IsOptional()
   @Transform(({ value }) => value === 'true' || value === true)

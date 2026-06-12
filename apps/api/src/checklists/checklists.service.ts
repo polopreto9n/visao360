@@ -13,11 +13,35 @@ export class ChecklistsService {
     private readonly units: UnitsService,
   ) {}
 
+  private async validateScope(companyId: string, unitId?: string | null, assetId?: string | null) {
+    let resolvedUnitId = unitId ?? null;
+
+    if (unitId) {
+      const unit = await this.prisma.unit.findFirst({ where: { id: unitId, companyId } });
+      if (!unit) throw new NotFoundException('Unidade nao encontrada');
+    }
+
+    if (assetId) {
+      const asset = await this.prisma.asset.findFirst({
+        where: { id: assetId, companyId },
+        select: { unitId: true },
+      });
+      if (!asset) throw new NotFoundException('Equipamento nao encontrado');
+      if (unitId && asset.unitId !== unitId) {
+        throw new ForbiddenException('Equipamento nao pertence a unidade informada');
+      }
+      resolvedUnitId = resolvedUnitId ?? asset.unitId;
+    }
+
+    return resolvedUnitId;
+  }
+
   async create(companyId: string, dto: CreateChecklistDto) {
     const { items, ...data } = dto;
+    const unitId = await this.validateScope(companyId, data.unitId, data.assetId);
     return this.prisma.checklist.create({
       data: {
-        ...data, companyId,
+        ...data, companyId, unitId,
         items: {
           create: items.map((item) => ({
             order: item.order,
@@ -35,7 +59,7 @@ export class ChecklistsService {
 
   async findAll(
     companyId: string,
-    dto: PaginationDto & { type?: ChecklistType; unitId?: string },
+    dto: PaginationDto & { type?: ChecklistType; unitId?: string; assetId?: string },
     userId?: string,
     userRole?: string,
   ) {
@@ -69,7 +93,7 @@ export class ChecklistsService {
       ...(dto.type ? { type: dto.type } : {}),
       ...(allowedChecklistIds
         ? { id: { in: allowedChecklistIds } }
-        : dto.unitId ? { unitId: dto.unitId } : unitIds ? { unitId: { in: unitIds } } : {}),
+        : dto.assetId ? { assetId: dto.assetId } : dto.unitId ? { unitId: dto.unitId } : unitIds ? { unitId: { in: unitIds } } : {}),
       ...(dto.search ? { name: { contains: dto.search, mode: 'insensitive' as const } } : {}),
     };
 
@@ -112,8 +136,11 @@ export class ChecklistsService {
 
   async update(id: string, companyId: string, dto: UpdateChecklistDto) {
     await this.findOne(id, companyId);
+    const unitId = dto.unitId || dto.assetId
+      ? await this.validateScope(companyId, dto.unitId, dto.assetId)
+      : undefined;
     return this.prisma.checklist.update({
-      where: { id }, data: dto,
+      where: { id }, data: { ...dto, ...(unitId ? { unitId } : {}) },
       include: { items: { orderBy: { order: 'asc' } } },
     });
   }
@@ -128,9 +155,10 @@ export class ChecklistsService {
   async fullUpdate(id: string, companyId: string, dto: CreateChecklistDto) {
     await this.findOne(id, companyId);
     const { items: newItems, ...meta } = dto;
+    const unitId = await this.validateScope(companyId, meta.unitId, meta.assetId);
 
     // 1. Atualiza metadados do checklist
-    await this.prisma.checklist.update({ where: { id }, data: meta });
+    await this.prisma.checklist.update({ where: { id }, data: { ...meta, unitId } });
 
     // 2. Busca itens existentes em ordem
     const existing = await this.prisma.checklistItem.findMany({

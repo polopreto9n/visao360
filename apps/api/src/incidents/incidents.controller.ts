@@ -19,25 +19,25 @@ export class IncidentsController {
   @Post()
   @ApiOperation({ summary: 'Registrar novo incidente/ocorrencia' })
   create(@CurrentUser() u: AuthenticatedUser, @Body() dto: CreateIncidentDto) {
-    return this.svc.create(u.companyId, u.id, dto);
+    return this.svc.create(u.companyId, u.id, dto, u.role);
   }
 
   @Get()
   @ApiOperation({ summary: 'Listar incidentes (filtros: status, severity, unitId)' })
   findAll(@CurrentUser() u: AuthenticatedUser, @Query() q: ListIncidentsDto) {
-    return this.svc.findAll(u.companyId, q);
+    return this.svc.findAll(u.companyId, q, u.id, u.role);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Obter incidente por ID' })
   findOne(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
-    return this.svc.findOne(id, u.companyId);
+    return this.svc.findOne(id, u.companyId, u.id, u.role);
   }
 
   @Patch(':id/status')
   @ApiOperation({ summary: 'Atualizar status do incidente' })
   updateStatus(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser, @Body() dto: UpdateIncidentStatusDto) {
-    return this.svc.updateStatus(id, u.companyId, dto);
+    return this.svc.updateStatus(id, u.companyId, dto, u.id, u.role);
   }
 
   @Delete(':id')

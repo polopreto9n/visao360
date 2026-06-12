@@ -4,6 +4,7 @@ import { ExecutionStatus } from '@prisma/client';
 import { ExecutionsService } from './executions.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChecklistSchedulesService } from '../checklist-schedules/checklist-schedules.service';
+import { UnitsService } from '../units/units.service';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -22,12 +23,17 @@ const mockPrisma = {
     update: jest.fn(),
     count: jest.fn().mockResolvedValue(0),
   },
+  checklistItem: { findMany: jest.fn() },
   executionItem: { upsert: jest.fn().mockResolvedValue({}) },
   $transaction: jest.fn().mockImplementation(async (fn: (tx: typeof mockTx) => Promise<unknown>) => fn(mockTx)),
 };
 
 const mockSchedules = {
   advanceAfterExecution: jest.fn().mockResolvedValue(undefined),
+};
+
+const mockUnits = {
+  getUserUnitIds: jest.fn().mockResolvedValue([]),
 };
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -70,12 +76,19 @@ describe('ExecutionsService', () => {
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    mockPrisma.checklistItem.findMany.mockResolvedValue([
+      { id: 'item-1', expectedAnswer: true, requiresPhoto: false, requiresNote: false },
+      { id: 'item-2', expectedAnswer: true, requiresPhoto: false, requiresNote: false },
+    ]);
+    mockSchedules.advanceAfterExecution.mockResolvedValue(undefined);
+    mockUnits.getUserUnitIds.mockResolvedValue([]);
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         ExecutionsService,
         { provide: PrismaService, useValue: mockPrisma },
         { provide: ChecklistSchedulesService, useValue: mockSchedules },
+        { provide: UnitsService, useValue: mockUnits },
       ],
     }).compile();
 
@@ -201,6 +214,7 @@ describe('ExecutionsService', () => {
     });
 
     it('não falha se advanceAfterExecution lançar erro', async () => {
+      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
       mockPrisma.execution.findFirst.mockResolvedValue(makeExecution());
       mockTx.execution.update.mockResolvedValue(makeExecution({ status: ExecutionStatus.COMPLETED }));
       mockSchedules.advanceAfterExecution.mockRejectedValue(new Error('schedule error'));
@@ -209,6 +223,7 @@ describe('ExecutionsService', () => {
       await expect(
         service.complete('exec-1', 'company-1', 'user-tech', SUBMIT_DTO),
       ).resolves.toBeDefined();
+      consoleSpy.mockRestore();
     });
 
     it('isolamento multi-tenant: não encontra execução de outra empresa', async () => {
