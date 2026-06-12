@@ -30,7 +30,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       await this.client.connect();
       await this.client.ping();
       this.logger.log('Conectado ao Redis');
-    } catch {
+    } catch (err) {
+      if (this.config.get<string>('NODE_ENV') === 'production') {
+        throw err;
+      }
       this.logger.warn('Redis indisponível — usando cache in-memory como fallback');
       this.client = null;
       this.usingFallback = true;

@@ -3,12 +3,14 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { join } from 'path';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './common/filters/all-exceptions.filter';
 import { CorrelationInterceptor } from './common/interceptors/correlation.interceptor';
 import { TimeoutInterceptor } from './common/interceptors/timeout.interceptor';
 import { AuditInterceptor } from './common/interceptors/audit.interceptor';
 import { PrismaService } from './prisma/prisma.service';
+import { RejectCorruptedTextPipe } from './common/pipes/reject-corrupted-text.pipe';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
@@ -41,8 +43,14 @@ async function bootstrap() {
   app.setGlobalPrefix('api');
   app.enableVersioning({ type: VersioningType.URI, defaultVersion: '1' });
 
+  // Fallback local de uploads. Em produção, o recomendado continua sendo storage externo.
+  app.useStaticAssets(join(process.cwd(), 'uploads'), {
+    prefix: '/uploads/',
+  });
+
   // Validação global de DTOs — whitelist bloqueia campos extras, transform converte tipos
   app.useGlobalPipes(
+    new RejectCorruptedTextPipe(),
     new ValidationPipe({
       whitelist: true,
       forbidNonWhitelisted: true,
