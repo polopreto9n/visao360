@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Bell } from 'lucide-react';
+import { Bell, Building2, ClipboardCheck, TriangleAlert, Wrench } from 'lucide-react';
 import { api } from '../../lib/api';
 import { formatDateTime } from '../../lib/auth';
 
@@ -15,12 +15,12 @@ interface Notification {
   createdAt: string;
 }
 
-const TYPE_ICONS: Record<string, string> = {
-  WORK_ORDER_ASSIGNED: '🔧',
-  CHECKLIST_DUE: '📋',
-  INCIDENT_OPENED: '⚠️',
-  ASSET_ALERT: '🏗️',
-  SYSTEM: '🔔',
+const TYPE_ICONS = {
+  WORK_ORDER_ASSIGNED: Wrench,
+  CHECKLIST_DUE: ClipboardCheck,
+  INCIDENT_OPENED: TriangleAlert,
+  ASSET_ALERT: Building2,
+  SYSTEM: Bell,
 };
 
 export function NotificationBell() {
@@ -28,54 +28,64 @@ export function NotificationBell() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const dropRef = useRef<HTMLDivElement>(null);
 
   const fetchCount = useCallback(async () => {
     try {
-      const res = await api.get<{ count: number }>('/notifications/unread-count');
-      setUnread(res.data.count);
+      const response = await api.get<{ count: number }>('/notifications/unread-count');
+      setUnread(response.data.count);
     } catch {}
   }, []);
 
   const fetchNotifications = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     try {
-      const res = await api.get<{ data: Notification[] }>('/notifications?limit=10');
-      setNotifications(res.data.data);
-    } finally { setLoading(false); }
+      const response = await api.get<{ data: Notification[] }>('/notifications?limit=10');
+      setNotifications(response.data.data);
+    } catch (error) {
+      console.error('Falha ao carregar notificacoes:', error);
+      setLoadError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
     fetchCount();
-    const interval = setInterval(fetchCount, 30_000);
+    const interval = setInterval(fetchCount, 30000);
     return () => clearInterval(interval);
   }, [fetchCount]);
 
   useEffect(() => {
-    function handleClick(e: MouseEvent) {
-      if (dropRef.current && !dropRef.current.contains(e.target as Node)) setOpen(false);
+    function handleClick(event: MouseEvent) {
+      if (dropRef.current && !dropRef.current.contains(event.target as Node)) setOpen(false);
     }
+
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
 
   function toggleOpen() {
-    if (!open) fetchNotifications();
+    if (!open) void fetchNotifications();
     setOpen(!open);
   }
 
   async function markRead(id: string) {
     try {
       await api.patch(`/notifications/${id}/read`);
-      setNotifications((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true, readAt: new Date().toISOString() } : n));
-      setUnread((c) => Math.max(0, c - 1));
+      setNotifications((current) => current.map((item) => (
+        item.id === id ? { ...item, isRead: true, readAt: new Date().toISOString() } : item
+      )));
+      setUnread((count) => Math.max(0, count - 1));
     } catch {}
   }
 
   async function markAllRead() {
     try {
       await api.patch('/notifications/read-all');
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setNotifications((current) => current.map((item) => ({ ...item, isRead: true })));
       setUnread(0);
     } catch {}
   }
@@ -84,35 +94,24 @@ export function NotificationBell() {
     <div className="relative" ref={dropRef}>
       <button
         onClick={toggleOpen}
-        className="relative w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
-        style={{ color: 'var(--text-muted)' }}
-        onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-2)')}
-        onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+        className="fluent-control relative flex h-10 w-10 items-center justify-center rounded-2xl text-slate-600 transition-colors hover:text-blue-700"
         title="Notificações"
+        aria-label="Abrir notificações"
       >
-        <Bell size={17} />
+        <Bell size={19} />
         {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+          <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white shadow-[0_6px_14px_rgba(239,68,68,0.3)]">
             {unread > 9 ? '9+' : unread}
           </span>
         )}
       </button>
 
       {open && (
-        <div
-          className="absolute right-0 top-10 w-80 rounded-2xl z-50 overflow-hidden"
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            boxShadow: 'var(--shadow-lg)',
-          }}
-        >
-          <div className="flex items-center justify-between px-4 py-3"
-            style={{ borderBottom: '1px solid var(--border)' }}>
-            <h3 className="text-[13px] font-semibold" style={{ color: 'var(--text-primary)' }}>Notificações</h3>
+        <div className="fluent-surface absolute right-0 top-12 z-50 w-80 overflow-hidden rounded-[20px]">
+          <div className="flex items-center justify-between border-b border-blue-100/80 px-4 py-3">
+            <h3 className="text-[13px] font-bold text-slate-950">Notificações</h3>
             {unread > 0 && (
-              <button onClick={markAllRead} className="text-[11px] font-medium transition-opacity hover:opacity-70"
-                style={{ color: 'var(--accent)' }}>
+              <button onClick={markAllRead} className="text-[11px] font-bold text-blue-700 transition-opacity hover:opacity-70">
                 Marcar todas como lidas
               </button>
             )}
@@ -121,46 +120,63 @@ export function NotificationBell() {
           <div className="max-h-80 overflow-y-auto">
             {loading ? (
               <div className="flex justify-center py-8">
-                <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+              </div>
+            ) : loadError ? (
+              <div className="px-4 py-6 text-center">
+                <Bell className="mx-auto mb-2 text-blue-600" size={24} />
+                <p className="text-[13px] font-semibold text-slate-700">
+                  Não foi possível carregar as notificações agora.
+                </p>
+                <button
+                  onClick={() => void fetchNotifications()}
+                  className="mt-3 rounded-xl border border-blue-100 bg-white/75 px-3 py-1.5 text-[11px] font-bold text-blue-700 transition-colors hover:bg-blue-50"
+                >
+                  Tentar novamente
+                </button>
               </div>
             ) : notifications.length === 0 ? (
-              <div className="text-center py-10">
-                <p className="text-3xl mb-2">🔔</p>
-                <p className="text-[13px]" style={{ color: 'var(--text-muted)' }}>Nenhuma notificação</p>
+              <div className="py-10 text-center">
+                <Bell className="mx-auto mb-2 text-blue-600" size={24} />
+                <p className="text-[13px] text-slate-500">Nenhuma notificação</p>
               </div>
             ) : (
-              notifications.map((n) => (
-                <div
-                  key={n.id}
-                  className="flex items-start gap-3 px-4 py-3 transition-colors"
-                  style={{
-                    borderBottom: '1px solid var(--border-subtle)',
-                    background: !n.isRead ? 'var(--accent-soft)' : 'transparent',
-                  }}
-                  onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-2)')}
-                  onMouseLeave={(e) => (e.currentTarget.style.background = !n.isRead ? 'var(--accent-soft)' : 'transparent')}
-                >
-                  <span className="text-lg mt-0.5 flex-shrink-0">{TYPE_ICONS[n.type] ?? '🔔'}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] leading-tight font-medium" style={{ color: 'var(--text-primary)', fontWeight: !n.isRead ? 600 : 400 }}>
-                      {n.title}
-                    </p>
-                    <p className="text-[11px] mt-0.5 line-clamp-2" style={{ color: 'var(--text-muted)' }}>{n.body}</p>
-                    <p className="text-[10px] mt-1" style={{ color: 'var(--text-muted)' }}>{formatDateTime(n.createdAt)}</p>
+              notifications.map((notification) => {
+                const Icon = TYPE_ICONS[notification.type as keyof typeof TYPE_ICONS] ?? Bell;
+
+                return (
+                  <div
+                    key={notification.id}
+                    className="flex items-start gap-3 border-b border-blue-100/70 px-4 py-3 transition-colors last:border-b-0 hover:bg-white/60"
+                    style={{ background: !notification.isRead ? 'var(--accent-soft)' : 'transparent' }}
+                  >
+                    <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
+                      <Icon size={16} />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-[12px] leading-tight text-slate-950 ${notification.isRead ? 'font-medium' : 'font-bold'}`}>
+                        {notification.title}
+                      </p>
+                      <p className="mt-0.5 line-clamp-2 text-[11px] text-slate-500">{notification.body}</p>
+                      <p className="mt-1 text-[10px] text-slate-500">{formatDateTime(notification.createdAt)}</p>
+                    </div>
+                    {!notification.isRead && (
+                      <button
+                        onClick={() => markRead(notification.id)}
+                        title="Marcar como lida"
+                        aria-label="Marcar como lida"
+                        className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-blue-500 transition-colors hover:bg-blue-700"
+                      />
+                    )}
                   </div>
-                  {!n.isRead && (
-                    <button onClick={() => markRead(n.id)} title="Marcar como lida"
-                      className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0 mt-1.5 hover:bg-blue-700 transition-colors" />
-                  )}
-                </div>
-              ))
+                );
+              })
             )}
           </div>
 
           {notifications.length > 0 && (
-            <div className="px-4 py-2 text-center" style={{ borderTop: '1px solid var(--border)' }}>
-              <button onClick={() => setOpen(false)} className="text-[11px] font-medium hover:opacity-70 transition-opacity"
-                style={{ color: 'var(--accent)' }}>
+            <div className="border-t border-blue-100/80 px-4 py-2 text-center">
+              <button onClick={() => setOpen(false)} className="text-[11px] font-bold text-blue-700 transition-opacity hover:opacity-70">
                 Fechar
               </button>
             </div>

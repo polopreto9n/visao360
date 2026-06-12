@@ -9,6 +9,7 @@ import { EmailModule } from "./email/email.module";
 import { PushModule } from "./push/push.module";
 import { AuthModule } from "./auth/auth.module";
 import { NotificationsModule } from "./notifications/notifications.module";
+import { AlertsModule } from "./alerts/alerts.module";
 import { CompaniesModule } from "./companies/companies.module";
 import { UsersModule } from "./users/users.module";
 import { UnitsModule } from "./units/units.module";
@@ -49,6 +50,7 @@ import { TenantMiddleware } from "./common/middleware/tenant.middleware";
     EmailModule,
     PushModule,
     NotificationsModule,
+    AlertsModule,
     AuthModule,
     CompaniesModule,
     UsersModule,
@@ -75,4 +77,3 @@ export class AppModule implements NestModule {
       .forRoutes("*");
   }
 }
-

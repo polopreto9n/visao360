@@ -124,6 +124,7 @@ model Company {
   workOrders          WorkOrder[]
   incidents           Incident[]
   notifications       Notification[]
+  alertReads          AlertRead[]
   checklistSchedules  ChecklistSchedule[]
 
   @@map("companies")
@@ -150,6 +151,7 @@ model User {
   executions           Execution[]
   incidents            Incident[]
   notifications        Notification[]
+  alertReads           AlertRead[]
   checklistSchedules   ChecklistSchedule[]  @relation("ScheduleAssignee")
 
   @@unique([email, companyId])
@@ -414,6 +416,23 @@ model Notification {
   @@index([companyId])
   @@index([createdAt])
   @@map("notifications")
+}
+
+model AlertRead {
+  id          String   @id @default(cuid())
+  companyId   String
+  userId      String
+  fingerprint String
+  readAt      DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, fingerprint])
+  @@index([companyId, userId])
+  @@index([fingerprint])
+  @@map("alert_reads")
 }
 
 model AuditLog {
