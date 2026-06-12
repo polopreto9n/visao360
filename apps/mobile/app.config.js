@@ -18,10 +18,10 @@ module.exports = {
       package: 'com.visao360.app',
       versionCode: 12,
       googleServicesFile: './google-services.json',
-      usesCleartextTraffic: apiUrl.startsWith('http://'),
       permissions: ['android.permission.CAMERA', 'android.permission.READ_MEDIA_IMAGES', 'android.permission.READ_MEDIA_VIDEO', 'android.permission.VIBRATE'],
     },
     plugins: [
+      ['./plugins/withCleartextTraffic', { enabled: apiUrl.startsWith('http://') }],
       'expo-router',
       ['expo-camera', { cameraPermission: 'O Visao360 usa a camera para escanear QR Codes.' }],
       ['expo-image-picker', { photosPermission: 'Galeria para evidencias.', cameraPermission: 'Camera para evidencias.' }],
