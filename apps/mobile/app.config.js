@@ -1,4 +1,6 @@
-﻿module.exports = {
+const apiUrl = process.env.EXPO_PUBLIC_API_URL || 'http://44.200.181.114:3001/api/v1';
+
+module.exports = {
   expo: {
     name: 'Visao360',
     slug: 'visao360',
@@ -16,7 +18,8 @@
       package: 'com.visao360.app',
       versionCode: 12,
       googleServicesFile: './google-services.json',
-      permissions: ['android.permission.CAMERA','android.permission.READ_MEDIA_IMAGES','android.permission.READ_MEDIA_VIDEO','android.permission.VIBRATE'],
+      usesCleartextTraffic: apiUrl.startsWith('http://'),
+      permissions: ['android.permission.CAMERA', 'android.permission.READ_MEDIA_IMAGES', 'android.permission.READ_MEDIA_VIDEO', 'android.permission.VIBRATE'],
     },
     plugins: [
       'expo-router',
@@ -35,7 +38,7 @@
     ],
     experiments: { typedRoutes: true },
     extra: {
-      apiUrl: 'https://visao360-api-production.up.railway.app/api/v1',
+      apiUrl,
       eas: { projectId: 'e3471a0f-8723-4b5b-ac05-7bdaf00355ce' },
     },
   },
