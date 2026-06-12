@@ -267,7 +267,9 @@ async function main() {
   }
 
   // ── Work Order de exemplo ────────────────────────────────────────────────────
-  const existingWO = await prisma.workOrder.findUnique({ where: { code: 'OS-2024-001' } });
+  const existingWO = await prisma.workOrder.findUnique({
+    where: { code_companyId: { code: 'OS-2024-001', companyId: company.id } },
+  });
 
   if (!existingWO) {
     await prisma.workOrder.create({
