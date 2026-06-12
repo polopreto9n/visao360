@@ -79,7 +79,7 @@ export default function LoginPage() {
       if (data.refreshToken) localStorage.setItem('visao360_refresh', data.refreshToken);
       router.push('/dashboard');
     } catch {
-      setError('Erro ao fazer login. Tente novamente.');
+      setError('Erro ao entrar. Tente novamente.');
     } finally {
       setLoading(false);
     }
@@ -134,8 +134,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition"
-                  style={{ background: 'var(--accent)' }}
+                  className="fluent-button fluent-button-primary h-12 w-full text-sm"
                 >
                   {loading ? 'Buscando...' : 'Continuar →'}
                 </button>
@@ -239,8 +238,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition"
-                  style={{ background: 'var(--accent)' }}
+                  className="fluent-button fluent-button-primary h-12 w-full text-sm"
                 >
                   {loading ? 'Entrando...' : 'Entrar na plataforma'}
                 </button>
@@ -253,7 +251,7 @@ export default function LoginPage() {
         <p className="text-center mt-6 text-sm" style={{ color: 'var(--text-muted)' }}>
           Não tem uma conta?{' '}
           <Link href="/cadastro" className="text-blue-500 hover:text-blue-400 font-medium">
-            Criar grátis — 14 dias de trial
+            Criar grátis com 14 dias de avaliação
           </Link>
         </p>
 

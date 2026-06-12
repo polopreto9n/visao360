@@ -1,16 +1,65 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import axios from 'axios';
 import { usersApi, User } from '../../../lib/api';
-import { Badge } from '../../../components/ui/Badge';
-import { formatDate, formatDateTime, ROLE_LABELS, canAdmin, getUser } from '../../../lib/auth';
+import { formatDateTime, ROLE_LABELS, canAdmin, getUser } from '../../../lib/auth';
 
-const ROLE_FILTER = ['', 'ADMIN', 'GESTOR', 'TECNICO', 'CLIENTE'];
+const ROLE_FILTER = ['', 'OWNER', 'ADMIN', 'GESTOR', 'TECNICO', 'CLIENTE'];
+
+function getUsersLoadMessage(error: unknown) {
+  if (!axios.isAxiosError(error)) {
+    return 'Não foi possível carregar os usuários agora. Tente novamente.';
+  }
+
+  if (!error.response) {
+    return error.code === 'ECONNABORTED'
+      ? 'A consulta de usuários demorou demais. Tente novamente.'
+      : 'Não foi possível conectar ao serviço de usuários. Verifique sua conexão e tente novamente.';
+  }
+
+  if (error.response.status === 401) {
+    return 'Sua sessão expirou. Entre novamente para continuar.';
+  }
+
+  if (error.response.status === 403) {
+    return 'Seu perfil não tem permissão para consultar usuários.';
+  }
+
+  if (error.response.status >= 500) {
+    return 'O serviço de usuários está temporariamente indisponível. Tente novamente em instantes.';
+  }
+
+  return 'Não foi possível carregar os usuários agora. Tente novamente.';
+}
+
+function logUsersLoadError(error: unknown, params: Record<string, unknown>) {
+  const debugParams = {
+    page: params.page,
+    limit: params.limit,
+    role: params.role,
+    hasSearch: Boolean(params.search),
+  };
+
+  if (axios.isAxiosError(error)) {
+    console.error('[Usuarios] Falha ao carregar a lista.', {
+      code: error.code,
+      status: error.response?.status,
+      method: error.config?.method,
+      url: error.config?.url,
+      params: debugParams,
+    }, error);
+    return;
+  }
+
+  console.error('[Usuarios] Falha inesperada ao carregar a lista.', { params: debugParams }, error);
+}
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState('');
@@ -19,19 +68,27 @@ export default function UsersPage() {
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError('');
+    const params: Record<string, unknown> = { page, limit: 20 };
+    if (search) params.search = search;
+    if (roleFilter) params.role = roleFilter;
+
     try {
-      const params: Record<string, unknown> = { page, limit: 20 };
-      if (search) params.search = search;
-      if (roleFilter) params.role = roleFilter;
       const res = await usersApi.list(params);
       setUsers(res.data.data);
       setTotal(res.data.total);
+    } catch (loadError) {
+      logUsersLoadError(loadError, params);
+      setUsers([]);
+      setTotal(0);
+      setError(getUsersLoadMessage(loadError));
     } finally { setLoading(false); }
   }, [page, search, roleFilter]);
 
   useEffect(() => { load(); }, [load]);
 
   const ROLE_COLORS: Record<string, string> = {
+    OWNER: 'bg-indigo-100 text-indigo-800',
     ADMIN: 'bg-purple-100 text-purple-800',
     GESTOR: 'bg-blue-100 text-blue-800',
     TECNICO: 'bg-amber-100 text-amber-800',
@@ -46,7 +103,7 @@ export default function UsersPage() {
       </div>
 
       {/* Filtros */}
-      <div className="rounded-xl border p-4 flex flex-col sm:flex-row gap-3" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+      <div className="fluent-filter-bar flex-col sm:flex-row">
         <input
           className="flex-1 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
@@ -56,12 +113,7 @@ export default function UsersPage() {
         <div className="flex gap-1">
           {ROLE_FILTER.map((r) => (
             <button key={r} onClick={() => { setRoleFilter(r); setPage(1); }}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors"
-              style={
-                roleFilter === r
-                  ? { background: 'var(--accent)', color: '#fff' }
-                  : { background: 'var(--surface-2)', color: 'var(--text-secondary)' }
-              }>
+              className={`fluent-filter-chip ${roleFilter === r ? 'fluent-filter-chip-active' : ''}`}>
               {r ? ROLE_LABELS[r] : 'Todos'}
             </button>
           ))}
@@ -69,7 +121,32 @@ export default function UsersPage() {
       </div>
 
       {/* Tabela */}
-      {loading ? (
+      {error && !loading ? (
+        <div
+          className="fluent-card flex flex-col items-center gap-4 px-6 py-12 text-center"
+          role="alert"
+        >
+          <div
+            className="flex h-12 w-12 items-center justify-center rounded-2xl text-lg font-bold"
+            style={{ background: 'rgba(239,68,68,0.12)', color: '#b91c1c' }}
+          >
+            !
+          </div>
+          <div className="max-w-md space-y-1">
+            <h2 className="text-base font-bold" style={{ color: 'var(--text-primary)' }}>
+              Não foi possível abrir Usuários
+            </h2>
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{error}</p>
+          </div>
+          <button
+            type="button"
+            onClick={load}
+            className="fluent-button fluent-button-secondary h-11 px-4 text-sm"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      ) : loading ? (
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
         </div>
@@ -79,7 +156,7 @@ export default function UsersPage() {
             <table className="w-full">
               <thead style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
                 <tr>
-                  {['Usuário', 'Role', 'Telefone', 'Último login', 'Status'].map((h) => (
+                  {['Usuário', 'Perfil', 'Telefone', 'Último login', 'Status'].map((h) => (
                     <th key={h} className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>{h}</th>
                   ))}
                 </tr>

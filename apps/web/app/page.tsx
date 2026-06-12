@@ -18,7 +18,7 @@ export default function HomePage() {
           <p className="text-blue-200 text-xl font-medium">Gestão Predial Inteligente</p>
         </div>
 
-        {/* Trial badge */}
+        {/* Selo da avaliacao */}
         <div className="inline-flex items-center gap-2 bg-green-500/10 border border-green-500/20 rounded-full px-4 py-1.5 mb-6">
           <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
           <span className="text-green-400 text-sm font-medium">14 dias grátis · Sem cartão de crédito</span>
@@ -29,7 +29,7 @@ export default function HomePage() {
           Plataforma SaaS completa para síndicos e administradoras.
           <br />
           Checklists digitais, ordens de serviço, auditoria de equipamentos
-          <br />e dashboard gerencial em tempo real.
+          <br />e painel gerencial em tempo real.
         </p>
 
         {/* Features */}
@@ -37,7 +37,7 @@ export default function HomePage() {
           {[
             { icon: '✅', label: 'Checklists Digitais' },
             { icon: '🔧', label: 'Ordens de Serviço' },
-            { icon: '📊', label: 'Dashboard em Tempo Real' },
+            { icon: '📊', label: 'Painel em tempo real' },
             { icon: '📱', label: 'QR Code por Equipamento' },
           ].map((item) => (
             <div
@@ -78,7 +78,7 @@ export default function HomePage() {
             rel="noopener noreferrer"
             className="text-slate-400 hover:text-slate-300 text-sm transition"
           >
-            API Docs
+            Documentação da API
           </a>
           <span className="text-slate-600">·</span>
           <Link href="/recuperar" className="text-slate-400 hover:text-slate-300 text-sm transition">

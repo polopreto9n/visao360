@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { unitsApi, Unit } from '../../../lib/api';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
-import { formatDateTime, getUser, canManage } from '../../../lib/auth';
+import { formatDateTime, getUser } from '../../../lib/auth';
 import { api } from '../../../lib/api';
 
 interface Incident {
@@ -17,10 +17,10 @@ interface Incident {
 
 const SEV_TABS = [
   { key: '', label: 'Todos' },
-  { key: 'CRITICAL', label: '🔴 Crítico' },
-  { key: 'HIGH', label: '🟠 Alto' },
-  { key: 'MEDIUM', label: '🟡 Médio' },
-  { key: 'LOW', label: '🟢 Baixo' },
+  { key: 'CRITICAL', label: 'Críticas' },
+  { key: 'HIGH', label: 'Altas' },
+  { key: 'MEDIUM', label: 'Médias' },
+  { key: 'LOW', label: 'Baixas' },
 ];
 
 const STATUS_TRANSITIONS: Record<string, { status: string; label: string }[]> = {
@@ -30,6 +30,27 @@ const STATUS_TRANSITIONS: Record<string, { status: string; label: string }[]> = 
   CLOSED: [{ status: 'OPEN', label: 'Reabrir' }],
 };
 
+const SEV_COLORS: Record<string, string> = {
+  CRITICAL: 'bg-red-100 text-red-800',
+  HIGH: 'bg-orange-100 text-orange-800',
+  MEDIUM: 'bg-amber-100 text-amber-800',
+  LOW: 'bg-emerald-100 text-emerald-800',
+};
+
+const SEV_LABELS: Record<string, string> = {
+  CRITICAL: 'Crítica',
+  HIGH: 'Alta',
+  MEDIUM: 'Média',
+  LOW: 'Baixa',
+};
+
+const SEV_RAILS: Record<string, string> = {
+  CRITICAL: 'bg-red-500',
+  HIGH: 'bg-orange-500',
+  MEDIUM: 'bg-amber-500',
+  LOW: 'bg-emerald-500',
+};
+
 export default function IncidentsPage() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [total, setTotal] = useState(0);
@@ -37,7 +58,6 @@ export default function IncidentsPage() {
   const [loading, setLoading] = useState(true);
   const [sevFilter, setSevFilter] = useState('');
   const [creating, setCreating] = useState(false);
-  const [selected, setSelected] = useState<Incident | null>(null);
   const [detail, setDetail] = useState<Incident | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
   const user = getUser();
@@ -74,20 +94,11 @@ export default function IncidentsPage() {
     try {
       await api.patch(`/incidents/${incident.id}/status`, { status });
       load();
-      setSelected(null);
       setDetail(null);
     } catch (e: unknown) {
       alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro');
     }
   }
-
-  const SEV_COLORS: Record<string, string> = {
-    CRITICAL: 'bg-red-100 text-red-800',
-    HIGH: 'bg-orange-100 text-orange-800',
-    MEDIUM: 'bg-yellow-100 text-yellow-800',
-    LOW: 'bg-green-100 text-green-800',
-  };
-  const SEV_LABELS: Record<string, string> = { CRITICAL: '🔴 Crítico', HIGH: '🟠 Alto', MEDIUM: '🟡 Médio', LOW: '🟢 Baixo' };
 
   return (
     <div className="space-y-5">
@@ -110,15 +121,15 @@ export default function IncidentsPage() {
               <h3 className="font-bold text-lg" style={{ color: 'var(--text-primary)' }}>{detail.title}</h3>
               <p className="text-sm mt-1" style={{ color: 'var(--text-secondary)' }}>{detail.description}</p>
             </div>
-            <div className="flex flex-wrap gap-4 text-xs" style={{ color: 'var(--text-muted)' }}>
-              <span>🏢 {detail.unit.name}</span>
-              <span>👤 {detail.reporter.name}</span>
-              <span>📅 {formatDateTime(detail.createdAt)}</span>
-              {detail.resolvedAt && <span>✅ Resolvido em {formatDateTime(detail.resolvedAt)}</span>}
+            <div className="grid gap-2 rounded-2xl p-3 text-xs sm:grid-cols-2" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+              <span><strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Unidade</strong>{detail.unit.name}</span>
+              <span><strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Registrada por</strong>{detail.reporter.name}</span>
+              <span><strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Registro</strong>{formatDateTime(detail.createdAt)}</span>
+              {detail.resolvedAt && <span><strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Resolução</strong>{formatDateTime(detail.resolvedAt)}</span>}
             </div>
             {detail.photoUrls?.length > 0 && (
               <div>
-                <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>📷 Fotos ({detail.photoUrls.length})</p>
+                <p className="text-xs font-semibold mb-2" style={{ color: 'var(--text-muted)' }}>Fotos ({detail.photoUrls.length})</p>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
                   {detail.photoUrls.map((url, idx) => (
                     <img
@@ -136,16 +147,14 @@ export default function IncidentsPage() {
             <div className="flex items-center gap-2 pt-2" style={{ borderTop: '1px solid var(--border)' }}>
               {(STATUS_TRANSITIONS[detail.status] ?? []).map((t) => (
                 <button key={t.status} onClick={() => handleStatus(detail, t.status)}
-                  className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
-                  style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)', background: 'var(--surface)' }}>
+                  className="fluent-button fluent-button-secondary h-9 px-3 text-xs">
                   {t.label}
                 </button>
               ))}
               {canDelete && (
                 <button onClick={() => handleDelete(detail)}
-                  className="ml-auto px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors text-red-600 hover:bg-red-50"
-                  style={{ border: '1px solid #fca5a5' }}>
-                  🗑 Excluir
+                  className="fluent-button fluent-button-ghost ml-auto h-9 px-3 text-xs text-red-600 hover:!border-red-200 hover:!bg-red-50">
+                  Excluir
                 </button>
               )}
             </div>
@@ -159,21 +168,16 @@ export default function IncidentsPage() {
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{total} ocorrências registradas</p>
         </div>
         <button onClick={() => setCreating(true)}
-          className="bg-red-600 hover:bg-red-700 text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors">
+          className="fluent-button fluent-button-danger h-11 px-4 text-sm">
           + Registrar Ocorrência
         </button>
       </div>
 
       {/* Filtros de severidade */}
-      <div className="rounded-xl border p-3 flex flex-wrap gap-1" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+      <div className="fluent-filter-bar flex-wrap !gap-1 !p-3">
         {SEV_TABS.map((t) => (
           <button key={t.key} onClick={() => setSevFilter(t.key)}
-            className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors"
-            style={
-              sevFilter === t.key
-                ? { background: 'var(--text-primary)', color: 'var(--bg)' }
-                : { background: 'var(--surface-2)', color: 'var(--text-secondary)' }
-            }>
+            className={`fluent-filter-chip ${sevFilter === t.key ? 'fluent-filter-chip-active' : ''}`}>
             {t.label}
           </button>
         ))}
@@ -185,9 +189,9 @@ export default function IncidentsPage() {
           <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: '#ef4444', borderTopColor: 'transparent' }} />
         </div>
       ) : incidents.length === 0 ? (
-        <div className="rounded-xl border p-16 text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <p className="text-4xl mb-3">✅</p>
-          <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>Nenhum ocorrência registrado</p>
+        <div className="fluent-card p-16 text-center">
+          <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>Nenhuma ocorrência registrada</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>A fila operacional aparecerá aqui quando houver novos registros.</p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -196,41 +200,50 @@ export default function IncidentsPage() {
             return (
               <div
                 key={inc.id}
-                className="rounded-xl border p-5 cursor-pointer transition-colors"
-                style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}
+                className="fluent-card fluent-card-interactive cursor-pointer overflow-hidden"
                 onClick={() => setDetail(inc)}
               >
-                <div className="flex flex-col sm:flex-row sm:items-start gap-4">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${SEV_COLORS[inc.severity] ?? ''}`}>
-                        {SEV_LABELS[inc.severity] ?? inc.severity}
-                      </span>
-                      <Badge value={inc.status} />
-                      {inc.photoUrls?.length > 0 && (
-                        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>📷 {inc.photoUrls.length} foto(s)</span>
-                      )}
+                <div className="flex">
+                  <span className={`w-1.5 flex-shrink-0 ${SEV_RAILS[inc.severity] ?? 'bg-slate-300'}`} />
+                  <div className="flex flex-1 flex-col gap-4 p-4 lg:flex-row lg:items-center lg:p-5">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <span className={`fluent-badge ${SEV_COLORS[inc.severity] ?? ''}`}>
+                          {SEV_LABELS[inc.severity] ?? inc.severity}
+                        </span>
+                        <Badge value={inc.status} />
+                        {inc.photoUrls?.length > 0 && (
+                          <span className="fluent-badge bg-blue-50 text-blue-700">{inc.photoUrls.length} foto(s)</span>
+                        )}
+                      </div>
+                      <h3 className="text-sm font-bold sm:text-base" style={{ color: 'var(--text-primary)' }}>{inc.title}</h3>
+                      <p className="mt-1 line-clamp-2 text-sm" style={{ color: 'var(--text-muted)' }}>{inc.description}</p>
+                      <div className="mt-3 grid gap-2 text-xs sm:grid-cols-3" style={{ color: 'var(--text-muted)' }}>
+                        <span className="rounded-xl px-2.5 py-2" style={{ background: 'var(--surface-2)' }}>
+                          <strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Unidade</strong>
+                          {inc.unit.name}
+                        </span>
+                        <span className="rounded-xl px-2.5 py-2" style={{ background: 'var(--surface-2)' }}>
+                          <strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Responsável</strong>
+                          {inc.reporter.name}
+                        </span>
+                        <span className="rounded-xl px-2.5 py-2" style={{ background: 'var(--surface-2)' }}>
+                          <strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>{inc.resolvedAt ? 'Resolução' : 'Registro'}</strong>
+                          {formatDateTime(inc.resolvedAt ?? inc.createdAt)}
+                        </span>
+                      </div>
                     </div>
-                    <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>{inc.title}</h3>
-                    <p className="text-sm mt-1 line-clamp-2" style={{ color: 'var(--text-muted)' }}>{inc.description}</p>
-                    <div className="flex flex-wrap gap-4 mt-2 text-xs" style={{ color: 'var(--text-muted)' }}>
-                      <span>🏢 {inc.unit.name}</span>
-                      <span>👤 {inc.reporter.name}</span>
-                      <span>📅 {formatDateTime(inc.createdAt)}</span>
-                      {inc.resolvedAt && <span>✅ Resolvido em {formatDateTime(inc.resolvedAt)}</span>}
-                    </div>
+                    {transitions.length > 0 && (
+                      <div className="flex flex-wrap gap-2 lg:w-48 lg:flex-col lg:items-stretch" onClick={(e) => e.stopPropagation()}>
+                        {transitions.map((t) => (
+                          <button key={t.status} onClick={() => handleStatus(inc, t.status)}
+                            className="fluent-button fluent-button-secondary h-9 px-3 text-xs">
+                            {t.label}
+                          </button>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  {transitions.length > 0 && (
-                    <div className="flex gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                      {transitions.map((t) => (
-                        <button key={t.status} onClick={() => handleStatus(inc, t.status)}
-                          className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors"
-                          style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)', background: 'var(--surface)' }}>
-                          {t.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
             );

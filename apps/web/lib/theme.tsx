@@ -11,9 +11,9 @@ const THEME_CLASS: Record<Theme, string> = {
 };
 
 export const THEME_LABELS: Record<Theme, { name: string; desc: string; preview: string }> = {
-  corporate: { name: 'Corporate Clean', desc: 'Branco elegante · Stripe / Notion', preview: '#F8FAFC' },
-  dark:      { name: 'Dark Pro',        desc: 'Dark premium · Linear / Vercel',   preview: '#0A0F1E' },
-  glass:     { name: 'Glass Premium',   desc: 'Glassmorphism · Apple / Arc',      preview: '#6366F1' },
+  corporate: { name: 'Claro corporativo', desc: 'Branco elegante', preview: '#F8FAFC' },
+  dark:      { name: 'Escuro profissional', desc: 'Escuro premium', preview: '#0A0F1E' },
+  glass:     { name: 'Vidro premium', desc: 'Vidro com profundidade', preview: '#6366F1' },
 };
 
 interface ThemeCtx { theme: Theme; setTheme: (t: Theme) => void; }

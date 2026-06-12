@@ -1,14 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { workOrdersApi, usersApi, WorkOrder, User } from '../../../../lib/api';
 import { Badge } from '../../../../components/ui/Badge';
 import { Modal } from '../../../../components/ui/Modal';
 import {
-  formatDate, formatDateTime, isOverdue, canManage, canAdmin, getUser,
-  PRIORITY_LABELS, STATUS_LABELS,
+  formatDate, formatDateTime, isOverdue, canManage, getUser, ROLE_LABELS,
 } from '../../../../lib/auth';
 
 const TRANSITIONS: Record<string, { status: string; label: string; color: string }[]> = {
@@ -32,7 +31,6 @@ const BTN = {
 
 export default function WorkOrderDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [wo, setWo] = useState<WorkOrder | null>(null);
   const [loading, setLoading] = useState(true);
   const [techModal, setTechModal] = useState(false);
@@ -86,9 +84,35 @@ export default function WorkOrderDetailPage() {
 
   const overdue = isOverdue(wo.dueDate) && !['COMPLETED', 'CANCELLED'].includes(wo.status);
   const transitions = TRANSITIONS[wo.status] ?? [];
+  const timelineItems = [
+    {
+      label: 'Criada',
+      detail: `por ${wo.creator.name}`,
+      timestamp: wo.createdAt,
+      tone: 'bg-blue-600',
+    },
+    wo.assignee ? {
+      label: 'Atribuída',
+      detail: `para ${wo.assignee.name}`,
+      timestamp: null,
+      tone: 'bg-purple-500',
+    } : null,
+    wo.startedAt ? {
+      label: 'Iniciada',
+      detail: null,
+      timestamp: wo.startedAt,
+      tone: 'bg-amber-500',
+    } : null,
+    wo.completedAt ? {
+      label: 'Concluída',
+      detail: null,
+      timestamp: wo.completedAt,
+      tone: 'bg-emerald-500',
+    } : null,
+  ].filter((item): item is NonNullable<typeof item> => item !== null);
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
         <Link href="/dashboard/work-orders" className="hover:text-blue-600">Ordens de Serviço</Link>
@@ -97,19 +121,18 @@ export default function WorkOrderDetailPage() {
       </div>
 
       {/* Header */}
-      <div className="rounded-xl border p-6"
+      <div className="fluent-card p-5 sm:p-6"
         style={{
           background: overdue ? 'rgba(254,242,242,0.5)' : 'var(--surface)',
           borderColor: overdue ? '#fca5a5' : 'var(--border)',
-          boxShadow: 'var(--shadow-sm)',
         }}>
-        <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-start">
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2 mb-3">
-              <span className="font-mono text-sm" style={{ color: 'var(--text-muted)' }}>{wo.code}</span>
+              <span className="rounded-full px-2 py-1 font-mono text-xs" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>{wo.code}</span>
               <Badge value={wo.status} />
               <Badge value={wo.priority} type="priority" />
-              {overdue && <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">⚠️ VENCIDA</span>}
+              {overdue && <span className="fluent-badge bg-red-100 text-red-700">Vencida</span>}
             </div>
             <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>{wo.title}</h1>
             <p className="mt-2 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{wo.description}</p>
@@ -117,7 +140,7 @@ export default function WorkOrderDetailPage() {
 
           {/* Ações de status */}
           {transitions.length > 0 && (
-            <div className="flex flex-col gap-2 min-w-[180px]">
+            <div className="grid gap-2 sm:grid-cols-2 lg:min-w-[210px] lg:grid-cols-1">
               {transitions.map((t) => (
                 <button
                   key={t.status}
@@ -130,10 +153,9 @@ export default function WorkOrderDetailPage() {
               {canManage(user?.role ?? '') && wo.status !== 'COMPLETED' && wo.status !== 'CANCELLED' && (
                 <button
                   onClick={() => setTechModal(true)}
-                  className="px-4 py-2.5 rounded-xl text-sm font-semibold transition-colors"
-                  style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}
+                  className="fluent-button fluent-button-secondary h-11 justify-center px-4 text-sm"
                 >
-                  👤 Reatribuir
+                  Reatribuir
                 </button>
               )}
             </div>
@@ -145,58 +167,26 @@ export default function WorkOrderDetailPage() {
         {/* Info principal */}
         <div className="lg:col-span-2 space-y-5">
           {/* Timeline */}
-          <div className="rounded-xl border p-5"
-            style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="fluent-card p-5">
             <h2 className="font-bold mb-4" style={{ color: 'var(--text-primary)' }}>Timeline</h2>
-            <div className="space-y-3">
-              {[
-                { label: 'Criada', date: wo.creator?.name ? `por ${wo.creator.name}` : undefined, value: formatDateTime(wo.unit?.name ? null : null), ts: wo.unit?.name },
-                { label: 'Atribuída', date: wo.assignee?.name, value: null, ts: null },
-                { label: 'Iniciada', date: null, value: null, ts: wo.startedAt },
-                { label: 'Concluída', date: null, value: null, ts: wo.completedAt },
-              ].filter((t) => t.ts || t.date).map((item, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
-                  <div>
+            <div className="space-y-2">
+              {timelineItems.map((item) => (
+                <div key={item.label} className="flex items-start gap-3 rounded-2xl px-3 py-2.5" style={{ background: 'var(--surface-2)' }}>
+                  <div className={`mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full ${item.tone}`} />
+                  <div className="min-w-0">
                     <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>{item.label}</p>
-                    {item.date && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.date}</p>}
-                    {item.ts && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDateTime(item.ts)}</p>}
+                    {item.detail && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{item.detail}</p>}
+                    {item.timestamp && <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDateTime(item.timestamp)}</p>}
                   </div>
                 </div>
               ))}
-              <div className="flex items-start gap-3">
-                <div className="w-2 h-2 rounded-full bg-blue-600 mt-1.5 flex-shrink-0" />
-                <div><p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Criada</p>
-                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>por {wo.creator.name}</p></div>
-              </div>
-              {wo.assignee && (
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-purple-500 mt-1.5 flex-shrink-0" />
-                  <div><p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Atribuída</p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>para {wo.assignee.name}</p></div>
-                </div>
-              )}
-              {wo.startedAt && (
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-amber-500 mt-1.5 flex-shrink-0" />
-                  <div><p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Iniciada</p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDateTime(wo.startedAt)}</p></div>
-                </div>
-              )}
-              {wo.completedAt && (
-                <div className="flex items-start gap-3">
-                  <div className="w-2 h-2 rounded-full bg-green-500 mt-1.5 flex-shrink-0" />
-                  <div><p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Concluída</p>
-                    <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDateTime(wo.completedAt)}</p></div>
-                </div>
-              )}
             </div>
           </div>
 
           {/* Notas */}
           {wo.notes && (
-            <div className="bg-amber-50 border border-amber-200 rounded-xl p-5">
-              <h2 className="font-bold mb-2" style={{ color: 'var(--text-primary)' }}>📝 Observações</h2>
+            <div className="fluent-card border-amber-200 bg-amber-50/70 p-5">
+              <h2 className="font-bold mb-2" style={{ color: 'var(--text-primary)' }}>Observações</h2>
               <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{wo.notes}</p>
             </div>
           )}
@@ -272,7 +262,7 @@ export default function WorkOrderDetailPage() {
               </div>
               <div>
                 <p className="font-semibold text-sm" style={{ color: 'var(--text-primary)' }}>{u.name}</p>
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{u.role}</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{ROLE_LABELS[u.role] ?? u.role}</p>
               </div>
               {wo.assignee?.id === u.id && <span className="ml-auto text-blue-600 text-xs font-bold">Atual</span>}
             </button>
@@ -285,8 +275,7 @@ export default function WorkOrderDetailPage() {
 
 function InfoCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-xl border p-4"
-      style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+    <div className="fluent-card p-4">
       <h2 className="text-xs font-bold uppercase tracking-wide mb-3" style={{ color: 'var(--text-muted)' }}>{title}</h2>
       <div className="space-y-2">{children}</div>
     </div>

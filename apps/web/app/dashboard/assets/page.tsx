@@ -12,11 +12,13 @@ const STATUS_LABELS_SHORT: Record<string, string> = {
   MAINTENANCE: 'Manutenção', DECOMMISSIONED: 'Desativados',
 };
 
-const CATEGORY_ICONS: Record<string, string> = {
-  Elevadores: '🛗', Elétrica: '⚡', Hidráulica: '💧', Segurança: '📹',
-  HVAC: '❄️', Incêndio: '🔥', Telecomunicações: '📡',
+const CATEGORY_MARKS: Record<string, string> = {
+  Elevadores: 'EL', Elétrica: 'EE', Hidráulica: 'HI', Segurança: 'SE',
+  HVAC: 'HV', Incêndio: 'IN', Telecomunicações: 'TE',
 };
-function catIcon(cat: string) { return CATEGORY_ICONS[cat] ?? '🏗️'; }
+function categoryMark(category: string) {
+  return CATEGORY_MARKS[category] ?? category.slice(0, 2).toUpperCase();
+}
 
 export default function AssetsPage() {
   const [assets, setAssets] = useState<Asset[]>([]);
@@ -104,10 +106,7 @@ export default function AssetsPage() {
         </div>
         {canCreate && (
           <button onClick={() => setCreating(true)}
-            className="text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
-            style={{ background: 'var(--accent)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            className="fluent-button fluent-button-primary h-11 px-4 text-sm"
           >
             + Novo Equipamento
           </button>
@@ -115,7 +114,7 @@ export default function AssetsPage() {
       </div>
 
       {/* Filtros */}
-      <div className="rounded-xl border p-4 flex flex-col sm:flex-row gap-3" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+      <div className="fluent-filter-bar flex-col sm:flex-row">
         <input
           className="flex-1 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
@@ -132,12 +131,7 @@ export default function AssetsPage() {
         <div className="flex gap-1">
           {STATUS_FILTER.map((s) => (
             <button key={s} onClick={() => { setStatusFilter(s); setPage(1); }}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors"
-              style={
-                statusFilter === s
-                  ? { background: 'var(--accent)', color: '#fff' }
-                  : { background: 'var(--surface-2)', color: 'var(--text-secondary)' }
-              }>
+              className={`fluent-filter-chip ${statusFilter === s ? 'fluent-filter-chip-active' : ''}`}>
               {STATUS_LABELS_SHORT[s]}
             </button>
           ))}
@@ -150,9 +144,9 @@ export default function AssetsPage() {
           <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
         </div>
       ) : assets.length === 0 ? (
-        <div className="rounded-xl border p-16 text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <p className="text-4xl mb-3">🏗️</p>
+        <div className="fluent-card p-16 text-center">
           <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>Nenhum equipamento encontrado</p>
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Ajuste os filtros ou cadastre um novo equipamento.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -161,34 +155,48 @@ export default function AssetsPage() {
             return (
               <div
                 key={asset.id}
-                className="rounded-xl border p-5 transition-shadow hover:shadow-md"
+                className="fluent-card flex flex-col p-4 sm:p-5"
                 style={{
-                  background: 'var(--surface)',
                   borderColor: overdue ? '#fcd34d' : 'var(--border)',
-                  boxShadow: 'var(--shadow-sm)',
                 }}
               >
                 {/* Header do card */}
-                <div className="flex items-start justify-between gap-2 mb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl">{catIcon(asset.category)}</span>
-                    <div>
-                      <p className="font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>{asset.name}</p>
-                      {asset.code && <p className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{asset.code}</p>}
+                <div className="mb-4 flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span
+                      className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl text-xs font-black"
+                      style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+                    >
+                      {categoryMark(asset.category)}
+                    </span>
+                    <div className="min-w-0">
+                      <p className="line-clamp-2 font-bold leading-tight" style={{ color: 'var(--text-primary)' }}>{asset.name}</p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                        {asset.code && <span className="font-mono">{asset.code}</span>}
+                        <span>{asset.category}</span>
+                      </div>
                     </div>
                   </div>
                   <Badge value={asset.status} />
                 </div>
 
                 {/* Detalhes */}
-                <div className="space-y-1.5 text-sm mb-4" style={{ color: 'var(--text-secondary)' }}>
-                  <p>🏢 {asset.unit.name}</p>
-                  <p>🏷️ {asset.category}{asset.brand ? ` · ${asset.brand}` : ''}{asset.model ? ` ${asset.model}` : ''}</p>
+                <div className="mb-3 grid gap-2 text-xs sm:grid-cols-2" style={{ color: 'var(--text-muted)' }}>
+                  <span className="rounded-xl px-3 py-2" style={{ background: 'var(--surface-2)' }}>
+                    <strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Unidade</strong>
+                    {asset.unit.name}
+                  </span>
+                  <span className="rounded-xl px-3 py-2" style={{ background: 'var(--surface-2)' }}>
+                    <strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Identificação</strong>
+                    {[asset.brand, asset.model].filter(Boolean).join(' ') || 'Sem marca/modelo'}
+                  </span>
                   {asset.nextMaintenanceAt && (
-                    <p style={{ color: overdue ? '#dc2626' : 'var(--text-muted)', fontWeight: overdue ? 600 : undefined }}>
-                      🔧 {overdue ? '⚠️ VENCIDA — ' : 'Prox. manutenção: '}
-                      {formatDate(asset.nextMaintenanceAt)}
-                    </p>
+                    <span className="rounded-xl px-3 py-2 sm:col-span-2" style={{ background: overdue ? '#fef2f2' : 'var(--surface-2)' }}>
+                      <strong className="block font-semibold" style={{ color: overdue ? '#dc2626' : 'var(--text-secondary)' }}>
+                        {overdue ? 'Manutenção vencida' : 'Próxima manutenção'}
+                      </strong>
+                      <span style={{ color: overdue ? '#dc2626' : 'var(--text-muted)' }}>{formatDate(asset.nextMaintenanceAt)}</span>
+                    </span>
                   )}
                 </div>
 
@@ -196,47 +204,43 @@ export default function AssetsPage() {
                 {overdue && canCreate && (
                   <button
                     onClick={() => setMaintaining(asset)}
-                    className="w-full mb-2 bg-green-600 hover:bg-green-700 text-white text-xs font-semibold py-2 rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                    className="fluent-button fluent-button-secondary mb-3 h-10 w-full justify-center px-3 text-xs text-emerald-700 hover:!border-emerald-200 hover:!bg-emerald-50"
                   >
-                    ✓ Registrar Manutenção
+                    Registrar manutenção
                   </button>
                 )}
 
                 {/* Ações */}
-                <div className="flex gap-2">
+                <div className="mt-auto flex flex-wrap gap-2 border-t pt-3" style={{ borderColor: 'var(--border)' }}>
                   <button
                     onClick={() => openQR(asset)}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2 rounded-xl transition-colors"
-                    style={{ border: '1px solid var(--border)', color: 'var(--accent)', background: 'var(--accent-soft)' }}
+                    className="fluent-button fluent-button-secondary h-10 flex-1 px-3 text-xs text-blue-700"
                   >
-                    ⬛ QR Code
+                    QR Code
                   </button>
                   <button
                     onClick={() => downloadQR(asset)}
                     disabled={downloadingId === asset.id}
-                    className="flex-1 flex items-center justify-center gap-2 text-xs font-semibold py-2 rounded-xl transition-colors disabled:opacity-60"
-                    style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)', background: 'var(--surface)' }}
+                    className="fluent-button fluent-button-ghost h-10 flex-1 px-3 text-xs"
                   >
-                    {downloadingId === asset.id ? '⏳...' : '⬇ PNG'}
+                    {downloadingId === asset.id ? 'Gerando...' : 'Baixar PNG'}
                   </button>
                   {canCreate && (
                     <button
                       onClick={() => setEditing(asset)}
-                      className="px-3 text-xs font-semibold rounded-xl transition-colors"
-                      style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)', background: 'var(--surface)' }}
+                      className="fluent-button fluent-button-ghost h-10 px-3 text-xs"
                       title="Editar equipamento"
                     >
-                      ✏️
+                      Editar
                     </button>
                   )}
                   {canDelete && (
                     <button
                       onClick={() => handleDelete(asset)}
-                      className="px-3 text-xs font-semibold rounded-xl transition-colors hover:bg-red-50"
-                      style={{ border: '1px solid #fca5a5', color: '#dc2626', background: 'var(--surface)' }}
+                      className="fluent-button fluent-button-ghost h-10 px-3 text-xs text-red-600 hover:!border-red-200 hover:!bg-red-50"
                       title="Excluir equipamento"
                     >
-                      🗑
+                      Excluir
                     </button>
                   )}
                 </div>
@@ -484,8 +488,7 @@ function CreateAssetForm({ units, asset, onSuccess }: { units: Unit[]; asset?: A
         </div>
       </div>
       <button type="submit" disabled={saving}
-        className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
-        style={{ background: 'var(--accent)' }}>
+        className="fluent-button fluent-button-primary h-12 w-full text-sm">
         {saving ? 'Salvando...' : isEditing ? '✓ Salvar alterações' : 'Cadastrar Equipamento'}
       </button>
     </form>

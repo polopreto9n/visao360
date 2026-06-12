@@ -78,7 +78,7 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl space-y-6">
-      <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Meu Perfil</h1>
+      <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Meu perfil</h1>
 
       {/* Avatar + info */}
       <div className="rounded-xl border p-6 flex items-center gap-5"
@@ -130,8 +130,7 @@ export default function ProfilePage() {
             </div>
           )}
           <button type="submit" disabled={saving}
-            className="disabled:opacity-60 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm"
-            style={{ background: 'var(--accent)' }}>
+            className="fluent-button fluent-button-primary h-11 px-6 text-sm">
             {saving ? 'Salvando...' : 'Salvar alterações'}
           </button>
         </form>
@@ -172,7 +171,7 @@ export default function ProfilePage() {
             </div>
           )}
           <button type="submit" disabled={savingPw}
-            className="bg-slate-800 hover:bg-slate-900 disabled:opacity-60 text-white font-semibold px-6 py-2.5 rounded-xl transition-colors text-sm">
+            className="fluent-button fluent-button-secondary h-11 px-6 text-sm">
             {savingPw ? 'Alterando...' : 'Alterar senha'}
           </button>
         </form>

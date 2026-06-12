@@ -17,8 +17,8 @@ function TrialBanner({ daysLeft }: { daysLeft: number }) {
     }`}>
       <span>
         {urgent
-          ? `⚡ Trial encerra em ${daysLeft} dia(s) — escolha um plano para continuar.`
-          : `🎯 Trial gratuito: ${daysLeft} dia(s) restante(s).`}
+          ? `O período de avaliação encerra em ${daysLeft} dia(s). Escolha um plano para continuar.`
+          : `Período de avaliação gratuito: ${daysLeft} dia(s) restante(s).`}
       </span>
       <Link href="/planos"
         className="ml-4 px-3 py-1 bg-white text-blue-700 rounded-full text-xs font-bold hover:bg-blue-50 transition flex-shrink-0">
@@ -31,7 +31,7 @@ function TrialBanner({ daysLeft }: { daysLeft: number }) {
 function PastDueBanner() {
   return (
     <div className="flex items-center justify-between px-5 py-2.5 text-[13px] font-medium bg-amber-500 text-white">
-      <span>⚠️ Pagamento pendente. Regularize para manter o acesso completo.</span>
+      <span>Pagamento pendente. Regularize para manter o acesso completo.</span>
       <Link href="/recuperar"
         className="ml-4 px-3 py-1 bg-white text-amber-700 rounded-full text-xs font-bold hover:bg-amber-50 transition flex-shrink-0">
         Regularizar →
@@ -44,6 +44,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const router = useRouter();
   const [ready, setReady] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [trialDaysLeft, setTrialDaysLeft] = useState<number | null>(null);
   const [isPastDue, setIsPastDue] = useState(false);
   const user = getUser();
@@ -79,7 +80,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }
 
   return (
-    <div className="min-h-screen" style={{ background: 'var(--bg)' }}>
+    <div className="fluent-canvas min-h-screen">
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
@@ -92,56 +93,49 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
       {/* Desktop sidebar */}
       <div className="hidden lg:block">
-        <Sidebar />
+        <Sidebar collapsed={sidebarCollapsed} onToggleCollapse={() => setSidebarCollapsed((value) => !value)} />
       </div>
 
       {/* Main */}
-      <div className="lg:pl-60">
-        {/* Banners */}
-        {trialDaysLeft !== null && <TrialBanner daysLeft={trialDaysLeft} />}
-        {isPastDue && <PastDueBanner />}
+      <div
+        className="transition-[padding] duration-300"
+        style={{ ['--dashboard-sidebar-offset' as string]: sidebarCollapsed ? '96px' : '260px' }}
+      >
+        <div className="lg:pl-[var(--dashboard-sidebar-offset)] transition-[padding] duration-300">
+          {/* Banners */}
+          {trialDaysLeft !== null && <TrialBanner daysLeft={trialDaysLeft} />}
+          {isPastDue && <PastDueBanner />}
 
-        {/* Header */}
-        <header
-          className="h-[60px] flex items-center gap-4 px-5 sticky top-0 z-20 backdrop-blur-sm"
-          style={{
-            background: 'var(--header-bg)',
-            borderBottom: '1px solid var(--header-border)',
-          }}
-        >
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg transition-colors"
-            style={{ color: 'var(--text-muted)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-2)')}
-            onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
+          {/* Header */}
+          <header
+            className="sticky top-0 z-20 px-4 pt-4 backdrop-blur-md sm:px-6 lg:px-8"
+            style={{ background: 'linear-gradient(180deg, rgba(245,249,255,0.94), rgba(245,249,255,0.72), transparent)' }}
           >
-            <Menu size={18} />
-          </button>
+            <div className="mx-auto flex h-[58px] max-w-[1536px] items-center justify-between gap-3 sm:gap-5">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="fluent-control flex h-10 w-10 items-center justify-center rounded-2xl text-slate-600 transition-colors hover:text-blue-700 lg:hidden"
+                aria-label="Abrir menu"
+              >
+                <Menu size={19} />
+              </button>
 
-          <div className="flex-1" />
-
-          <div className="flex items-center gap-3">
-            <NotificationBell />
-            <div className="hidden sm:flex items-center gap-2.5">
-              <div className="text-right">
-                <p className="text-[13px] font-semibold leading-none" style={{ color: 'var(--text-primary)' }}>
-                  {user?.name}
-                </p>
-                <p className="text-[11px] mt-0.5" style={{ color: 'var(--text-muted)' }}>
-                  {user?.company.name}
-                </p>
-              </div>
-              <div className="w-8 h-8 rounded-full flex items-center justify-center text-[12px] font-bold text-white"
-                style={{ background: 'var(--accent)' }}>
-                {user?.name.charAt(0).toUpperCase()}
+              <div className="ml-auto flex items-center gap-2 sm:gap-3">
+                <NotificationBell />
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-white shadow-[0_10px_24px_rgba(37,99,235,0.2)]"
+                  style={{ background: 'linear-gradient(135deg, #2563EB, #1D4ED8)' }}
+                  title={user?.name}
+                >
+                  {user?.name.charAt(0).toUpperCase()}
+                </div>
               </div>
             </div>
-          </div>
-        </header>
+          </header>
 
-        {/* Content */}
-        <main className="p-5 lg:p-7 max-w-[1400px]">{children}</main>
+          {/* Content */}
+          <main className="mx-auto max-w-[1536px] px-4 pb-6 pt-2 sm:px-5 lg:px-6 lg:pb-8">{children}</main>
+        </div>
       </div>
     </div>
   );

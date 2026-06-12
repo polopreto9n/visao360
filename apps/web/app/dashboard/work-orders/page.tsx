@@ -110,10 +110,7 @@ export default function WorkOrdersPage() {
         {canCreate && (
           <button
             onClick={() => setCreating(true)}
-            className="text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors flex items-center gap-2"
-            style={{ background: 'var(--accent)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            className="fluent-button fluent-button-primary h-11 px-4 text-sm"
           >
             + Nova OS
           </button>
@@ -121,7 +118,7 @@ export default function WorkOrdersPage() {
       </div>
 
       {/* Filtros */}
-      <div className="rounded-xl border p-4 flex flex-col sm:flex-row gap-3" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
+      <div className="fluent-filter-bar flex-col sm:flex-row">
         <input
           className="flex-1 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
@@ -134,12 +131,7 @@ export default function WorkOrdersPage() {
             <button
               key={tab.key}
               onClick={() => { setStatusFilter(tab.key); setPage(1); }}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-colors"
-              style={
-                statusFilter === tab.key
-                  ? { background: 'var(--accent)', color: '#fff' }
-                  : { background: 'var(--surface-2)', color: 'var(--text-secondary)' }
-              }
+              className={`fluent-filter-chip ${statusFilter === tab.key ? 'fluent-filter-chip-active' : ''}`}
             >
               {tab.label}
             </button>
@@ -153,8 +145,7 @@ export default function WorkOrdersPage() {
           <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
         </div>
       ) : orders.length === 0 ? (
-        <div className="rounded-xl border p-16 text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-          <p className="text-4xl mb-3">🔧</p>
+        <div className="fluent-card p-16 text-center">
           <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>Nenhuma OS encontrada</p>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>Tente ajustar os filtros ou criar uma nova OS</p>
         </div>
@@ -166,57 +157,62 @@ export default function WorkOrdersPage() {
             return (
               <div
                 key={wo.id}
-                className="rounded-xl border p-5"
+                className="fluent-card p-4 sm:p-5"
                 style={{
                   background: overdue ? 'color-mix(in srgb, var(--surface) 95%, #ef4444 5%)' : 'var(--surface)',
                   borderColor: overdue ? '#fca5a5' : 'var(--border)',
-                  boxShadow: 'var(--shadow-sm)',
                 }}
               >
-                <div className="flex flex-col sm:flex-row sm:items-start gap-4">
+                <div className="flex flex-col gap-4 lg:flex-row lg:items-start">
                   {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <div className="flex flex-wrap items-center gap-2 mb-2">
-                      <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>{wo.code}</span>
+                    <div className="mb-2 flex flex-wrap items-center gap-2">
+                      <span className="rounded-full px-2 py-1 font-mono text-xs" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>{wo.code}</span>
                       <Badge value={wo.status} />
                       <Badge value={wo.priority} type="priority" />
-                      {overdue && <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">VENCIDA</span>}
+                      {overdue && <span className="fluent-badge bg-red-100 text-red-700">Vencida</span>}
                     </div>
                     <Link href={`/dashboard/work-orders/${wo.id}`}>
                       <h3 className="text-base font-bold transition-colors hover:text-blue-600" style={{ color: 'var(--text-primary)' }}>{wo.title}</h3>
                     </Link>
                     <p className="text-sm mt-1 line-clamp-2" style={{ color: 'var(--text-muted)' }}>{wo.description}</p>
-                    <div className="flex flex-wrap gap-4 mt-3 text-xs" style={{ color: 'var(--text-secondary)' }}>
-                      <span>🏢 {wo.unit.name}</span>
-                      {wo.asset && <span>🏗️ {wo.asset.name}</span>}
-                      {wo.assignee && <span>👤 {wo.assignee.name}</span>}
-                      {wo.dueDate && (
-                        <span style={{ color: overdue ? '#dc2626' : 'var(--text-secondary)', fontWeight: overdue ? 600 : undefined }}>
-                          📅 {formatDate(wo.dueDate)}
-                        </span>
-                      )}
+                    <div className="mt-3 grid gap-2 text-xs sm:grid-cols-2 xl:grid-cols-4" style={{ color: 'var(--text-muted)' }}>
+                      <span className="rounded-xl px-3 py-2" style={{ background: 'var(--surface-2)' }}>
+                        <strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Unidade</strong>
+                        {wo.unit.name}
+                      </span>
+                      <span className="rounded-xl px-3 py-2" style={{ background: 'var(--surface-2)' }}>
+                        <strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Equipamento</strong>
+                        {wo.asset?.name ?? 'Não informado'}
+                      </span>
+                      <span className="rounded-xl px-3 py-2" style={{ background: 'var(--surface-2)' }}>
+                        <strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Técnico</strong>
+                        {wo.assignee?.name ?? 'Não atribuído'}
+                      </span>
+                      <span className="rounded-xl px-3 py-2" style={{ background: overdue ? '#fef2f2' : 'var(--surface-2)' }}>
+                        <strong className="block font-semibold" style={{ color: overdue ? '#dc2626' : 'var(--text-secondary)' }}>Prazo</strong>
+                        <span style={{ color: overdue ? '#dc2626' : 'var(--text-muted)' }}>{wo.dueDate ? formatDate(wo.dueDate) : 'Sem prazo'}</span>
+                      </span>
                     </div>
                   </div>
 
                   {/* Ações */}
-                  <div className="flex flex-wrap gap-2 flex-shrink-0">
-                    {transitions.map((t) => (
+                  <div className="flex flex-wrap gap-2 lg:w-44 lg:flex-col lg:items-stretch">
+                    {transitions.length > 0 && (
                       <button
-                        key={t.status}
                         onClick={() => { setUpdating(wo); }}
-                        className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors ${BTN_COLORS[t.color]}`}
+                        className="fluent-button fluent-button-secondary h-10 justify-center px-3 text-xs"
                       >
-                        {t.label}
+                        Atualizar status
                       </button>
-                    ))}
+                    )}
                     {isAdmin && (
                       <button
                         onClick={() => setDeleting(wo)}
-                        className="text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors hover:bg-red-100 hover:text-red-700"
-                        style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}
+                        className="fluent-button fluent-button-ghost h-10 justify-center px-3 text-xs text-red-600 hover:!border-red-200 hover:!bg-red-50"
                         title="Excluir OS"
                       >
-                        🗑️
+                        Excluir
                       </button>
                     )}
                   </div>
@@ -427,8 +423,7 @@ function CreateWOForm({ units, users, onSuccess }: { units: Unit[]; users: User[
         </div>
       </div>
       <button type="submit" disabled={saving}
-        className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
-        style={{ background: 'var(--accent)' }}>
+        className="fluent-button fluent-button-primary h-12 w-full text-sm">
         {saving ? 'Criando...' : 'Criar Ordem de Serviço'}
       </button>
     </form>

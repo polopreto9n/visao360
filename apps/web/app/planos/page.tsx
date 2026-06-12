@@ -5,7 +5,7 @@ import Link from 'next/link';
 const PLANS = [
   {
     id: 'STARTER',
-    name: 'Starter',
+    name: 'Inicial',
     price: 'R$ 149',
     period: '/mês',
     description: 'Ideal para síndicos independentes com poucos condomínios.',
@@ -17,11 +17,11 @@ const PLANS = [
       'Ordens de serviço ilimitadas',
       'Checklists ilimitados',
       'QR Code por equipamento',
-      'Dashboard em tempo real',
-      'Notificações push (mobile)',
+      'Painel em tempo real',
+      'Notificações no aplicativo',
       'Suporte por e-mail',
     ],
-    cta: 'Começar com Starter',
+    cta: 'Começar com Inicial',
     ctaClass: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white',
   },
   {
@@ -35,7 +35,7 @@ const PLANS = [
     features: [
       'Até 15 condomínios (unidades)',
       'Até 60 usuários',
-      'Tudo do Starter',
+      'Tudo do Inicial',
       'Relatórios avançados',
       'Agendamento de checklists',
       'Alertas de manutenção automáticos',
@@ -47,7 +47,7 @@ const PLANS = [
   },
   {
     id: 'ENTERPRISE',
-    name: 'Enterprise',
+    name: 'Corporativo',
     price: 'R$ 799',
     period: '/mês',
     description: 'Para grandes administradoras com demandas complexas.',
@@ -57,7 +57,7 @@ const PLANS = [
       'Condomínios ilimitados',
       'Usuários ilimitados',
       'Tudo do Profissional',
-      'API própria (white-label)',
+      'API própria com marca branca',
       'SLA garantido de 99,9%',
       'Integração com sistemas legados',
       'Treinamento da equipe',
@@ -91,7 +91,7 @@ export default function PlanosPage() {
           <div className="flex items-center justify-center gap-2 mt-4">
             <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
             <span className="text-green-400 text-sm font-medium">
-              Trial gratuito de 14 dias — sem cartão de crédito
+              Período de avaliação gratuito de 14 dias, sem cartão de crédito
             </span>
           </div>
         </div>
@@ -143,10 +143,10 @@ export default function PlanosPage() {
         {/* FAQ rápido */}
         <div className="bg-white/5 border border-white/10 rounded-2xl p-8 text-center">
           <h3 className="text-white font-bold text-lg mb-2">
-            Todas as contas começam com trial gratuito de 14 dias
+            Todas as contas começam com um período de avaliação gratuito de 14 dias
           </h3>
           <p className="text-slate-400 text-sm mb-6">
-            Nenhum cartão de crédito necessário. Você escolhe o plano somente quando o trial encerrar.
+            Nenhum cartão de crédito necessário. Você escolhe o plano somente ao fim da avaliação.
           </p>
           <div className="flex items-center justify-center gap-6 text-sm text-slate-400">
             <span>✅ Cancele quando quiser</span>
@@ -158,7 +158,7 @@ export default function PlanosPage() {
         <p className="text-center mt-8 text-slate-500 text-sm">
           Já tem uma conta?{' '}
           <Link href="/login" className="text-blue-400 hover:text-blue-300">
-            Fazer login
+            Entrar
           </Link>
         </p>
       </div>

@@ -41,7 +41,7 @@ function buildTimeline(
       date: asset.installDate,
       title: 'Equipamento instalado',
       sub: asset.unit.name,
-      icon: '🏗️',
+      icon: 'IN',
       accent: 'border-slate-200 bg-slate-50',
     });
   }
@@ -53,7 +53,7 @@ function buildTimeline(
       date: asset.lastMaintenanceAt,
       title: 'Manutenção realizada',
       sub: 'Última manutenção registrada',
-      icon: '🛠️',
+      icon: 'MA',
       accent: 'border-blue-100 bg-blue-50',
     });
   }
@@ -66,7 +66,7 @@ function buildTimeline(
       date: ex.completedAt ?? ex.createdAt,
       title: ex.checklist.name,
       sub: `por ${ex.user.name}`,
-      icon: '📋',
+      icon: 'CH',
       accent: score !== null && score < 70 ? 'border-red-100 bg-red-50' : 'border-green-100 bg-green-50',
       href: `/dashboard/executions/${ex.id}`,
       score,
@@ -82,7 +82,7 @@ function buildTimeline(
       date: wo.completedAt ?? wo.updatedAt ?? wo.createdAt,
       title: wo.title,
       sub: `${wo.code} · ${wo.unit.name}`,
-      icon: '🔧',
+      icon: 'OS',
       accent: done ? 'border-slate-100 bg-slate-50' : 'border-amber-100 bg-amber-50',
       href: `/dashboard/work-orders/${wo.id}`,
       status: wo.status,
@@ -134,17 +134,17 @@ export default function AssetDetailPage() {
   if (!asset) return <div className="text-center py-20" style={{ color: 'var(--text-muted)' }}>Equipamento não encontrado</div>;
 
   const maint = isOverdue(asset.nextMaintenanceAt) && asset.status === 'ACTIVE';
-  const CATEGORY_ICONS: Record<string, string> = {
-    Elevadores: '🛗', Elétrica: '⚡', Hidráulica: '💧',
-    Segurança: '📹', HVAC: '❄️', Incêndio: '🔥',
+  const CATEGORY_MARKS: Record<string, string> = {
+    Elevadores: 'EL', Elétrica: 'EE', Hidráulica: 'HI',
+    Segurança: 'SE', HVAC: 'HV', Incêndio: 'IN',
   };
-  const icon = CATEGORY_ICONS[asset.category] ?? '🏗️';
+  const icon = CATEGORY_MARKS[asset.category] ?? asset.category.slice(0, 2).toUpperCase();
 
   const timeline = buildTimeline(asset, executions, workOrders);
   const visibleTimeline = timelineExpanded ? timeline : timeline.slice(0, 5);
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6">
       {/* Breadcrumb */}
       <div className="flex items-center gap-2 text-sm" style={{ color: 'var(--text-muted)' }}>
         <Link href="/dashboard/assets" className="hover:text-blue-600">Equipamentos</Link>
@@ -153,21 +153,24 @@ export default function AssetDetailPage() {
       </div>
 
       {/* Header */}
-      <div className="rounded-xl border p-6"
+      <div className="fluent-card p-5 sm:p-6"
         style={{
-          background: 'var(--surface)',
           borderColor: maint ? '#fcd34d' : 'var(--border)',
-          boxShadow: 'var(--shadow-sm)',
         }}>
         <div className="flex flex-col sm:flex-row gap-6">
           <div className="flex-1">
             <div className="flex items-start gap-4 mb-4">
-              <span className="text-4xl">{icon}</span>
+              <span
+                className="flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-2xl text-sm font-black"
+                style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+              >
+                {icon}
+              </span>
               <div>
                 <div className="flex flex-wrap items-center gap-2 mb-1">
                   {asset.code && <span className="font-mono text-sm" style={{ color: 'var(--text-muted)' }}>{asset.code}</span>}
                   <Badge value={asset.status} />
-                  {maint && <span className="text-xs font-bold text-red-600 bg-red-100 px-2 py-0.5 rounded-full">⚠️ Manutenção VENCIDA</span>}
+                  {maint && <span className="fluent-badge bg-red-100 text-red-700">Manutenção vencida</span>}
                 </div>
                 <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>{asset.name}</h1>
                 <p className="text-sm mt-0.5" style={{ color: 'var(--text-muted)' }}>{asset.category} · {asset.unit.name}</p>
@@ -201,7 +204,7 @@ export default function AssetDetailPage() {
                 <img src={qrDataUrl} alt="QR Code" className="w-36 h-36" />
                 <p className="text-xs mt-2 font-mono" style={{ color: 'var(--text-muted)' }}>{asset.qrCode.substring(0, 16)}...</p>
                 <a href={qrDataUrl} download={`${asset.code ?? asset.id}-qr.png`}
-                  className="mt-2 block text-xs text-blue-600 hover:underline">⬇ Baixar QR Code</a>
+                  className="mt-2 block text-xs text-blue-600 hover:underline">Baixar QR Code</a>
               </div>
             </div>
           )}
@@ -209,8 +212,7 @@ export default function AssetDetailPage() {
       </div>
 
       {/* Timeline do Equipamento */}
-      <div className="rounded-xl border p-5"
-        style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+      <div className="fluent-card p-5">
         <div className="flex items-center justify-between mb-5">
           <div>
             <h2 className="font-bold" style={{ color: 'var(--text-primary)' }}>Histórico do Equipamento</h2>
@@ -225,7 +227,6 @@ export default function AssetDetailPage() {
 
         {timeline.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-10 gap-2">
-            <span className="text-3xl">📭</span>
             <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Nenhum histórico registrado para este equipamento</p>
           </div>
         ) : (
@@ -237,7 +238,7 @@ export default function AssetDetailPage() {
               {visibleTimeline.map((ev) => {
                 const content = (
                   <div className={`ml-10 flex items-start gap-3 p-3.5 rounded-xl border transition-colors ${ev.href ? 'hover:shadow-sm cursor-pointer' : ''} ${ev.accent}`}>
-                    <div className="absolute left-2 w-5 h-5 rounded-full border-2 border-slate-300 flex items-center justify-center text-xs"
+                    <div className="absolute left-1.5 flex h-6 w-6 items-center justify-center rounded-full border-2 border-slate-300 text-[9px] font-black"
                       style={{ background: 'var(--surface)' }}>
                       {ev.icon}
                     </div>
@@ -280,14 +281,12 @@ export default function AssetDetailPage() {
       {/* Ações rápidas */}
       <div className="flex flex-wrap gap-3">
         <Link href="/dashboard/work-orders"
-          className="text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors"
-          style={{ background: 'var(--accent)' }}>
+          className="fluent-button fluent-button-primary h-11 px-5 text-sm">
           + Abrir OS para este equipamento
         </Link>
         <Link href="/dashboard/checklists"
-          className="border px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors"
-          style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'transparent' }}>
-          ✅ Executar Checklist
+          className="fluent-button fluent-button-secondary h-11 px-5 text-sm">
+          Executar checklist
         </Link>
       </div>
     </div>

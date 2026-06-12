@@ -3,151 +3,206 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  LayoutDashboard, ClipboardList, CheckSquare, Wrench,
-  AlertTriangle, Building2, Users, CreditCard, User,
-  LogOut, ChevronRight,
+  AlertTriangle,
+  BellRing,
+  Building2,
+  CheckSquare,
+  ClipboardList,
+  CreditCard,
+  LayoutDashboard,
+  LogOut,
+  MoonStar,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Sparkles,
+  SunMedium,
+  User,
+  Users,
+  Wrench,
+  X,
 } from 'lucide-react';
-import { clearSession, getUser, ROLE_LABELS, canManage, canAdmin } from '../../lib/auth';
-import { useTheme, THEME_LABELS, type Theme } from '../../lib/theme';
+import { canAdmin, canManage, clearSession, getUser, ROLE_LABELS } from '../../lib/auth';
+import { THEME_LABELS, type Theme, useTheme } from '../../lib/theme';
 
 const NAV = [
-  { href: '/dashboard',              label: 'Dashboard',        icon: LayoutDashboard },
-  { href: '/dashboard/work-orders',  label: 'Ordens de Serviço',icon: Wrench },
-  { href: '/dashboard/checklists',   label: 'Checklists',       icon: CheckSquare },
-  { href: '/dashboard/assets',       label: 'Equipamentos',     icon: Building2 },
-  { href: '/dashboard/incidents',    label: 'Ocorrências',      icon: AlertTriangle },
-  { href: '/dashboard/units',        label: 'Condomínios',      icon: ClipboardList, manageOnly: true },
-  { href: '/dashboard/users',        label: 'Usuários',         icon: Users,         manageOnly: true },
-  { href: '/dashboard/conta',        label: 'Assinatura',       icon: CreditCard,    adminOnly: true },
-  { href: '/dashboard/profile',      label: 'Meu Perfil',       icon: User },
+  { href: '/dashboard', label: 'Painel', icon: LayoutDashboard },
+  { href: '/dashboard/alerts', label: 'Alertas', icon: BellRing },
+  { href: '/dashboard/work-orders', label: 'Ordens de Serviço', icon: Wrench },
+  { href: '/dashboard/checklists', label: 'Checklists', icon: CheckSquare },
+  { href: '/dashboard/assets', label: 'Equipamentos', icon: Building2 },
+  { href: '/dashboard/incidents', label: 'Ocorrências', icon: AlertTriangle },
+  { href: '/dashboard/units', label: 'Condomínios', icon: ClipboardList, manageOnly: true },
+  { href: '/dashboard/users', label: 'Usuários', icon: Users, manageOnly: true },
+  { href: '/dashboard/conta', label: 'Assinatura', icon: CreditCard, adminOnly: true },
+  { href: '/dashboard/profile', label: 'Meu perfil', icon: User },
 ];
 
 const THEMES: Theme[] = ['corporate', 'dark', 'glass'];
+const THEME_ICONS = { corporate: SunMedium, dark: MoonStar, glass: Sparkles };
 
-export function Sidebar({ mobile, onClose }: { mobile?: boolean; onClose?: () => void }) {
+interface SidebarProps {
+  mobile?: boolean;
+  onClose?: () => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+}
+
+export function Sidebar({ mobile, onClose, collapsed = false, onToggleCollapse }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const user = getUser();
   const { theme, setTheme } = useTheme();
+  const compact = collapsed && !mobile;
 
   function logout() {
     clearSession();
     router.replace('/login');
   }
 
-  const filtered = NAV.filter((n) => {
-    if ((n as { manageOnly?: boolean }).manageOnly && !canManage(user?.role ?? '')) return false;
-    if ((n as { adminOnly?: boolean }).adminOnly && !canAdmin(user?.role ?? '')) return false;
+  const filtered = NAV.filter((item) => {
+    if ('manageOnly' in item && item.manageOnly && !canManage(user?.role ?? '')) return false;
+    if ('adminOnly' in item && item.adminOnly && !canAdmin(user?.role ?? '')) return false;
     return true;
   });
 
   return (
     <aside
-      className={`flex flex-col h-full sidebar-transition ${mobile ? 'w-64' : 'w-60 fixed inset-y-0 left-0 z-30'}`}
-      style={{ background: 'var(--sidebar-bg)', borderRight: '1px solid var(--sidebar-border)' }}
+      className={`sidebar-transition flex h-full flex-col overflow-hidden border-r ${
+        mobile ? 'w-[260px] rounded-r-[22px]' : `fixed inset-y-0 left-0 z-30 rounded-r-[22px] ${compact ? 'w-24' : 'w-[260px]'}`
+      }`}
+      style={{
+        background: 'var(--sidebar-bg)',
+        borderColor: 'var(--sidebar-border)',
+        backdropFilter: 'blur(22px)',
+        WebkitBackdropFilter: 'blur(22px)',
+        boxShadow: '18px 0 46px rgba(37,99,235,0.08)',
+      }}
     >
-      {/* Logo */}
-      <div className="h-[60px] flex items-center gap-3 px-5 flex-shrink-0"
-        style={{ borderBottom: '1px solid var(--sidebar-border)' }}>
-        <div className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-          style={{ background: 'var(--accent)' }}>
-          <span className="text-xs font-black text-white tracking-tight">V</span>
+      <div
+        className={`relative flex min-h-[86px] flex-shrink-0 items-center gap-3 border-b ${
+          compact ? 'justify-center px-3' : 'px-5'
+        }`}
+        style={{ borderColor: 'rgba(220,232,247,0.82)' }}
+      >
+        <div
+          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl text-white shadow-[0_12px_24px_rgba(37,99,235,0.22)]"
+          style={{ background: 'linear-gradient(135deg, #3B82F6, #2563EB)' }}
+        >
+          <Building2 size={20} strokeWidth={2.25} />
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-[13px] font-bold text-white leading-none tracking-tight">Visão360</p>
-          <p className="text-[11px] mt-0.5 truncate" style={{ color: 'var(--sidebar-text)' }}>
-            {user?.company.name}
-          </p>
-        </div>
-        {mobile && (
-          <button onClick={onClose} className="w-6 h-6 flex items-center justify-center rounded-md hover:opacity-70 transition-opacity"
-            style={{ color: 'var(--sidebar-text)' }}>
-            ✕
+
+        {!compact && (
+          <div className="min-w-0 flex-1">
+            <p className="text-[15px] font-extrabold leading-none tracking-tight text-slate-900">Visão360</p>
+            <p className="mt-1 truncate text-[11px] font-medium text-slate-500">Gestão Predial</p>
+          </div>
+        )}
+
+        {mobile ? (
+          <button
+            onClick={onClose}
+            className="fluent-control flex h-8 w-8 items-center justify-center rounded-xl text-slate-500 transition-colors hover:text-blue-700"
+            aria-label="Fechar menu"
+          >
+            <X size={15} />
+          </button>
+        ) : (
+          <button
+            onClick={onToggleCollapse}
+            className={`fluent-control hidden h-8 w-8 items-center justify-center rounded-xl text-slate-600 transition-colors hover:text-blue-700 lg:flex ${
+              compact ? 'absolute right-3 top-7' : ''
+            }`}
+            aria-label={compact ? 'Expandir menu' : 'Recolher menu'}
+            title={compact ? 'Expandir menu' : 'Recolher menu'}
+          >
+            {compact ? <PanelLeftOpen size={15} /> : <PanelLeftClose size={15} />}
           </button>
         )}
       </div>
 
-      {/* Theme Picker */}
-      <div className="px-4 py-2.5 flex items-center gap-2 flex-shrink-0"
-        style={{ borderBottom: '1px solid var(--sidebar-border)' }}>
-        <span className="text-[10px] font-semibold uppercase tracking-widest flex-shrink-0"
-          style={{ color: 'var(--sidebar-text)' }}>Tema</span>
-        <div className="flex gap-1.5 flex-1">
-          {THEMES.map((t) => (
-            <button key={t} onClick={() => setTheme(t)} title={THEME_LABELS[t].name}
-              className="flex-1 h-4 rounded transition-all duration-150 border-2"
-              style={{
-                background: THEME_LABELS[t].preview,
-                borderColor: theme === t ? 'var(--accent)' : 'transparent',
-                opacity: theme === t ? 1 : 0.45,
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Nav */}
-      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto scrollbar-hide">
+      <nav className={`scrollbar-hide flex-1 space-y-2 overflow-y-auto py-4 ${compact ? 'px-3' : 'px-4'}`}>
         {filtered.map((item) => {
           const Icon = item.icon;
           const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href));
+
           return (
             <Link
               key={item.href}
               href={item.href}
               onClick={onClose}
-              className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-all duration-150 group relative"
+              title={compact ? item.label : undefined}
+              className={`group flex min-h-[48px] items-center rounded-2xl text-[13px] font-semibold transition-all duration-150 ${
+                compact ? 'justify-center px-2' : 'gap-3 px-4'
+              }`}
               style={{
                 background: active ? 'var(--sidebar-item-active)' : 'transparent',
                 color: active ? 'var(--sidebar-text-active)' : 'var(--sidebar-text)',
               }}
-              onMouseEnter={(e) => {
-                if (!active) {
-                  e.currentTarget.style.background = 'var(--sidebar-item)';
-                  e.currentTarget.style.color = 'var(--sidebar-text-active)';
-                }
+              onMouseEnter={(event) => {
+                if (!active) event.currentTarget.style.background = 'var(--sidebar-item)';
               }}
-              onMouseLeave={(e) => {
-                if (!active) {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.color = 'var(--sidebar-text)';
-                }
+              onMouseLeave={(event) => {
+                if (!active) event.currentTarget.style.background = 'transparent';
               }}
             >
-              {active && (
-                <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-r-full"
-                  style={{ background: 'var(--accent)' }} />
-              )}
-              <Icon size={15} strokeWidth={active ? 2.5 : 2} />
-              <span className="flex-1">{item.label}</span>
-              {active && <ChevronRight size={12} className="opacity-50" />}
+              <Icon size={18} strokeWidth={active ? 2.35 : 1.9} />
+              {!compact && <span className="min-w-0 flex-1">{item.label}</span>}
             </Link>
           );
         })}
-
       </nav>
 
-      {/* User */}
-      <div className="p-3 flex-shrink-0" style={{ borderTop: '1px solid var(--sidebar-border)' }}>
-        <div className="flex items-center gap-2.5 px-2 py-2 rounded-lg" style={{ background: 'var(--sidebar-item)' }}>
-          <div className="w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-bold text-white"
-            style={{ background: 'var(--accent)' }}>
+      <div className={`flex-shrink-0 space-y-3 p-4 ${compact ? 'px-3' : ''}`}>
+        <div className={`fluent-surface-soft flex items-center rounded-2xl ${compact ? 'justify-center p-2' : 'gap-3 p-3'}`}>
+          <div
+            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full text-[13px] font-bold text-white"
+            style={{ background: 'linear-gradient(135deg, #818CF8, #2563EB)' }}
+          >
             {user?.name.charAt(0).toUpperCase()}
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[12px] font-semibold text-white truncate leading-tight">{user?.name}</p>
-            <p className="text-[10px] truncate mt-0.5" style={{ color: 'var(--sidebar-text)' }}>
-              {ROLE_LABELS[user?.role ?? ''] ?? user?.role}
-            </p>
-          </div>
-          <button
-            onClick={logout}
-            title="Sair"
-            className="w-6 h-6 flex items-center justify-center rounded-md transition-opacity hover:opacity-70"
-            style={{ color: 'var(--sidebar-text)' }}
-          >
-            <LogOut size={13} />
-          </button>
+
+          {!compact && (
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[12px] font-bold leading-tight text-slate-900">{user?.name}</p>
+              <p className="mt-0.5 truncate text-[10px] text-slate-500">
+                {ROLE_LABELS[user?.role ?? ''] ?? user?.role}
+              </p>
+              <p className="mt-0.5 truncate text-[10px] text-slate-500">{user?.email}</p>
+            </div>
+          )}
+
+          {!compact && (
+            <button
+              onClick={logout}
+              title="Sair"
+              aria-label="Sair"
+              className="flex h-7 w-7 items-center justify-center rounded-xl text-slate-500 transition-colors hover:bg-white/70 hover:text-blue-700"
+            >
+              <LogOut size={14} />
+            </button>
+          )}
+        </div>
+
+        <div className={`fluent-surface-soft flex gap-1 rounded-2xl p-1.5 ${compact ? 'flex-col' : 'items-center'}`}>
+          {THEMES.map((item) => {
+            const ThemeIcon = THEME_ICONS[item];
+            return (
+              <button
+                key={item}
+                onClick={() => setTheme(item)}
+                title={THEME_LABELS[item].name}
+                aria-label={THEME_LABELS[item].name}
+                className="flex h-9 flex-1 items-center justify-center rounded-xl border text-slate-600 transition-all hover:text-blue-700"
+                style={{
+                  background: theme === item ? 'rgba(255,255,255,0.92)' : 'transparent',
+                  borderColor: theme === item ? 'rgba(220,232,247,0.95)' : 'transparent',
+                  boxShadow: theme === item ? '0 8px 18px rgba(15,23,42,0.06)' : 'none',
+                }}
+              >
+                <ThemeIcon size={15} />
+              </button>
+            );
+          })}
         </div>
       </div>
     </aside>

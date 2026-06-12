@@ -16,8 +16,8 @@ export const metadata: Metadata = {
   },
   description:
     'Plataforma SaaS de inteligência operacional para gestão predial. ' +
-    'Checklists digitais, ordens de serviço, auditoria de equipamentos e dashboard em tempo real.',
-  keywords: ['facility management', 'gestão predial', 'condomínio', 'checklist', 'ordem de serviço'],
+    'Checklists digitais, ordens de serviço, auditoria de equipamentos e painel em tempo real.',
+  keywords: ['gestão operacional', 'gestão predial', 'condomínio', 'checklist', 'ordem de serviço'],
   authors: [{ name: 'Visão360' }],
   robots: { index: false, follow: false },
 };

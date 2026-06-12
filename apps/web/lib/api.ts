@@ -122,8 +122,15 @@ export interface Unit {
   _count: { assets: number; checklists: number; workOrders?: number };
 }
 
+export interface UnitOption {
+  id: string;
+  name: string;
+  code: string | null;
+}
+
 export const unitsApi = {
   list: () => api.get<Paginated<Unit>>('/units'),
+  options: () => api.get<UnitOption[]>('/units/options'),
   assignUser: (unitId: string, userId: string) =>
     api.post<Unit>(`/units/${unitId}/users/${userId}`),
   removeUser: (unitId: string, userId: string) =>
@@ -188,7 +195,24 @@ export interface WorkOrder {
 
 export interface KPITrend { pct: number; prev: number; }
 
+export type DashboardPeriodFilter = 'today' | '7d' | '30d' | 'month' | 'custom';
+
+export interface DashboardPeriodParams {
+  period?: DashboardPeriodFilter;
+  startDate?: string;
+  endDate?: string;
+  unitId?: string;
+}
+
+export interface DashboardPeriod {
+  from: string;
+  to: string;
+  previousFrom: string;
+  previousTo: string;
+}
+
 export interface DashboardKPIs {
+  period: DashboardPeriod;
   summary: {
     totalAssets: number; activeAssets: number; assetsInMaintenance: number;
     totalWorkOrders: number; openWorkOrders: number; inProgressWorkOrders: number;
@@ -214,6 +238,51 @@ export interface DashboardKPIs {
   alerts: { assetsNeedingMaintenance: (Asset & { isOverdue: boolean })[] };
 }
 
+export interface UnitRankingItem {
+  id: string;
+  name: string;
+  code: string | null;
+  score: number;
+  eligible: boolean;
+  confidence: 'ALTA' | 'MEDIA' | 'BAIXA';
+  indicators: {
+    activeAssets: number;
+    checklistExecutions: number;
+    conformityRate: number | null;
+    workOrdersCreated: number;
+    openWorkOrders: number;
+    overdueWorkOrders: number;
+    slaOrders: number;
+    slaRate: number | null;
+    incidents: number;
+    weightedIncidents: number;
+    maintenanceDue: number;
+    overdueMaintenance: number;
+  };
+}
+
+export interface UnitRankingResult {
+  period: DashboardPeriod;
+  formula: {
+    weights: {
+      conformity: number;
+      sla: number;
+      workOrderHealth: number;
+      incidents: number;
+      preventive: number;
+    };
+    incidentNormalization: string;
+    eligibility: string;
+  };
+  totals: {
+    comparedUnits: number;
+    eligibleUnits: number;
+    insufficientDataUnits: number;
+  };
+  best: UnitRankingItem[];
+  worst: UnitRankingItem[];
+}
+
 export interface MyActionsResult {
   dueSchedules: {
     id: string; nextDueAt: string;
@@ -227,6 +296,35 @@ export interface MyActionsResult {
     asset: { id: string; name: string } | null;
   }[];
   total: number;
+  period?: DashboardPeriod;
+}
+
+export type AlertSeverity = 'CRITICO' | 'ALTO' | 'MEDIO' | 'INFORMATIVO';
+
+export interface OperationalAlert {
+  fingerprint: string;
+  source:
+    | 'WORK_ORDER_OVERDUE'
+    | 'MAINTENANCE_OVERDUE'
+    | 'CHECKLIST_OVERDUE'
+    | 'ASSET_WITHOUT_INSPECTION'
+    | 'INCIDENT_OPEN';
+  severity: AlertSeverity;
+  title: string;
+  body: string;
+  href: string;
+  unit: { id: string; name: string } | null;
+  occurredAt: string;
+  isRead: boolean;
+  readAt: string | null;
+}
+
+export interface AlertsResult extends Paginated<OperationalAlert> {
+  summary: {
+    total: number;
+    unread: number;
+    bySeverity: Record<AlertSeverity, number>;
+  };
 }
 
 export interface User {
@@ -281,8 +379,18 @@ export const subscriptionsApi = {
 };
 
 export const dashboardApi = {
-  kpis: () => api.get<DashboardKPIs>('/dashboard/kpis'),
-  myActions: () => api.get<MyActionsResult>('/dashboard/my-actions'),
+  kpis: (params?: DashboardPeriodParams) => api.get<DashboardKPIs>('/dashboard/kpis', { params }),
+  unitRanking: (params?: DashboardPeriodParams) =>
+    api.get<UnitRankingResult>('/dashboard/unit-ranking', { params }),
+  myActions: (params?: DashboardPeriodParams) => api.get<MyActionsResult>('/dashboard/my-actions', { params }),
+};
+
+export const alertsApi = {
+  list: (params?: Record<string, unknown>) => api.get<AlertsResult>('/alerts', { params }),
+  markRead: (fingerprint: string) =>
+    api.patch<{ fingerprint: string; readAt: string; isRead: true }>(
+      `/alerts/${encodeURIComponent(fingerprint)}/read`,
+    ),
 };
 
 export const assetsApi = {

@@ -81,7 +81,7 @@ export default function ContaPage() {
                 {SUBSCRIPTION_LABELS[sub?.subscriptionStatus ?? ''] ?? sub?.subscriptionStatus}
               </h2>
               <span className={`text-xs font-semibold px-2 py-1 rounded-full border ${cfg.bg} ${cfg.color}`}>
-                {sub?.subscriptionStatus}
+                {SUBSCRIPTION_LABELS[sub?.subscriptionStatus ?? ''] ?? sub?.subscriptionStatus}
               </span>
             </div>
             <p className={`text-sm mt-1 ${cfg.color} opacity-80`}>
@@ -118,7 +118,7 @@ export default function ContaPage() {
         </div>
         {sub?.trialEndsAt && (
           <div className="flex items-center justify-between px-6 py-4" style={{ borderColor: 'var(--border)' }}>
-            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Trial válido até</span>
+            <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Avaliação válida até</span>
             <span className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
               {formatDate(sub.trialEndsAt)}
             </span>
@@ -133,7 +133,7 @@ export default function ContaPage() {
           </div>
         )}
         <div className="flex items-center justify-between px-6 py-4" style={{ borderColor: 'var(--border)' }}>
-          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Stripe Customer</span>
+          <span className="text-sm" style={{ color: 'var(--text-muted)' }}>Cliente no Stripe</span>
           <span className="text-xs font-mono" style={{ color: 'var(--text-muted)' }}>
             {sub?.stripeCustomerId ?? 'Não configurado'}
           </span>
@@ -145,10 +145,9 @@ export default function ContaPage() {
         {(sub?.subscriptionStatus === 'TRIAL' || sub?.subscriptionStatus === 'PAST_DUE') && (
           <Link
             href="/planos"
-            className="flex items-center justify-center gap-2 w-full text-white font-semibold py-3 rounded-xl transition"
-            style={{ background: 'var(--accent)' }}
+            className="fluent-button fluent-button-primary h-12 w-full text-sm"
           >
-            🚀 Ver planos e fazer upgrade
+            Ver planos e migrar de plano
           </Link>
         )}
 

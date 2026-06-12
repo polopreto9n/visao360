@@ -57,7 +57,7 @@ export default function CadastroPage() {
       const data = (err as { response?: { data?: { message?: string | string[]; statusCode?: number } } })
         ?.response?.data;
       if (data?.statusCode === 409) {
-        setError('E-mail já cadastrado. Use outro e-mail ou faça login.');
+        setError('E-mail já cadastrado. Use outro e-mail ou entre com sua conta.');
       } else if (data?.statusCode === 403) {
         setError('Conta suspensa. Acesse /recuperar para regularizar.');
       } else if (Array.isArray(data?.message)) {
@@ -96,7 +96,7 @@ export default function CadastroPage() {
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', boxShadow: 'var(--shadow)' }}>
           <h2 className="text-2xl font-bold mb-1" style={{ color: 'var(--text-primary)' }}>Criar sua conta</h2>
           <p className="mb-6 text-sm" style={{ color: 'var(--text-muted)' }}>
-            Comece seu trial gratuito de 14 dias agora mesmo.
+            Comece seu período de avaliação gratuito de 14 dias agora mesmo.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -189,7 +189,7 @@ export default function CadastroPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-                    E-mail de login *
+                    E-mail de acesso *
                   </label>
                   <input
                     type="email"
@@ -244,8 +244,7 @@ export default function CadastroPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition mt-2"
-              style={{ background: 'var(--accent)' }}
+              className="fluent-button fluent-button-primary mt-2 h-12 w-full text-sm"
             >
               {loading ? 'Criando conta...' : 'Criar conta grátis →'}
             </button>

@@ -7,7 +7,7 @@ import { canManage, getUser } from '../../../lib/auth';
 import { api } from '../../../lib/api';
 
 const ROLE_LABELS: Record<string, string> = {
-  ADMIN: 'Admin', GESTOR: 'Gestor', TECNICO: 'Técnico', CLIENTE: 'Cliente',
+  ADMIN: 'Administrador', GESTOR: 'Gestor', TECNICO: 'Técnico', CLIENTE: 'Cliente',
 };
 const ROLE_COLORS: Record<string, string> = {
   ADMIN: 'bg-purple-100 text-purple-700',
@@ -64,14 +64,13 @@ export default function UnitsPage() {
         </div>
         {canCreate && (
           <button onClick={() => setCreating(true)}
-            className="text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors"
-            style={{ background: 'var(--accent)' }}>
+            className="fluent-button fluent-button-primary h-11 px-4 text-sm">
             + Novo Condomínio
           </button>
         )}
       </div>
 
-      <div className="rounded-xl border p-4" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+      <div className="fluent-filter-bar">
         <input
           className="w-full max-w-md rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
           style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
@@ -258,8 +257,7 @@ function UnitForm({ unit, onSuccess }: { unit?: Unit; onSuccess: () => void }) {
           value={form.description} onChange={f('description')} placeholder="Informações adicionais..." />
       </div>
       <button type="submit" disabled={saving}
-        className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
-        style={{ background: 'var(--accent)' }}>
+        className="fluent-button fluent-button-primary h-12 w-full text-sm">
         {saving ? 'Salvando...' : unit ? 'Salvar alterações' : 'Criar Condomínio'}
       </button>
     </form>
@@ -343,8 +341,7 @@ function AssignUserForm({ unit, allUsers, onSuccess }: {
                 </select>
               </div>
               <button type="submit" disabled={saving || !selectedId}
-                className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
-                style={{ background: 'var(--accent)' }}>
+                className="fluent-button fluent-button-primary h-12 w-full text-sm">
                 {saving ? 'Atribuindo...' : '✓ Atribuir como responsável'}
               </button>
             </>

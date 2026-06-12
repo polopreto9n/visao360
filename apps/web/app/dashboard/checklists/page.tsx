@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { checklistsApi, schedulesApi, usersApi, unitsApi, Checklist, ChecklistSchedule, Execution, Unit, User } from '../../../lib/api';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
-import { formatDateTime, getUser, canManage, canAdmin } from '../../../lib/auth';
+import { formatDateTime, getUser, canManage, canAdmin, ROLE_LABELS } from '../../../lib/auth';
 import { api } from '../../../lib/api';
 
 function groupExecutions(executions: Execution[]): Execution[][] {
@@ -102,8 +102,8 @@ export default function ChecklistsPage() {
     } finally { setDeleteClLoading(false); }
   }
 
-  const TYPE_ICONS: Record<string, string> = {
-    PREVENTIVE: '🛡️', CORRECTIVE: '🔨', INSPECTION: '🔍', AUDIT: '📋',
+  const TYPE_MARKS: Record<string, string> = {
+    PREVENTIVE: 'PR', CORRECTIVE: 'CO', INSPECTION: 'IN', AUDIT: 'AU',
   };
 
   const executionGroups = groupExecutions(executions);
@@ -113,15 +113,12 @@ export default function ChecklistsPage() {
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Checklists</h1>
-          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{checklists.length} templates ativos</p>
+          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{checklists.length} modelos ativos</p>
         </div>
         {canCreate && (
           <button
             onClick={() => setCreating(true)}
-            className="text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors text-white"
-            style={{ background: 'var(--accent)' }}
-            onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-            onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+            className="fluent-button fluent-button-primary h-11 px-4 text-sm"
           >
             + Novo Checklist
           </button>
@@ -129,19 +126,14 @@ export default function ChecklistsPage() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-xl p-1 w-fit" style={{ background: 'var(--surface-2)' }}>
+      <div className="fluent-filter-bar w-fit !gap-1 !p-1">
         {(['templates', 'history'] as const).map((t) => (
           <button
             key={t}
             onClick={() => setTab(t)}
-            className="px-4 py-2 rounded-lg text-sm font-semibold transition-colors"
-            style={
-              tab === t
-                ? { background: 'var(--surface)', color: 'var(--text-primary)', boxShadow: 'var(--shadow-sm)' }
-                : { color: 'var(--text-muted)' }
-            }
+            className={`fluent-filter-chip px-4 text-sm ${tab === t ? 'fluent-filter-chip-active' : ''}`}
           >
-            {t === 'templates' ? '📋 Templates' : '📜 Histórico'}
+            {t === 'templates' ? 'Modelos' : 'Histórico'}
           </button>
         ))}
       </div>
@@ -153,9 +145,9 @@ export default function ChecklistsPage() {
       ) : tab === 'templates' ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {checklists.length === 0 && (
-            <div className="col-span-full rounded-xl border p-16 text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-              <p className="text-4xl mb-3">📋</p>
+            <div className="fluent-card col-span-full p-16 text-center">
               <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>Nenhum checklist cadastrado</p>
+              <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>Os modelos disponíveis para execução aparecerão aqui.</p>
             </div>
           )}
           {checklists.map((cl) => {
@@ -170,87 +162,100 @@ export default function ChecklistsPage() {
             return (
               <div
                 key={cl.id}
-                className="rounded-xl border p-5 flex flex-col gap-4 transition-shadow hover:shadow-md"
-                style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}
+                className="fluent-card flex flex-col gap-4 p-4 sm:p-5"
               >
-                <div className="flex items-start justify-between gap-2">
-                  <span className="text-2xl">{TYPE_ICONS[cl.type] ?? '📋'}</span>
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <span
+                      className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl text-xs font-black"
+                      style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}
+                    >
+                      {TYPE_MARKS[cl.type] ?? 'CL'}
+                    </span>
+                    <div className="min-w-0">
+                      <h3 className="line-clamp-2 font-bold" style={{ color: 'var(--text-primary)' }}>{cl.name}</h3>
+                      {cl.description && <p className="mt-1 line-clamp-2 text-sm" style={{ color: 'var(--text-muted)' }}>{cl.description}</p>}
+                    </div>
+                  </div>
                   <Badge value={cl.type} />
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-bold" style={{ color: 'var(--text-primary)' }}>{cl.name}</h3>
-                  {cl.description && <p className="text-sm mt-1 line-clamp-2" style={{ color: 'var(--text-muted)' }}>{cl.description}</p>}
-                </div>
-                <div className="flex items-center gap-3 text-xs flex-wrap" style={{ color: 'var(--text-muted)' }}>
-                  <span>📌 {cl.items.length} itens</span>
-                  {cl.unit && <span>🏢 {cl.unit.name}</span>}
-                  {cl.intervalDays && <span>🔄 A cada {cl.intervalDays}d</span>}
-                  {cl._count && <span>📊 {cl._count.executions} execuções</span>}
+
+                <div className="grid gap-2 text-xs sm:grid-cols-2" style={{ color: 'var(--text-muted)' }}>
+                  <span className="rounded-xl px-3 py-2" style={{ background: 'var(--surface-2)' }}>
+                    <strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Itens</strong>
+                    {cl.items.length}
+                  </span>
+                  <span className="rounded-xl px-3 py-2" style={{ background: 'var(--surface-2)' }}>
+                    <strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Periodicidade</strong>
+                    {cl.intervalDays ? `A cada ${cl.intervalDays} dia(s)` : 'Sem repetição definida'}
+                  </span>
+                  <span className="rounded-xl px-3 py-2" style={{ background: 'var(--surface-2)' }}>
+                    <strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Unidade</strong>
+                    {cl.unit?.name ?? 'Todas as unidades'}
+                  </span>
+                  <span className="rounded-xl px-3 py-2" style={{ background: 'var(--surface-2)' }}>
+                    <strong className="block font-semibold" style={{ color: 'var(--text-secondary)' }}>Execuções</strong>
+                    {cl._count?.executions ?? 0}
+                  </span>
                 </div>
 
                 {/* Badge de agenda */}
                 {sch && nextDate && (
-                  <div className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-semibold border ${
+                  <div className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 text-xs font-semibold ${
                     isOverdue ? 'bg-red-50 border-red-200 text-red-700' :
                     isToday   ? 'bg-amber-50 border-amber-200 text-amber-700' :
                     isSoon    ? 'bg-orange-50 border-orange-200 text-orange-700' :
                                 'bg-blue-50 border-blue-200 text-blue-700'
                   }`}>
-                    <span className="text-base">{isOverdue ? '🚨' : isToday ? '⏰' : '📅'}</span>
+                    <span className="h-2.5 w-2.5 flex-shrink-0 rounded-full bg-current opacity-80" />
                     <div className="flex-1 min-w-0">
-                      <span>
+                      <span className="block">
                         {isOverdue
-                          ? `Vencido há ${Math.abs(diffDays!)}d — ${nextDate.toLocaleDateString('pt-BR')}`
+                          ? `Vencido há ${Math.abs(diffDays!)} dia(s)`
                           : isToday ? 'Previsto para hoje'
-                          : `Próxima: ${nextDate.toLocaleDateString('pt-BR')}${diffDays === 1 ? ' (amanhã)' : ` (em ${diffDays}d)`}`
+                          : `Próxima execução em ${diffDays} dia(s)`
                         }
                       </span>
-                      {sch.assignee && <span className="ml-2 opacity-75">· {sch.assignee.name}</span>}
+                      <span className="block font-medium opacity-80">
+                        {nextDate.toLocaleDateString('pt-BR')}{sch.assignee ? ` · ${sch.assignee.name}` : ''}
+                      </span>
                     </div>
                     {sch.reminderDaysBefore ? (
-                      <span className="flex-shrink-0">🔔 {sch.reminderDaysBefore}d antes</span>
+                      <span className="flex-shrink-0 rounded-full bg-white/70 px-2 py-1">{sch.reminderDaysBefore} dia(s) antes</span>
                     ) : null}
                   </div>
                 )}
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap items-center gap-2 pt-1">
                   <button
                     onClick={() => startExecution(cl)}
-                    className="flex-1 text-sm font-semibold py-2.5 rounded-xl transition-colors text-white"
-                    style={{ background: 'var(--accent)' }}
-                    onMouseEnter={(e) => (e.currentTarget.style.opacity = '0.9')}
-                    onMouseLeave={(e) => (e.currentTarget.style.opacity = '1')}
+                    className="fluent-button fluent-button-primary h-10 w-full px-4 text-sm sm:w-auto"
                   >
-                    ▶ Executar
+                    Executar
                   </button>
                   {canCreate && (
                     <>
                       <button
                         onClick={() => setScheduling(cl)}
-                        className={`px-3 text-sm font-semibold rounded-xl transition-colors ${
-                          sch ? 'border-blue-300 bg-blue-50 text-blue-700 hover:bg-blue-100' : ''
-                        }`}
-                        style={!sch ? { border: '1px solid var(--border)', color: 'var(--text-secondary)' } : undefined}
+                        className={`fluent-button h-10 px-3 text-xs ${sch ? 'fluent-button-secondary text-blue-700' : 'fluent-button-ghost'}`}
                         title={sch ? 'Editar agenda' : 'Agendar'}
                       >
-                        {sch ? '🗓️' : '🗓️+'}
+                        {sch ? 'Editar agenda' : 'Agendar'}
                       </button>
                       <button
                         onClick={() => setEditing(cl)}
-                        className="px-3 text-sm font-semibold rounded-xl transition-colors"
-                        style={{ border: '1px solid var(--border)', color: 'var(--text-secondary)' }}
+                        className="fluent-button fluent-button-ghost h-10 px-3 text-xs"
                         title="Editar checklist"
                       >
-                        ✏️
+                        Editar
                       </button>
                       {isAdmin && (
                         <button
                           onClick={() => setDeletingCl(cl)}
-                          className="px-3 text-sm font-semibold rounded-xl transition-colors hover:bg-red-50 hover:border-red-200 hover:text-red-600"
-                          style={{ border: '1px solid var(--border)', color: 'var(--text-muted)' }}
+                          className="fluent-button fluent-button-ghost h-10 px-3 text-xs text-red-600 hover:!border-red-200 hover:!bg-red-50"
                           title="Excluir checklist"
                         >
-                          🗑️
+                          Excluir
                         </button>
                       )}
                     </>
@@ -263,9 +268,9 @@ export default function ChecklistsPage() {
       ) : (
         <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
           {executionGroups.length === 0 && (
-            <div className="rounded-xl border p-16 text-center" style={{ background: 'var(--surface)', borderColor: 'var(--border)' }}>
-              <p className="text-4xl mb-3">📜</p>
+            <div className="fluent-card p-16 text-center">
               <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>Nenhuma execução registrada</p>
+              <p className="mt-1 text-sm" style={{ color: 'var(--text-muted)' }}>O histórico dos checklists concluídos ficará disponível aqui.</p>
             </div>
           )}
           {executionGroups.map((group) => {
@@ -275,7 +280,7 @@ export default function ChecklistsPage() {
             const displayList = isExpanded ? group : [latest];
             const extra = group.length - 1;
             return (
-              <div key={checklistId} className="rounded-xl border overflow-hidden" style={{ background: 'var(--surface)', borderColor: 'var(--border)', boxShadow: 'var(--shadow-sm)' }}>
+              <div key={checklistId} className="fluent-card overflow-hidden">
                 <div className="px-4 py-3 flex items-center justify-between" style={{ borderBottom: '1px solid var(--border)', background: 'var(--surface-2)' }}>
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{latest.checklist.name}</span>
@@ -301,7 +306,7 @@ export default function ChecklistsPage() {
                 </div>
                 <div style={{ borderTop: 'none' }}>
                   {displayList.map((ex) => (
-                    <div key={ex.id} className="p-4 flex items-start gap-4" style={{ borderBottom: '1px solid var(--border)' }}>
+                    <div key={ex.id} className="flex items-start gap-4 p-4" style={{ borderBottom: '1px solid var(--border)' }}>
                       <Link href={`/dashboard/executions/${ex.id}`} className="flex-1 min-w-0 hover:opacity-80 transition-opacity">
                         <div className="flex flex-wrap items-center gap-2 mb-1">
                           <Badge value={ex.status} />
@@ -312,10 +317,10 @@ export default function ChecklistsPage() {
                             }`}>{ex.score}% conformidade</span>
                           )}
                         </div>
-                        <div className="flex flex-wrap gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
-                          <span>👤 {ex.user.name}</span>
-                          {ex.asset && <span>🏗️ {ex.asset.name}</span>}
-                          <span>📌 {ex._count.items} itens</span>
+                        <div className="flex flex-wrap gap-2 text-xs" style={{ color: 'var(--text-muted)' }}>
+                          <span className="rounded-full px-2 py-1" style={{ background: 'var(--surface-2)' }}>Responsável: {ex.user.name}</span>
+                          {ex.asset && <span className="rounded-full px-2 py-1" style={{ background: 'var(--surface-2)' }}>Equipamento: {ex.asset.name}</span>}
+                          <span className="rounded-full px-2 py-1" style={{ background: 'var(--surface-2)' }}>{ex._count.items} item(ns)</span>
                         </div>
                       </Link>
                       <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
@@ -323,9 +328,9 @@ export default function ChecklistsPage() {
                         <Link href={`/dashboard/executions/${ex.id}`} className="text-xs" style={{ color: 'var(--accent)' }}>Ver →</Link>
                         {isAdmin && (
                           <button onClick={() => setDeletingEx(ex)}
-                            className="text-xs transition-colors hover:text-red-500"
+                            className="text-xs font-semibold transition-colors hover:text-red-500"
                             style={{ color: 'var(--text-muted)' }}
-                            title="Excluir">🗑️</button>
+                            title="Excluir">Excluir</button>
                         )}
                       </div>
                     </div>
@@ -632,8 +637,7 @@ function CreateChecklistForm({
       </div>
 
       <button type="submit" disabled={saving}
-        className="w-full disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
-        style={{ background: 'var(--accent)' }}>
+        className="fluent-button fluent-button-primary h-12 w-full text-sm">
         {saving
           ? 'Salvando...'
           : isEditing
@@ -734,7 +738,7 @@ function ScheduleForm({
         >
           <option value="">Sem técnico específico</option>
           {technicians.map((u) => (
-            <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+            <option key={u.id} value={u.id}>{u.name} ({ROLE_LABELS[u.role] ?? u.role})</option>
           ))}
         </select>
       </div>
@@ -784,7 +788,7 @@ function ScheduleForm({
           <option value="14">2 semanas antes</option>
         </select>
         <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-          O técnico receberá uma notificação push no celular nessa antecedência.
+          O técnico receberá uma notificação no aplicativo com essa antecedência.
         </p>
       </div>
 
@@ -843,8 +847,7 @@ function ScheduleForm({
         <button
           type="submit"
           disabled={saving}
-          className="flex-1 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition-colors text-sm"
-          style={{ background: 'var(--accent)' }}
+          className="fluent-button fluent-button-primary h-12 flex-1 text-sm"
         >
           {saving ? 'Salvando...' : existingSchedule ? '✓ Atualizar agenda' : '✓ Criar agenda'}
         </button>

@@ -120,7 +120,7 @@ export default function RecuperarPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition"
+                  className="fluent-button fluent-button-primary h-12 w-full text-sm"
                 >
                   {loading ? 'Buscando...' : 'Continuar →'}
                 </button>
@@ -208,7 +208,7 @@ export default function RecuperarPage() {
                 <button
                   type="submit"
                   disabled={loading || (!selectedCompany && companies.length > 1)}
-                  className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-semibold py-3 rounded-xl transition"
+                  className="fluent-button fluent-button-primary h-12 w-full text-sm"
                 >
                   {loading ? 'Verificando...' : 'Verificar status'}
                 </button>
@@ -241,7 +241,7 @@ export default function RecuperarPage() {
                 </div>
                 {result.trialDaysLeft !== null && (
                   <div className="flex items-center justify-between text-xs opacity-75 mt-0.5">
-                    <span>Trial restante</span>
+                    <span>Avaliação restante</span>
                     <span>{result.trialDaysLeft} dia(s)</span>
                   </div>
                 )}
@@ -257,7 +257,7 @@ export default function RecuperarPage() {
                     href={result.billingPortalUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-center transition"
+                    className="fluent-button fluent-button-primary h-12 w-full text-sm"
                   >
                     💳 Regularizar pagamento
                   </a>
@@ -275,7 +275,7 @@ export default function RecuperarPage() {
                 {result.subscriptionStatus === 'ACTIVE' && (
                   <Link
                     href="/login"
-                    className="block w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl text-center transition"
+                    className="fluent-button fluent-button-primary h-12 w-full text-sm"
                   >
                     Entrar na plataforma →
                   </Link>
@@ -285,7 +285,7 @@ export default function RecuperarPage() {
                   href="/login"
                   className="block w-full border border-gray-300 text-gray-600 hover:bg-gray-50 font-medium py-3 rounded-xl text-center transition text-sm"
                 >
-                  Voltar ao login
+                  Voltar para entrar
                 </Link>
               </div>
             </>

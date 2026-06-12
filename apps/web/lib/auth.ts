@@ -48,10 +48,10 @@ export const SUBSCRIPTION_LABELS: Record<string, string> = {
 };
 
 export const PLAN_LABELS: Record<string, string> = {
-  TRIAL: 'Trial',
-  STARTER: 'Starter',
+  TRIAL: 'Avaliação gratuita',
+  STARTER: 'Inicial',
   PROFESSIONAL: 'Profissional',
-  ENTERPRISE: 'Enterprise',
+  ENTERPRISE: 'Corporativo',
 };
 
 export function isOwner(role: string): boolean {
@@ -81,7 +81,7 @@ export const STATUS_LABELS: Record<string, string> = {
   OPEN: 'Aberta', ASSIGNED: 'Atribuída', IN_PROGRESS: 'Em andamento',
   WAITING_PARTS: 'Aguard. peças', COMPLETED: 'Concluída', CANCELLED: 'Cancelada',
   ACTIVE: 'Ativo', INACTIVE: 'Inativo', MAINTENANCE: 'Em manutenção', DECOMMISSIONED: 'Desativado',
-  PENDING: 'Pendente',
+  PENDING: 'Pendente', INVESTIGATING: 'Em investigação', RESOLVED: 'Resolvida', CLOSED: 'Encerrada',
   PREVENTIVE: 'Preventivo', CORRECTIVE: 'Corretivo', INSPECTION: 'Inspeção', AUDIT: 'Auditoria',
 };
 
@@ -107,6 +107,10 @@ export const STATUS_COLORS: Record<string, string> = {
   INACTIVE: 'bg-gray-100 text-gray-600',
   MAINTENANCE: 'bg-yellow-100 text-yellow-800',
   DECOMMISSIONED: 'bg-red-100 text-red-800',
+  PENDING: 'bg-slate-100 text-slate-700',
+  INVESTIGATING: 'bg-amber-100 text-amber-800',
+  RESOLVED: 'bg-green-100 text-green-800',
+  CLOSED: 'bg-slate-100 text-slate-600',
 };
 
 export function formatDate(iso: string | null): string {
