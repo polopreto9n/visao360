@@ -69,9 +69,10 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      const res = await rawApi.post<{ accessToken: string }>('/auth/refresh', { refreshToken });
-      const { accessToken } = res.data;
+      const res = await rawApi.post<{ accessToken: string; refreshToken: string }>('/auth/refresh', { refreshToken });
+      const { accessToken, refreshToken: newRefreshToken } = res.data;
       localStorage.setItem('visao360_token', accessToken);
+      localStorage.setItem('visao360_refresh', newRefreshToken);
       api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
       original.headers.Authorization = `Bearer ${accessToken}`;
       processQueue(null, accessToken);

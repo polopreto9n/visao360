@@ -73,9 +73,10 @@ api.interceptors.response.use(
     isRefreshing = true;
 
     try {
-      const res = await rawApi.post<{ accessToken: string }>('/auth/refresh', { refreshToken });
-      const { accessToken } = res.data;
+      const res = await rawApi.post<{ accessToken: string; refreshToken: string }>('/auth/refresh', { refreshToken });
+      const { accessToken, refreshToken: newRefreshToken } = res.data;
       await SecureStore.setItemAsync(TOKEN_KEY, accessToken);
+      await SecureStore.setItemAsync(REFRESH_KEY, newRefreshToken);
       api.defaults.headers.common.Authorization = `Bearer ${accessToken}`;
       original.headers.Authorization = `Bearer ${accessToken}`;
       processQueue(null, accessToken);

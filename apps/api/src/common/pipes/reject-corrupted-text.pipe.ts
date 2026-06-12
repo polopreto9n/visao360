@@ -7,6 +7,12 @@ function hasCorruptedText(value: unknown): boolean {
     return value.includes(UNICODE_REPLACEMENT_CHARACTER);
   }
 
+  // Buffers/TypedArrays (ex: arquivos de upload) não são texto —
+  // Object.values() neles materializaria um array com cada byte.
+  if (Buffer.isBuffer(value) || ArrayBuffer.isView(value)) {
+    return false;
+  }
+
   if (Array.isArray(value)) {
     return value.some(hasCorruptedText);
   }

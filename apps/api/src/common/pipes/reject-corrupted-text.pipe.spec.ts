@@ -17,4 +17,16 @@ describe('RejectCorruptedTextPipe', () => {
   it('rejects text that already contains the Unicode replacement character', () => {
     expect(() => pipe.transform({ name: 'Inspe��o' }, metadata)).toThrow(BadRequestException);
   });
+
+  it('does not iterate Buffer contents (uploaded file)', () => {
+    const file = {
+      fieldname: 'file',
+      originalname: 'foto.jpg',
+      mimetype: 'image/jpeg',
+      buffer: Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]),
+      size: 6,
+    };
+
+    expect(pipe.transform(file, metadata)).toBe(file);
+  });
 });
