@@ -18,6 +18,7 @@ import { ChecklistsModule } from "./checklists/checklists.module";
 import { ExecutionsModule } from "./executions/executions.module";
 import { WorkOrdersModule } from "./work-orders/work-orders.module";
 import { IncidentsModule } from "./incidents/incidents.module";
+import { SuppliersModule } from "./suppliers/suppliers.module";
 import { UploadModule } from "./upload/upload.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
 import { ScheduleModule } from "@nestjs/schedule";
@@ -60,6 +61,7 @@ import { TenantMiddleware } from "./common/middleware/tenant.middleware";
     ExecutionsModule,
     WorkOrdersModule,
     IncidentsModule,
+    SuppliersModule,
     UploadModule,
     DashboardModule,
     ChecklistSchedulesModule,

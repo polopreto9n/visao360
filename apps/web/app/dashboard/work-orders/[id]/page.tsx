@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { workOrdersApi, usersApi, WorkOrder, User } from '../../../../lib/api';
+import { workOrdersApi, usersApi, suppliersApi, WorkOrder, User, SupplierOption } from '../../../../lib/api';
 import { Badge } from '../../../../components/ui/Badge';
 import { Modal } from '../../../../components/ui/Modal';
 import {
@@ -38,6 +38,8 @@ export default function WorkOrderDetailPage() {
   const [statusNote, setStatusNote] = useState('');
   const [statusCost, setStatusCost] = useState('');
   const [statusMaterials, setStatusMaterials] = useState('');
+  const [statusSupplierId, setStatusSupplierId] = useState('');
+  const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [saving, setSaving] = useState(false);
   const user = getUser();
@@ -53,6 +55,7 @@ export default function WorkOrderDetailPage() {
   useEffect(() => {
     if (canManage(user?.role ?? '')) {
       usersApi.list({ limit: 100 }).then((r) => setUsers(r.data.data)).catch(() => {});
+      suppliersApi.options().then((r) => setSuppliers(r.data)).catch(() => {});
     }
   }, [user?.role]);
 
@@ -64,12 +67,14 @@ export default function WorkOrderDetailPage() {
       const res = await workOrdersApi.updateStatus(wo.id, status, statusNote || undefined, {
         cost: cost && !Number.isNaN(cost) ? cost : undefined,
         materialsUsed: statusMaterials || undefined,
+        supplierId: statusSupplierId || undefined,
       });
       setWo(res.data);
       setStatusModal(null);
       setStatusNote('');
       setStatusCost('');
       setStatusMaterials('');
+      setStatusSupplierId('');
     } catch (e: unknown) {
       alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro');
     } finally { setSaving(false); }
@@ -238,7 +243,7 @@ export default function WorkOrderDetailPage() {
       </div>
 
       {/* Modal atualizar status */}
-      <Modal open={!!statusModal} onClose={() => { setStatusModal(null); setStatusCost(''); setStatusMaterials(''); }} title={statusModal?.label ?? ''} size="sm">
+      <Modal open={!!statusModal} onClose={() => { setStatusModal(null); setStatusCost(''); setStatusMaterials(''); setStatusSupplierId(''); }} title={statusModal?.label ?? ''} size="sm">
         {statusModal && (
           <div className="space-y-4">
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Deseja {statusModal.label.toLowerCase()} esta OS?</p>
@@ -259,6 +264,20 @@ export default function WorkOrderDetailPage() {
                     style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
                     value={statusMaterials} onChange={(e) => setStatusMaterials(e.target.value)} placeholder="Ex: 2x correia, 1L de óleo..." />
                 </div>
+                {suppliers.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Fornecedor / prestador</label>
+                    <select
+                      className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                      value={statusSupplierId} onChange={(e) => setStatusSupplierId(e.target.value)}>
+                      <option value="">Não informado</option>
+                      {suppliers.map((s) => (
+                        <option key={s.id} value={s.id}>{s.name}{s.category ? ` — ${s.category}` : ''}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </>
             )}
             <div>

@@ -138,6 +138,26 @@ export const unitsApi = {
     api.delete<Unit>(`/units/${unitId}/users/${userId}`),
 };
 
+export interface Supplier {
+  id: string; name: string; category: string | null; phone: string | null;
+  email: string | null; notes: string | null; isActive: boolean;
+  _count?: { workOrders: number };
+  workOrders?: { id: string; code: string; title: string; status: string; completedAt: string | null; cost: number | null }[];
+}
+
+export interface SupplierOption {
+  id: string; name: string; category: string | null; phone: string | null;
+}
+
+export const suppliersApi = {
+  list: (params?: Record<string, unknown>) => api.get<Paginated<Supplier>>('/suppliers', { params }),
+  options: () => api.get<SupplierOption[]>('/suppliers/options'),
+  get: (id: string) => api.get<Supplier>(`/suppliers/${id}`),
+  create: (data: Record<string, unknown>) => api.post<Supplier>('/suppliers', data),
+  update: (id: string, data: Record<string, unknown>) => api.patch<Supplier>(`/suppliers/${id}`, data),
+  remove: (id: string) => api.delete(`/suppliers/${id}`),
+};
+
 export interface Asset {
   id: string; name: string; code: string | null; category: string;
   brand: string | null; model: string | null; serialNumber: string | null;
