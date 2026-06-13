@@ -261,8 +261,8 @@ export const workOrdersApi = {
     priority?: string;
     photoUrls?: string[];
   }) => api.post<WorkOrder>('/work-orders', data),
-  updateStatus: (id: string, status: string, notes?: string) =>
-    api.patch(`/work-orders/${id}/status`, { status, notes }),
+  updateStatus: (id: string, status: string, notes?: string, extra?: { photoUrls?: string[] }) =>
+    api.patch(`/work-orders/${id}/status`, { status, notes, ...extra }),
 };
 
 // ─── Checklist Schedules ──────────────────────────────────────────────────────

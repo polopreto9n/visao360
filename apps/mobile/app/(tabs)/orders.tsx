@@ -7,9 +7,13 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  Modal,
+  ScrollView,
+  TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { workOrdersApi, WorkOrder } from '../../services/api';
+import { workOrdersApi, WorkOrder, uploadApi } from '../../services/api';
+import { PhotoCapture } from '../../components/PhotoCapture';
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
   OPEN: { label: 'Aberta', color: '#2563eb', bg: '#dbeafe' },
@@ -31,6 +35,7 @@ export default function OrdersScreen() {
   const [orders, setOrders] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'active' | 'all'>('active');
+  const [completing, setCompleting] = useState<WorkOrder | null>(null);
 
   async function load() {
     try {
@@ -77,10 +82,17 @@ export default function OrdersScreen() {
       [
         ...available.map((s) => ({
           text: labels[s] ?? s,
-          onPress: () => updateStatus(order, s),
+          onPress: () => (s === 'COMPLETED' ? setCompleting(order) : updateStatus(order, s)),
         })),
         { text: 'Cancelar', style: 'cancel' as const },
       ],
+    );
+  }
+
+  function handleCompleted(order: WorkOrder) {
+    setCompleting(null);
+    setOrders((prev) =>
+      prev.map((o) => (o.id === order.id ? { ...o, status: 'COMPLETED' } : o)),
     );
   }
 
@@ -178,9 +190,134 @@ export default function OrdersScreen() {
           );
         }}
       />
+
+      {/* Modal concluir OS */}
+      <Modal visible={!!completing} animationType="slide" presentationStyle="pageSheet">
+        {completing && (
+          <CompleteOrderForm
+            order={completing}
+            onClose={() => setCompleting(null)}
+            onCompleted={() => handleCompleted(completing)}
+          />
+        )}
+      </Modal>
     </View>
   );
 }
+
+// ─── Formulário de conclusão ─────────────────────────────────────────────────
+
+function CompleteOrderForm({
+  order,
+  onClose,
+  onCompleted,
+}: {
+  order: WorkOrder;
+  onClose: () => void;
+  onCompleted: () => void;
+}) {
+  const [notes, setNotes] = useState('');
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+
+  async function submit() {
+    if (!notes.trim()) { Alert.alert('Atenção', 'Descreva o serviço realizado.'); return; }
+    if (photos.length === 0) { Alert.alert('Atenção', 'Adicione ao menos uma foto do serviço concluído.'); return; }
+
+    setSubmitting(true);
+    try {
+      const photoUrls: string[] = [];
+      for (const uri of photos) {
+        try {
+          const url = await uploadApi.uploadPhoto(uri, 'work-orders');
+          photoUrls.push(url);
+        } catch { /* ignora falha de upload individual */ }
+      }
+      if (photoUrls.length === 0) {
+        Alert.alert('Erro', 'Não foi possível enviar as fotos. Tente novamente.');
+        return;
+      }
+
+      await workOrdersApi.updateStatus(order.id, 'COMPLETED', notes.trim(), { photoUrls });
+      Alert.alert('✅ OS concluída', 'A OS foi marcada como concluída.', [{ text: 'OK', onPress: onCompleted }]);
+    } catch {
+      Alert.alert('Erro', 'Não foi possível concluir a OS. Tente novamente.');
+    } finally { setSubmitting(false); }
+  }
+
+  return (
+    <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
+      <View style={f.header}>
+        <TouchableOpacity onPress={onClose} style={f.closeBtn}>
+          <Ionicons name="close" size={20} color="#6b7280" />
+        </TouchableOpacity>
+        <Text style={f.headerTitle}>Concluir OS</Text>
+        <TouchableOpacity onPress={submit} disabled={submitting} style={[f.submitBtn, submitting && { opacity: 0.6 }]}>
+          <Text style={f.submitText}>{submitting ? 'Enviando...' : 'Concluir'}</Text>
+        </TouchableOpacity>
+      </View>
+
+      <ScrollView contentContainerStyle={f.content}>
+        <View style={f.field}>
+          <Text style={f.label}>{order.code} — {order.title}</Text>
+        </View>
+
+        <View style={f.field}>
+          <Text style={f.label}>O que foi feito? *</Text>
+          <TextInput
+            style={[f.input, { height: 100, textAlignVertical: 'top', paddingTop: 12 }]}
+            value={notes}
+            onChangeText={setNotes}
+            placeholder="Descreva o serviço realizado..."
+            placeholderTextColor="#9ca3af"
+            multiline
+            maxLength={2000}
+          />
+        </View>
+
+        <View style={f.field}>
+          <Text style={f.label}>Fotos do serviço concluído *</Text>
+          <PhotoCapture
+            photos={photos}
+            onPhotosChange={setPhotos}
+            maxPhotos={5}
+            label="Adicionar foto"
+            required
+          />
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+
+const f = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 16,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+  },
+  closeBtn: { padding: 4 },
+  headerTitle: { fontSize: 16, fontWeight: '700', color: '#111827' },
+  submitBtn: { backgroundColor: '#16a34a', paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
+  submitText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  content: { padding: 16, gap: 16 },
+  field: { gap: 8 },
+  label: { fontSize: 13, fontWeight: '600', color: '#374151' },
+  input: {
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#111827',
+    backgroundColor: '#fff',
+  },
+});
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
