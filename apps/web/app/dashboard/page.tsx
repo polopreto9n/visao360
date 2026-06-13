@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
-  Area,
-  AreaChart,
+  Bar,
+  BarChart,
   CartesianGrid,
   Cell,
   Pie,
@@ -387,28 +387,17 @@ function ServiceOrdersChart({ data, total }: { data: WorkOrderChartPoint[]; tota
       ) : (
         <div className="min-h-[270px] w-full flex-1">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={data} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
-              <defs>
-                <linearGradient id="serviceOrdersArea" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#2563EB" stopOpacity={0.2} />
-                  <stop offset="95%" stopColor="#2563EB" stopOpacity={0.02} />
-                </linearGradient>
-              </defs>
+            <BarChart data={data} margin={{ top: 8, right: 12, left: -16, bottom: 0 }}>
               <CartesianGrid vertical={false} stroke="rgba(148,163,184,0.18)" />
               <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#52627A', fontSize: 11 }} />
               <YAxis allowDecimals={false} axisLine={false} tickLine={false} tick={{ fill: '#52627A', fontSize: 11 }} />
               <Tooltip content={<ChartTooltip />} />
-              <Area
-                type="monotone"
-                dataKey="value"
-                name="Ordens"
-                stroke="#2563EB"
-                strokeWidth={3}
-                fill="url(#serviceOrdersArea)"
-                activeDot={{ r: 5, fill: '#2563EB', stroke: '#FFFFFF', strokeWidth: 2 }}
-                dot={{ r: 4, fill: '#2563EB', stroke: '#FFFFFF', strokeWidth: 2 }}
-              />
-            </AreaChart>
+              <Bar dataKey="value" name="Ordens" radius={[6, 6, 0, 0]}>
+                {data.map((item) => (
+                  <Cell key={item.name} fill={item.fill} />
+                ))}
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </div>
       )}
@@ -1088,7 +1077,7 @@ export default function DashboardPage() {
           tileClassName="bg-orange-100 text-orange-600"
         />
         <KPICard
-          label="SLA / Conformidade"
+          label="Conformidade de Checklists"
           value={`${summary.checklistCompletionRate}%`}
           fallback="Taxa de checklists concluídos"
           href="/dashboard/checklists"
