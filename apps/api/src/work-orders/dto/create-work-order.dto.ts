@@ -27,4 +27,7 @@ export class CreateWorkOrderDto {
 
   @ApiPropertyOptional({ description: 'URLs de fotos anexadas', type: [String] })
   @IsArray() @IsString({ each: true }) @IsOptional() photoUrls?: string[];
+
+  @ApiPropertyOptional({ description: 'ID do fornecedor/prestador responsável' })
+  @IsString() @IsOptional() supplierId?: string;
 }

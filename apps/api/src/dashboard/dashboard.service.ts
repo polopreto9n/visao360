@@ -234,6 +234,7 @@ export class DashboardService {
       prevChecklistsMonth, prevCompletedExecutions,
       prevCompletedThisMonth, prevNewWOs, prevNewIncidents,
       newWOsThisMonth, newIncidentsThisMonth,
+      maintenanceCostAgg, prevMaintenanceCostAgg,
     ] = await Promise.all([
       this.prisma.asset.count({
         where: { companyId, createdAt: inPeriod, ...unitFilter },
@@ -434,7 +435,18 @@ export class DashboardService {
       this.prisma.incident.count({
         where: { companyId, createdAt: inPeriod, ...unitFilter },
       }),
+      this.prisma.workOrder.aggregate({
+        where: { companyId, status: 'COMPLETED', completedAt: inPeriod, ...unitFilter },
+        _sum: { cost: true },
+      }),
+      this.prisma.workOrder.aggregate({
+        where: { companyId, status: 'COMPLETED', completedAt: inPreviousPeriod, ...unitFilter },
+        _sum: { cost: true },
+      }),
     ]);
+
+    const maintenanceCostThisMonth = maintenanceCostAgg._sum.cost ?? 0;
+    const prevMaintenanceCost = prevMaintenanceCostAgg._sum.cost ?? 0;
 
     const checklistCompletionRate =
       checklistsThisMonth > 0
@@ -461,8 +473,13 @@ export class DashboardService {
         checklistCompletionRate,
         openIncidents,
         criticalIncidents,
+        maintenanceCostThisMonth,
         trends: {
           newWorkOrders: { pct: trendPct(newWOsThisMonth, prevNewWOs), prev: prevNewWOs },
+          maintenanceCost: {
+            pct: trendPct(maintenanceCostThisMonth, prevMaintenanceCost),
+            prev: prevMaintenanceCost,
+          },
           completedThisMonth: {
             pct: trendPct(completedThisMonth, prevCompletedThisMonth),
             prev: prevCompletedThisMonth,
@@ -847,8 +864,10 @@ export class DashboardService {
         checklistCompletionRate: 0,
         openIncidents: 0,
         criticalIncidents: 0,
+        maintenanceCostThisMonth: 0,
         trends: {
           newWorkOrders: { pct: 0, prev: 0 },
+          maintenanceCost: { pct: 0, prev: 0 },
           completedThisMonth: { pct: 0, prev: 0 },
           checklistsThisMonth: { pct: 0, prev: 0 },
           checklistCompletionRate: { pct: 0, prev: 0 },

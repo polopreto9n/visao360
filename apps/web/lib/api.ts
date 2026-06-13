@@ -188,10 +188,12 @@ export interface WorkOrder {
   id: string; code: string; title: string; description: string;
   status: string; priority: string; dueDate: string | null;
   startedAt: string | null; completedAt: string | null; updatedAt: string; createdAt: string; notes: string | null;
+  cost: number | null; materialsUsed: string | null; photoUrls: string[];
   unit: { id: string; name: string };
   asset: { id: string; name: string; qrCode: string } | null;
   creator: { id: string; name: string; email: string };
   assignee: { id: string; name: string; email: string } | null;
+  supplier: { id: string; name: string; category: string | null; phone: string | null } | null;
 }
 
 export interface KPITrend { pct: number; prev: number; }
@@ -220,12 +222,14 @@ export interface DashboardKPIs {
     overdueWorkOrders: number; completedThisMonth: number;
     checklistsThisMonth: number; checklistCompletionRate: number;
     openIncidents: number; criticalIncidents: number;
+    maintenanceCostThisMonth: number;
     trends?: {
       newWorkOrders: KPITrend;
       completedThisMonth: KPITrend;
       checklistsThisMonth: KPITrend;
       checklistCompletionRate: KPITrend;
       newIncidents: KPITrend;
+      maintenanceCost: KPITrend;
     };
   };
   charts: {
@@ -423,8 +427,8 @@ export const workOrdersApi = {
   get: (id: string) => api.get<WorkOrder>(`/work-orders/${id}`),
   my: () => api.get<WorkOrder[]>('/work-orders/my'),
   create: (data: Record<string, unknown>) => api.post<WorkOrder>('/work-orders', data),
-  updateStatus: (id: string, status: string, notes?: string) =>
-    api.patch<WorkOrder>(`/work-orders/${id}/status`, { status, notes }),
+  updateStatus: (id: string, status: string, notes?: string, extra?: { cost?: number; materialsUsed?: string; photoUrls?: string[]; supplierId?: string }) =>
+    api.patch<WorkOrder>(`/work-orders/${id}/status`, { status, notes, ...extra }),
   assign: (id: string, assigneeId: string) =>
     api.patch<WorkOrder>(`/work-orders/${id}/assign/${assigneeId}`),
   delete: (id: string) => api.delete(`/work-orders/${id}`),

@@ -36,6 +36,8 @@ export default function WorkOrderDetailPage() {
   const [techModal, setTechModal] = useState(false);
   const [statusModal, setStatusModal] = useState<{ status: string; label: string } | null>(null);
   const [statusNote, setStatusNote] = useState('');
+  const [statusCost, setStatusCost] = useState('');
+  const [statusMaterials, setStatusMaterials] = useState('');
   const [users, setUsers] = useState<User[]>([]);
   const [saving, setSaving] = useState(false);
   const user = getUser();
@@ -58,10 +60,16 @@ export default function WorkOrderDetailPage() {
     if (!wo) return;
     setSaving(true);
     try {
-      const res = await workOrdersApi.updateStatus(wo.id, status, statusNote || undefined);
+      const cost = statusCost ? Number(statusCost.replace(',', '.')) : undefined;
+      const res = await workOrdersApi.updateStatus(wo.id, status, statusNote || undefined, {
+        cost: cost && !Number.isNaN(cost) ? cost : undefined,
+        materialsUsed: statusMaterials || undefined,
+      });
       setWo(res.data);
       setStatusModal(null);
       setStatusNote('');
+      setStatusCost('');
+      setStatusMaterials('');
     } catch (e: unknown) {
       alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro');
     } finally { setSaving(false); }
@@ -208,7 +216,15 @@ export default function WorkOrderDetailPage() {
                 {wo.asset.name}
               </Link>
             } />}
+            {wo.cost != null && <InfoRow label="Custo" value={`R$ ${wo.cost.toFixed(2).replace('.', ',')}`} />}
+            {wo.supplier && <InfoRow label="Fornecedor" value={wo.supplier.name} />}
           </InfoCard>
+
+          {wo.materialsUsed && (
+            <InfoCard title="Materiais/Peças Utilizados">
+              <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{wo.materialsUsed}</p>
+            </InfoCard>
+          )}
 
           <InfoCard title="Pessoas">
             <InfoRow label="Criador" value={wo.creator.name} />
@@ -222,10 +238,29 @@ export default function WorkOrderDetailPage() {
       </div>
 
       {/* Modal atualizar status */}
-      <Modal open={!!statusModal} onClose={() => setStatusModal(null)} title={statusModal?.label ?? ''} size="sm">
+      <Modal open={!!statusModal} onClose={() => { setStatusModal(null); setStatusCost(''); setStatusMaterials(''); }} title={statusModal?.label ?? ''} size="sm">
         {statusModal && (
           <div className="space-y-4">
             <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>Deseja {statusModal.label.toLowerCase()} esta OS?</p>
+            {statusModal.status === 'COMPLETED' && (
+              <>
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Custo total (R$)</label>
+                  <input
+                    type="text" inputMode="decimal"
+                    className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                    value={statusCost} onChange={(e) => setStatusCost(e.target.value)} placeholder="Ex: 250,00" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Materiais/peças utilizados</label>
+                  <textarea
+                    className="w-full rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none" rows={2}
+                    style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                    value={statusMaterials} onChange={(e) => setStatusMaterials(e.target.value)} placeholder="Ex: 2x correia, 1L de óleo..." />
+                </div>
+              </>
+            )}
             <div>
               <label className="block text-xs font-semibold mb-1" style={{ color: 'var(--text-secondary)' }}>Observação (opcional)</label>
               <textarea

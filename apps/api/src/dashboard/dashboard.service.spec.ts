@@ -25,6 +25,7 @@ const mockPrisma = {
     count: jest.fn().mockResolvedValue(3),
     findMany: jest.fn().mockResolvedValue([]),
     groupBy: jest.fn().mockResolvedValue([]),
+    aggregate: jest.fn().mockResolvedValue({ _sum: { cost: 0 } }),
   },
   execution: {
     count: jest.fn().mockResolvedValue(5),

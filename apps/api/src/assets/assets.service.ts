@@ -217,7 +217,7 @@ export class AssetsService {
         where: { assetId: id, companyId },
         select: {
           id: true, code: true, title: true, status: true, priority: true,
-          createdAt: true, completedAt: true,
+          createdAt: true, completedAt: true, cost: true, materialsUsed: true,
           assignee: { select: { id: true, name: true } },
         },
         orderBy: { createdAt: 'desc' },
@@ -225,7 +225,9 @@ export class AssetsService {
       }),
     ]);
 
-    return { executions, workOrders };
+    const totalCost = workOrders.reduce((sum, wo) => sum + (wo.cost ?? 0), 0);
+
+    return { executions, workOrders, totalCost };
   }
 
   async updateStatus(id: string, companyId: string, status: AssetStatus, userId?: string, userRole?: string) {

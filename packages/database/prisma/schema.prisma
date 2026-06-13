@@ -126,6 +126,7 @@ model Company {
   notifications       Notification[]
   alertReads          AlertRead[]
   checklistSchedules  ChecklistSchedule[]
+  suppliers           Supplier[]
 
   @@map("companies")
 }
@@ -153,6 +154,7 @@ model User {
   notifications        Notification[]
   alertReads           AlertRead[]
   checklistSchedules   ChecklistSchedule[]  @relation("ScheduleAssignee")
+  workOrderComments    WorkOrderComment[]
 
   @@unique([email, companyId])
   @@index([companyId])
@@ -198,6 +200,8 @@ model Asset {
   installDate       DateTime?
   lastMaintenanceAt DateTime?
   nextMaintenanceAt DateTime?
+  warrantyUntil     DateTime?
+  contractUntil     DateTime?
   description       String?
   photoUrl          String?
   metadata          Json?
@@ -338,30 +342,35 @@ model ExecutionItem {
 }
 
 model WorkOrder {
-  id          String            @id @default(cuid())
-  companyId   String
-  unitId      String
-  assetId     String?
-  creatorId   String
-  assigneeId  String?
-  code        String
-  title       String
-  description String
-  status      WorkOrderStatus   @default(OPEN)
-  priority    WorkOrderPriority @default(MEDIUM)
-  dueDate     DateTime?
-  startedAt   DateTime?
-  completedAt DateTime?
-  notes       String?
-  photoUrls   String[]          @default([])
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id            String            @id @default(cuid())
+  companyId     String
+  unitId        String
+  assetId       String?
+  creatorId     String
+  assigneeId    String?
+  supplierId    String?
+  code          String
+  title         String
+  description   String
+  status        WorkOrderStatus   @default(OPEN)
+  priority      WorkOrderPriority @default(MEDIUM)
+  dueDate       DateTime?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  notes         String?
+  photoUrls     String[]          @default([])
+  cost          Float?
+  materialsUsed String?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
 
-  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  unit     Unit    @relation(fields: [unitId], references: [id])
-  asset    Asset?  @relation(fields: [assetId], references: [id])
-  creator  User    @relation("WorkOrderCreator", fields: [creatorId], references: [id])
-  assignee User?   @relation("WorkOrderAssignee", fields: [assigneeId], references: [id])
+  company  Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit     Unit               @relation(fields: [unitId], references: [id])
+  asset    Asset?             @relation(fields: [assetId], references: [id])
+  creator  User               @relation("WorkOrderCreator", fields: [creatorId], references: [id])
+  assignee User?              @relation("WorkOrderAssignee", fields: [assigneeId], references: [id])
+  supplier Supplier?          @relation(fields: [supplierId], references: [id])
+  comments WorkOrderComment[]
 
   @@unique([code, companyId])
   @@index([companyId, status])
@@ -370,7 +379,41 @@ model WorkOrder {
   @@index([assigneeId])
   @@index([dueDate])
   @@index([creatorId])
+  @@index([supplierId])
   @@map("work_orders")
+}
+
+model Supplier {
+  id        String   @id @default(cuid())
+  companyId String
+  name      String
+  category  String?
+  phone     String?
+  email     String?
+  notes     String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  workOrders WorkOrder[]
+
+  @@index([companyId])
+  @@map("suppliers")
+}
+
+model WorkOrderComment {
+  id          String   @id @default(cuid())
+  workOrderId String
+  userId      String
+  body        String
+  createdAt   DateTime @default(now())
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+
+  @@index([workOrderId])
+  @@map("work_order_comments")
 }
 
 model Incident {

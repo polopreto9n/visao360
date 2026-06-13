@@ -24,6 +24,7 @@ const WO_INCLUDE = {
   asset: { select: { id: true, name: true, category: true, qrCode: true } },
   creator: { select: { id: true, name: true, email: true } },
   assignee: { select: { id: true, name: true, email: true } },
+  supplier: { select: { id: true, name: true, category: true, phone: true } },
 } as const;
 
 @Injectable()
@@ -74,6 +75,10 @@ export class WorkOrdersService {
       if (asset.unitId !== dto.unitId) {
         throw new BadRequestException('O equipamento informado nao pertence a unidade da OS');
       }
+    }
+    if (dto.supplierId) {
+      const supplier = await this.prisma.supplier.findFirst({ where: { id: dto.supplierId, companyId } });
+      if (!supplier) throw new NotFoundException('Fornecedor não encontrado');
     }
     const code = this.generateCode();
     const wo = await this.prisma.workOrder.create({
@@ -176,6 +181,10 @@ export class WorkOrdersService {
         status: dto.status, notes: dto.notes ?? wo.notes,
         startedAt: dto.status === WorkOrderStatus.IN_PROGRESS ? new Date() : wo.startedAt,
         completedAt: dto.status === WorkOrderStatus.COMPLETED ? new Date() : wo.completedAt,
+        cost: dto.cost ?? wo.cost,
+        materialsUsed: dto.materialsUsed ?? wo.materialsUsed,
+        supplierId: dto.supplierId ?? wo.supplierId,
+        photoUrls: dto.photoUrls?.length ? [...wo.photoUrls, ...dto.photoUrls] : wo.photoUrls,
       },
       include: WO_INCLUDE,
     });

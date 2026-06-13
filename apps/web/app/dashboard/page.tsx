@@ -27,6 +27,7 @@ import {
   RefreshCw,
   ShieldCheck,
   TriangleAlert,
+  Wallet,
   Wrench,
 } from 'lucide-react';
 import {
@@ -1058,7 +1059,7 @@ export default function DashboardPage() {
       )}
 
       {!isTecnico && (
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
         <KPICard
           label="Equipamentos Ativos"
           value={summary.activeAssets}
@@ -1094,6 +1095,16 @@ export default function DashboardPage() {
           trend={trends?.checklistCompletionRate}
           icon={ShieldCheck}
           tileClassName="bg-amber-100 text-amber-500"
+        />
+        <KPICard
+          label="Gasto com Manutenção"
+          value={summary.maintenanceCostThisMonth.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL', maximumFractionDigits: 0 })}
+          fallback="Custo de OS concluídas no período"
+          href="/dashboard/work-orders"
+          trend={trends?.maintenanceCost}
+          positiveIsGood={false}
+          icon={Wallet}
+          tileClassName="bg-rose-100 text-rose-600"
         />
       </section>
       )}
