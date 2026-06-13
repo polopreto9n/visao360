@@ -6,6 +6,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { formatDateTime, getUser } from '../../../lib/auth';
 import { api } from '../../../lib/api';
+import { downloadCsv } from '../../../lib/csv';
 
 interface Incident {
   id: string; title: string; description: string; severity: string; status: string;
@@ -60,6 +61,7 @@ export default function IncidentsPage() {
   const [creating, setCreating] = useState(false);
   const [detail, setDetail] = useState<Incident | null>(null);
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
   const user = getUser();
   const canDelete = user?.role === 'OWNER' || user?.role === 'ADMIN';
 
@@ -87,6 +89,29 @@ export default function IncidentsPage() {
       setDetail(null);
     } catch (e: unknown) {
       alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir');
+    }
+  }
+
+  async function handleExportCsv() {
+    setExporting(true);
+    try {
+      const params: Record<string, string> = { limit: '1000' };
+      if (sevFilter) params.severity = sevFilter;
+      const res = await api.get<{ data: Incident[]; total: number }>('/incidents', { params });
+      const rows = res.data.data.map((inc) => [
+        inc.title,
+        SEV_LABELS[inc.severity] ?? inc.severity,
+        inc.status,
+        inc.unit.name,
+        inc.reporter.name,
+        formatDateTime(inc.createdAt),
+        inc.resolvedAt ? formatDateTime(inc.resolvedAt) : '',
+      ]);
+      downloadCsv('ocorrencias.csv', [
+        'Título', 'Severidade', 'Status', 'Unidade', 'Responsável', 'Registro', 'Resolução',
+      ], rows);
+    } finally {
+      setExporting(false);
     }
   }
 
@@ -167,10 +192,16 @@ export default function IncidentsPage() {
           <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Ocorrências</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{total} ocorrências registradas</p>
         </div>
-        <button onClick={() => setCreating(true)}
-          className="fluent-button fluent-button-danger h-11 px-4 text-sm">
-          + Registrar Ocorrência
-        </button>
+        <div className="flex gap-2">
+          <button onClick={handleExportCsv} disabled={exporting}
+            className="fluent-button fluent-button-secondary h-11 px-4 text-sm disabled:opacity-60">
+            {exporting ? 'Exportando...' : '⬇ Exportar CSV'}
+          </button>
+          <button onClick={() => setCreating(true)}
+            className="fluent-button fluent-button-danger h-11 px-4 text-sm">
+            + Registrar Ocorrência
+          </button>
+        </div>
       </div>
 
       {/* Filtros de severidade */}

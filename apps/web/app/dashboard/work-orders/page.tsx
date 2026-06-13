@@ -6,6 +6,13 @@ import { workOrdersApi, unitsApi, usersApi, WorkOrder, Unit, User } from '../../
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { formatDate, isOverdue, getUser, canManage, canAdmin } from '../../../lib/auth';
+import { downloadCsv } from '../../../lib/csv';
+
+const STATUS_CSV_LABELS: Record<string, string> = {
+  OPEN: 'Aberta', ASSIGNED: 'Atribuída', IN_PROGRESS: 'Em andamento',
+  WAITING_PARTS: 'Aguard. peças', COMPLETED: 'Concluída', CANCELLED: 'Cancelada',
+};
+const PRIORITY_CSV_LABELS: Record<string, string> = { LOW: 'Baixa', MEDIUM: 'Média', HIGH: 'Alta', CRITICAL: 'Crítica' };
 
 const STATUS_TABS = [
   { key: '', label: 'Todas' },
@@ -49,6 +56,7 @@ export default function WorkOrdersPage() {
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [units, setUnits] = useState<Unit[]>([]);
   const [techUsers, setTechUsers] = useState<User[]>([]);
+  const [exporting, setExporting] = useState(false);
   const user = getUser();
   const canCreate = canManage(user?.role ?? '');
   const isAdmin = canAdmin(user?.role ?? '');
@@ -88,6 +96,36 @@ export default function WorkOrdersPage() {
     } finally { setDeleteLoading(false); }
   }
 
+  async function handleExportCsv() {
+    setExporting(true);
+    try {
+      const params: Record<string, unknown> = { page: 1, limit: 1000 };
+      if (statusFilter) params.status = statusFilter;
+      if (search) params.search = search;
+      const res = await workOrdersApi.list(params);
+      const rows = res.data.data.map((wo) => [
+        wo.code,
+        wo.title,
+        STATUS_CSV_LABELS[wo.status] ?? wo.status,
+        PRIORITY_CSV_LABELS[wo.priority] ?? wo.priority,
+        wo.unit.name,
+        wo.asset?.name ?? '',
+        wo.assignee?.name ?? '',
+        wo.dueDate ? formatDate(wo.dueDate) : '',
+        wo.cost ?? '',
+        wo.materialsUsed ?? '',
+        formatDate(wo.createdAt),
+        wo.completedAt ? formatDate(wo.completedAt) : '',
+      ]);
+      downloadCsv('ordens-de-servico.csv', [
+        'Código', 'Título', 'Status', 'Prioridade', 'Unidade', 'Equipamento',
+        'Técnico', 'Prazo', 'Custo', 'Materiais', 'Criada em', 'Concluída em',
+      ], rows);
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function handleUpdateStatus(wo: WorkOrder, status: string) {
     try {
       await workOrdersApi.updateStatus(wo.id, status, statusNote || undefined);
@@ -107,14 +145,23 @@ export default function WorkOrdersPage() {
           <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Ordens de Serviço</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{total} OS encontradas</p>
         </div>
-        {canCreate && (
+        <div className="flex gap-2">
           <button
-            onClick={() => setCreating(true)}
-            className="fluent-button fluent-button-primary h-11 px-4 text-sm"
+            onClick={handleExportCsv}
+            disabled={exporting}
+            className="fluent-button fluent-button-secondary h-11 px-4 text-sm disabled:opacity-60"
           >
-            + Nova OS
+            {exporting ? 'Exportando...' : '⬇ Exportar CSV'}
           </button>
-        )}
+          {canCreate && (
+            <button
+              onClick={() => setCreating(true)}
+              className="fluent-button fluent-button-primary h-11 px-4 text-sm"
+            >
+              + Nova OS
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filtros */}

@@ -7,6 +7,7 @@ import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { formatDateTime, getUser, canManage, canAdmin, ROLE_LABELS } from '../../../lib/auth';
 import { api } from '../../../lib/api';
+import { downloadCsv } from '../../../lib/csv';
 
 function groupExecutions(executions: Execution[]): Execution[][] {
   const m: { [key: string]: Execution[] } = {};
@@ -107,6 +108,21 @@ export default function ChecklistsPage() {
   };
 
   const executionGroups = groupExecutions(executions);
+
+  function handleExportCsv() {
+    const rows = executions.map((ex) => [
+      ex.checklist.name,
+      ex.user.name,
+      ex.asset?.name ?? '',
+      ex.status,
+      ex.score !== null ? `${ex.score}%` : '',
+      ex._count.items,
+      formatDateTime(ex.completedAt ?? ex.startedAt ?? ex.createdAt),
+    ]);
+    downloadCsv('execucoes-checklists.csv', [
+      'Checklist', 'Responsável', 'Equipamento', 'Status', 'Conformidade', 'Itens', 'Data',
+    ], rows);
+  }
 
   return (
     <div className="space-y-5">
@@ -267,6 +283,14 @@ export default function ChecklistsPage() {
         </div>
       ) : (
         <div className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+          {executions.length > 0 && (
+            <div className="flex justify-end">
+              <button onClick={handleExportCsv}
+                className="fluent-button fluent-button-secondary h-9 px-3 text-xs">
+                ⬇ Exportar CSV
+              </button>
+            </div>
+          )}
           {executionGroups.length === 0 && (
             <div className="fluent-card p-16 text-center">
               <p className="text-lg font-semibold" style={{ color: 'var(--text-secondary)' }}>Nenhuma execução registrada</p>
