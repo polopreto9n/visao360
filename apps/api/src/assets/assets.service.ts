@@ -231,6 +231,48 @@ export class AssetsService {
     return { executions, workOrders, totalCost };
   }
 
+  async getRecurringIssues(companyId: string, userId?: string, userRole?: string, months = 6) {
+    const scopedUnitIds = await this.getScopedUnitIds(userId, userRole);
+    if (scopedUnitIds && scopedUnitIds.length === 0) return [];
+
+    const since = new Date();
+    since.setMonth(since.getMonth() - months);
+
+    const groups = await this.prisma.workOrder.groupBy({
+      by: ['assetId'],
+      where: {
+        companyId,
+        assetId: { not: null },
+        createdAt: { gte: since },
+        ...(scopedUnitIds ? { unitId: { in: scopedUnitIds } } : {}),
+      },
+      _count: { _all: true },
+      having: { assetId: { _count: { gte: 2 } } },
+    });
+    if (groups.length === 0) return [];
+
+    const assetIds = groups.map((g) => g.assetId as string);
+    const countByAsset = new Map(groups.map((g) => [g.assetId as string, g._count._all]));
+
+    const assets = await this.prisma.asset.findMany({
+      where: { id: { in: assetIds }, companyId },
+      select: {
+        id: true, name: true, category: true, status: true,
+        unit: { select: { id: true, name: true } },
+        workOrders: {
+          where: { companyId, createdAt: { gte: since } },
+          select: { id: true, code: true, title: true, status: true, priority: true, createdAt: true, completedAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        },
+      },
+    });
+
+    return assets
+      .map((asset) => ({ ...asset, issueCount: countByAsset.get(asset.id) ?? 0 }))
+      .sort((a, b) => b.issueCount - a.issueCount);
+  }
+
   async updateStatus(id: string, companyId: string, status: AssetStatus, userId?: string, userRole?: string) {
     if (userRole === Role.CLIENTE) {
       throw new ForbiddenException('Clientes não podem alterar status de equipamentos');

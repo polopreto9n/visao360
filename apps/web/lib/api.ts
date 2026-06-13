@@ -168,6 +168,16 @@ export interface Asset {
   unit: { id: string; name: string };
 }
 
+export interface RecurringIssueAsset {
+  id: string; name: string; category: string; status: string;
+  unit: { id: string; name: string };
+  issueCount: number;
+  workOrders: {
+    id: string; code: string; title: string; status: string; priority: string;
+    createdAt: string; completedAt: string | null;
+  }[];
+}
+
 export interface ChecklistItem {
   id: string; order: number; question: string;
   description: string | null; requiresPhoto: boolean; requiresNote: boolean;
@@ -427,6 +437,8 @@ export const assetsApi = {
   qrData: (id: string) => api.get<{ qrCode: string; qrData: string; dataUrl: string }>(`/assets/${id}/qr-data`),
   qrImageUrl: (id: string) => `${API_URL}/assets/${id}/qr-image`,
   remove: (id: string) => api.delete(`/assets/${id}`),
+  recurringIssues: (months?: number) =>
+    api.get<RecurringIssueAsset[]>('/assets/recurring-issues', { params: months ? { months } : undefined }),
 };
 
 export const checklistsApi = {

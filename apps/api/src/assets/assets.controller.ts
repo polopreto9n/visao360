@@ -35,6 +35,12 @@ export class AssetsController {
     return this.svc.findAll(u.companyId, q, u.id, u.role);
   }
 
+  @Get('recurring-issues')
+  @ApiOperation({ summary: 'Equipamentos com problemas recorrentes (múltiplas OS nos últimos meses)' })
+  getRecurringIssues(@CurrentUser() u: AuthenticatedUser, @Query('months') months?: string) {
+    return this.svc.getRecurringIssues(u.companyId, u.id, u.role, months ? Number(months) : undefined);
+  }
+
   @Get('qr/:qrCode')
   @ApiOperation({ summary: 'Buscar equipamento por QR Code (scanner mobile)' })
   findByQR(@Param('qrCode') qrCode: string, @CurrentUser() u: AuthenticatedUser) {

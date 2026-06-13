@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { assetsApi, unitsApi, Asset, Unit } from '../../../lib/api';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
@@ -104,13 +105,19 @@ export default function AssetsPage() {
           <h1 className="text-2xl font-extrabold" style={{ color: 'var(--text-primary)' }}>Equipamentos</h1>
           <p className="text-sm" style={{ color: 'var(--text-muted)' }}>{total} equipamentos</p>
         </div>
-        {canCreate && (
-          <button onClick={() => setCreating(true)}
-            className="fluent-button fluent-button-primary h-11 px-4 text-sm"
-          >
-            + Novo Equipamento
-          </button>
-        )}
+        <div className="flex gap-2">
+          <Link href="/dashboard/assets/recurring"
+            className="fluent-button fluent-button-secondary h-11 px-4 text-sm">
+            Problemas recorrentes
+          </Link>
+          {canCreate && (
+            <button onClick={() => setCreating(true)}
+              className="fluent-button fluent-button-primary h-11 px-4 text-sm"
+            >
+              + Novo Equipamento
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Filtros */}
