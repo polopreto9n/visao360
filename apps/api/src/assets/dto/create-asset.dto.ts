@@ -44,6 +44,14 @@ export class CreateAssetDto {
   nextMaintenanceAt?: string;
 
   @ApiPropertyOptional()
+  @IsDateString() @IsOptional()
+  warrantyUntil?: string;
+
+  @ApiPropertyOptional()
+  @IsDateString() @IsOptional()
+  contractUntil?: string;
+
+  @ApiPropertyOptional()
   @IsString() @MaxLength(1000) @IsOptional()
   description?: string;
 }

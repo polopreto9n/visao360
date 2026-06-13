@@ -163,6 +163,7 @@ export interface Asset {
   brand: string | null; model: string | null; serialNumber: string | null;
   qrCode: string; status: string; installDate: string | null;
   lastMaintenanceAt: string | null; nextMaintenanceAt: string | null;
+  warrantyUntil: string | null; contractUntil: string | null;
   description: string | null; photoUrl: string | null;
   unit: { id: string; name: string };
 }

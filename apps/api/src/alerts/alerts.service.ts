@@ -7,6 +7,7 @@ import { AlertSeverity, ListAlertsDto } from './dto/list-alerts.dto';
 
 const ALERT_QUERY_LIMIT = 100;
 const DAY_MS = 24 * 60 * 60 * 1000;
+const EXPIRY_WINDOW_DAYS = 30;
 
 const SEVERITY_ORDER: Record<AlertSeverity, number> = {
   CRITICO: 4,
@@ -20,7 +21,9 @@ type AlertSource =
   | 'MAINTENANCE_OVERDUE'
   | 'CHECKLIST_OVERDUE'
   | 'ASSET_WITHOUT_INSPECTION'
-  | 'INCIDENT_OPEN';
+  | 'INCIDENT_OPEN'
+  | 'WARRANTY_EXPIRING'
+  | 'CONTRACT_EXPIRING';
 
 type AlertUnit = { id: string; name: string };
 
@@ -94,10 +97,11 @@ export class AlertsService {
 
   private async buildCandidates(companyId: string, unitIds?: string[]) {
     const now = new Date();
+    const expiryWindow = new Date(now.getTime() + EXPIRY_WINDOW_DAYS * DAY_MS);
     const unitFilter = unitIds ? { unitId: { in: unitIds } } : {};
     const scheduleScope = unitIds ? { OR: this.relatedUnitConditions(unitIds) } : {};
 
-    const [workOrders, maintenanceAssets, overdueSchedules, assetsWithoutInspection, incidents] =
+    const [workOrders, maintenanceAssets, overdueSchedules, assetsWithoutInspection, incidents, warrantyAssets, contractAssets] =
       await Promise.all([
         this.prisma.workOrder.findMany({
           where: {
@@ -201,6 +205,40 @@ export class AlertsService {
           orderBy: [{ severity: 'desc' }, { createdAt: 'desc' }],
           take: ALERT_QUERY_LIMIT,
         }),
+        this.prisma.asset.findMany({
+          where: {
+            companyId,
+            status: 'ACTIVE',
+            warrantyUntil: { lte: expiryWindow },
+            ...unitFilter,
+          },
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            warrantyUntil: true,
+            unit: { select: { id: true, name: true } },
+          },
+          orderBy: { warrantyUntil: 'asc' },
+          take: ALERT_QUERY_LIMIT,
+        }),
+        this.prisma.asset.findMany({
+          where: {
+            companyId,
+            status: 'ACTIVE',
+            contractUntil: { lte: expiryWindow },
+            ...unitFilter,
+          },
+          select: {
+            id: true,
+            name: true,
+            category: true,
+            contractUntil: true,
+            unit: { select: { id: true, name: true } },
+          },
+          orderBy: { contractUntil: 'asc' },
+          take: ALERT_QUERY_LIMIT,
+        }),
       ]);
 
     const workOrderAlerts = workOrders.map((order) => {
@@ -272,12 +310,52 @@ export class AlertsService {
       occurredAt: incident.createdAt,
     }));
 
+    const warrantyAlerts = warrantyAssets.map((asset) => {
+      const expiresAt = asset.warrantyUntil as Date;
+      const expired = expiresAt.getTime() < now.getTime();
+      return this.alert({
+        fingerprint: `warranty-expiring:${asset.id}:${expiresAt.toISOString()}`,
+        source: 'WARRANTY_EXPIRING',
+        severity: expired ? 'ALTO' : 'MEDIO',
+        title: expired
+          ? `Garantia vencida: ${asset.name}`
+          : `Garantia próxima do vencimento: ${asset.name}`,
+        body: expired
+          ? `${asset.category} está com a garantia vencida desde ${expiresAt.toLocaleDateString('pt-BR')}.`
+          : `${asset.category} terá a garantia vencida em ${expiresAt.toLocaleDateString('pt-BR')}.`,
+        href: `/dashboard/assets/${asset.id}`,
+        unit: asset.unit,
+        occurredAt: expiresAt,
+      });
+    });
+
+    const contractAlerts = contractAssets.map((asset) => {
+      const expiresAt = asset.contractUntil as Date;
+      const expired = expiresAt.getTime() < now.getTime();
+      return this.alert({
+        fingerprint: `contract-expiring:${asset.id}:${expiresAt.toISOString()}`,
+        source: 'CONTRACT_EXPIRING',
+        severity: expired ? 'ALTO' : 'MEDIO',
+        title: expired
+          ? `Contrato de manutenção vencido: ${asset.name}`
+          : `Contrato de manutenção próximo do vencimento: ${asset.name}`,
+        body: expired
+          ? `${asset.category} está com o contrato de manutenção vencido desde ${expiresAt.toLocaleDateString('pt-BR')}.`
+          : `${asset.category} terá o contrato de manutenção vencido em ${expiresAt.toLocaleDateString('pt-BR')}.`,
+        href: `/dashboard/assets/${asset.id}`,
+        unit: asset.unit,
+        occurredAt: expiresAt,
+      });
+    });
+
     return [
       ...workOrderAlerts,
       ...maintenanceAlerts,
       ...checklistAlerts,
       ...incidentAlerts,
       ...inspectionAlerts,
+      ...warrantyAlerts,
+      ...contractAlerts,
     ].sort((left, right) => {
       const severityDelta = SEVERITY_ORDER[right.severity] - SEVERITY_ORDER[left.severity];
       if (severityDelta !== 0) return severityDelta;

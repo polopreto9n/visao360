@@ -190,6 +190,20 @@ export default function AssetDetailPage() {
                     style={maint ? {} : { color: 'var(--text-primary)' }}>{formatDate(asset.nextMaintenanceAt)}</p>
                 </div>
               )}
+              {asset.warrantyUntil && (
+                <div>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Garantia até</p>
+                  <p className={`font-semibold ${isOverdue(asset.warrantyUntil) ? 'text-red-600' : ''}`}
+                    style={isOverdue(asset.warrantyUntil) ? {} : { color: 'var(--text-primary)' }}>{formatDate(asset.warrantyUntil)}</p>
+                </div>
+              )}
+              {asset.contractUntil && (
+                <div>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Contrato de manutenção até</p>
+                  <p className={`font-semibold ${isOverdue(asset.contractUntil) ? 'text-red-600' : ''}`}
+                    style={isOverdue(asset.contractUntil) ? {} : { color: 'var(--text-primary)' }}>{formatDate(asset.contractUntil)}</p>
+                </div>
+              )}
             </div>
 
             {asset.description && (

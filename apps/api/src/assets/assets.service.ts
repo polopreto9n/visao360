@@ -12,7 +12,8 @@ import { ListAssetsDto } from './dto/list-assets.dto';
 const ASSET_SELECT = {
   id: true, name: true, code: true, category: true, brand: true, model: true,
   serialNumber: true, qrCode: true, status: true, installDate: true,
-  lastMaintenanceAt: true, nextMaintenanceAt: true, description: true, photoUrl: true,
+  lastMaintenanceAt: true, nextMaintenanceAt: true, warrantyUntil: true, contractUntil: true,
+  description: true, photoUrl: true,
   createdAt: true, updatedAt: true,
   unit: { select: { id: true, name: true } },
 } as const;

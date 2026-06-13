@@ -415,6 +415,8 @@ function CreateAssetForm({ units, asset, onSuccess }: { units: Unit[]; asset?: A
     code: asset?.code ?? '',
     description: asset?.description ?? '',
     nextMaintenanceAt: asset?.nextMaintenanceAt ? new Date(asset.nextMaintenanceAt).toISOString().split('T')[0] : '',
+    warrantyUntil: asset?.warrantyUntil ? new Date(asset.warrantyUntil).toISOString().split('T')[0] : '',
+    contractUntil: asset?.contractUntil ? new Date(asset.contractUntil).toISOString().split('T')[0] : '',
   });
   const [saving, setSaving] = useState(false);
 
@@ -430,6 +432,8 @@ function CreateAssetForm({ units, asset, onSuccess }: { units: Unit[]; asset?: A
         code: form.code || undefined,
         description: form.description || undefined,
         nextMaintenanceAt: form.nextMaintenanceAt ? new Date(form.nextMaintenanceAt + 'T12:00:00').toISOString() : undefined,
+        warrantyUntil: form.warrantyUntil ? new Date(form.warrantyUntil + 'T12:00:00').toISOString() : undefined,
+        contractUntil: form.contractUntil ? new Date(form.contractUntil + 'T12:00:00').toISOString() : undefined,
       };
       if (isEditing && asset) {
         await assetsApi.update(asset.id, payload);
@@ -485,6 +489,14 @@ function CreateAssetForm({ units, asset, onSuccess }: { units: Unit[]; asset?: A
         <div>
           <label className="block text-xs font-semibold mb-1" style={labelStyle}>Próxima manutenção</label>
           <input type="date" className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" style={inputStyle} value={form.nextMaintenanceAt} onChange={f('nextMaintenanceAt')} />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Garantia até</label>
+          <input type="date" className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" style={inputStyle} value={form.warrantyUntil} onChange={f('warrantyUntil')} />
+        </div>
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Contrato de manutenção até</label>
+          <input type="date" className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" style={inputStyle} value={form.contractUntil} onChange={f('contractUntil')} />
         </div>
       </div>
       <button type="submit" disabled={saving}
