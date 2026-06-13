@@ -754,6 +754,7 @@ export default function DashboardPage() {
     const fallback = getInitialPeriodPreset() === 'custom' ? '' : dateInputValue(new Date());
     return getInitialCustomDate('endDate', fallback);
   });
+  const [activeTab, setActiveTab] = useState<'overview' | 'analytics'>('overview');
   const [selectedUnitId, setSelectedUnitId] = useState(getInitialUnitId);
   const [unitOptions, setUnitOptions] = useState<UnitOption[]>([]);
   const [unitOptionsLoading, setUnitOptionsLoading] = useState(true);
@@ -921,6 +922,8 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-3 pb-1 sm:space-y-4">
+      {!isTecnico && <AlertStrip summary={summary} overdueMaintenance={overdueMaintenance} />}
+
       <section className="fluent-surface flex flex-col gap-3 rounded-[18px] p-3 lg:flex-row lg:items-center">
         <div className="min-w-0 lg:w-[228px] lg:flex-shrink-0">
           <p className="text-[11px] font-bold uppercase text-blue-700">Escopo atual</p>
@@ -1098,20 +1101,49 @@ export default function DashboardPage() {
       </section>
       )}
 
-      {!isTecnico && <AlertStrip summary={summary} overdueMaintenance={overdueMaintenance} />}
-
       {isManager && (
-        <section className="grid gap-3 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.72fr)]">
-          <ServiceOrdersChart data={workOrderChartData} total={summary.totalWorkOrders} />
-
-          <div className="grid gap-3">
-            <PriorityDonut data={priorityData} />
-            <ChecklistTypeBars data={checklistTypeData} />
-          </div>
-        </section>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setActiveTab('overview')}
+            className={`inline-flex h-9 items-center justify-center rounded-2xl border px-4 text-[12px] font-bold transition-colors ${
+              activeTab === 'overview'
+                ? 'border-blue-200 bg-blue-600 text-white shadow-[0_10px_24px_rgba(37,99,235,0.18)]'
+                : 'border-blue-100 bg-white/55 text-slate-700 hover:border-blue-200 hover:bg-white/80'
+            }`}
+          >
+            Visão geral
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('analytics')}
+            className={`inline-flex h-9 items-center justify-center rounded-2xl border px-4 text-[12px] font-bold transition-colors ${
+              activeTab === 'analytics'
+                ? 'border-blue-200 bg-blue-600 text-white shadow-[0_10px_24px_rgba(37,99,235,0.18)]'
+                : 'border-blue-100 bg-white/55 text-slate-700 hover:border-blue-200 hover:bg-white/80'
+            }`}
+          >
+            Analytics
+          </button>
+        </div>
       )}
 
-      {isManager && (
+      {isManager && activeTab === 'analytics' && (
+        <>
+          <section className="grid gap-3 xl:grid-cols-[minmax(0,1.55fr)_minmax(340px,0.72fr)]">
+            <ServiceOrdersChart data={workOrderChartData} total={summary.totalWorkOrders} />
+
+            <div className="grid gap-3">
+              <PriorityDonut data={priorityData} />
+              <ChecklistTypeBars data={checklistTypeData} />
+            </div>
+          </section>
+
+          {selectedPeriod && !selectedUnitId && <UnitRankingPanel period={selectedPeriod} />}
+        </>
+      )}
+
+      {isManager && activeTab === 'overview' && (
         <section className="grid gap-3 xl:grid-cols-[minmax(0,1.12fr)_minmax(0,0.94fr)_minmax(320px,0.94fr)]">
           <section className="fluent-surface flex min-h-[320px] flex-col rounded-[18px]">
             <div className="border-b border-blue-100/80 px-4 py-3.5">
@@ -1135,8 +1167,6 @@ export default function DashboardPage() {
           {dashboardFilters && <ProximasAcoes period={dashboardFilters} />}
         </section>
       )}
-
-      {isManager && selectedPeriod && !selectedUnitId && <UnitRankingPanel period={selectedPeriod} />}
 
       {isTecnico && (
         <section className="grid gap-3 lg:grid-cols-2">
