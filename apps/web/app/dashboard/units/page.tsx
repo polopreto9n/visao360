@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { unitsApi, usersApi, Unit, User } from '../../../lib/api';
+import { unitsApi, usersApi, reportsApi, Unit, User } from '../../../lib/api';
 import { Modal } from '../../../components/ui/Modal';
 import { canManage, getUser } from '../../../lib/auth';
 import { api } from '../../../lib/api';
@@ -24,6 +24,7 @@ export default function UnitsPage() {
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Unit | null>(null);
   const [assigning, setAssigning] = useState<Unit | null>(null);
+  const [reporting, setReporting] = useState<Unit | null>(null);
   const [search, setSearch] = useState('');
   const user = getUser();
   const canCreate = canManage(user?.role ?? '');
@@ -164,15 +165,24 @@ export default function UnitsPage() {
                 )}
               </div>
 
-              {canCreate && (
-                <button onClick={() => setEditing(unit)}
-                  className="w-full border text-sm font-semibold py-2 rounded-xl transition-colors"
+              <div className="flex gap-2">
+                {canCreate && (
+                  <button onClick={() => setEditing(unit)}
+                    className="flex-1 border text-sm font-semibold py-2 rounded-xl transition-colors"
+                    style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'transparent' }}
+                    onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-2)')}
+                    onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
+                    ✏️ Editar
+                  </button>
+                )}
+                <button onClick={() => setReporting(unit)}
+                  className="flex-1 border text-sm font-semibold py-2 rounded-xl transition-colors"
                   style={{ borderColor: 'var(--border)', color: 'var(--text-secondary)', background: 'transparent' }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--surface-2)')}
                   onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
-                  ✏️ Editar
+                  📄 Relatório
                 </button>
-              )}
+              </div>
             </div>
           ))}
         </div>
@@ -192,6 +202,64 @@ export default function UnitsPage() {
             onSuccess={() => { setAssigning(null); load(); }} />
         )}
       </Modal>
+
+      <Modal open={!!reporting} onClose={() => setReporting(null)} title={`Relatório mensal — ${reporting?.name ?? ''}`} size="sm">
+        {reporting && <MonthlyReportForm unit={reporting} onClose={() => setReporting(null)} />}
+      </Modal>
+    </div>
+  );
+}
+
+const MONTH_LABELS = [
+  'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+  'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+];
+
+function MonthlyReportForm({ unit, onClose }: { unit: Unit; onClose: () => void }) {
+  const now = new Date();
+  const [month, setMonth] = useState(now.getMonth() + 1);
+  const [year, setYear] = useState(now.getFullYear());
+  const [downloading, setDownloading] = useState(false);
+
+  const inputStyle = { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
+  const labelStyle = { color: 'var(--text-secondary)' };
+
+  async function handleDownload() {
+    setDownloading(true);
+    try {
+      const res = await reportsApi.monthly(unit.id, month, year);
+      const url = URL.createObjectURL(res.data as Blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `relatorio-${unit.name.replace(/[^a-zA-Z0-9]+/g, '-')}-${year}-${String(month).padStart(2, '0')}.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+      onClose();
+    } catch {
+      alert('Erro ao gerar relatório');
+    } finally { setDownloading(false); }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Mês</label>
+          <select className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" style={inputStyle}
+            value={month} onChange={(e) => setMonth(Number(e.target.value))}>
+            {MONTH_LABELS.map((label, i) => <option key={i} value={i + 1}>{label}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Ano</label>
+          <input type="number" className="w-full rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" style={inputStyle}
+            value={year} onChange={(e) => setYear(Number(e.target.value))} />
+        </div>
+      </div>
+      <button onClick={handleDownload} disabled={downloading}
+        className="fluent-button fluent-button-primary h-12 w-full text-sm">
+        {downloading ? 'Gerando...' : '⬇ Baixar PDF'}
+      </button>
     </div>
   );
 }

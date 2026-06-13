@@ -21,6 +21,7 @@ import { IncidentsModule } from "./incidents/incidents.module";
 import { SuppliersModule } from "./suppliers/suppliers.module";
 import { UploadModule } from "./upload/upload.module";
 import { DashboardModule } from "./dashboard/dashboard.module";
+import { ReportsModule } from "./reports/reports.module";
 import { ScheduleModule } from "@nestjs/schedule";
 import { SchedulerModule } from "./scheduler/scheduler.module";
 import { ChecklistSchedulesModule } from "./checklist-schedules/checklist-schedules.module";
@@ -64,6 +65,7 @@ import { TenantMiddleware } from "./common/middleware/tenant.middleware";
     SuppliersModule,
     UploadModule,
     DashboardModule,
+    ReportsModule,
     ChecklistSchedulesModule,
     SchedulerModule,
     MetricsModule,

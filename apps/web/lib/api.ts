@@ -496,3 +496,8 @@ export const schedulesApi = {
 export const companiesApi = {
   me: () => api.get<Company>('/companies/me'),
 };
+
+export const reportsApi = {
+  monthly: (unitId: string, month: number, year: number) =>
+    api.get('/reports/monthly', { params: { unitId, month, year }, responseType: 'blob' }),
+};
