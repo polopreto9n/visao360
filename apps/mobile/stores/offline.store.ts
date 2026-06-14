@@ -1,7 +1,20 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { checklistsApi, assetsApi, ExecutionItemPayload, Asset } from '../services/api';
+import { checklistsApi, assetsApi, uploadApi, ExecutionItemPayload, Asset } from '../services/api';
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+/** Envia fotos ainda salvas localmente (uris file://) e devolve os itens com URLs remotas */
+export async function resolvePendingPhotos(items: ExecutionItemPayload[]): Promise<ExecutionItemPayload[]> {
+  return Promise.all(
+    items.map(async (item) => {
+      if (!item.photoUrl || item.photoUrl.startsWith('http')) return item;
+      const url = await uploadApi.uploadPhoto(item.photoUrl, 'executions');
+      return { ...item, photoUrl: url };
+    }),
+  );
+}
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -77,17 +90,20 @@ export const useOfflineStore = create<OfflineState>()(
 
         for (const item of queue) {
           try {
-            // 1. Iniciar execução
+            // 1. Enviar fotos pendentes (capturadas offline) e obter URLs definitivas
+            const resolvedItems = await resolvePendingPhotos(item.items);
+
+            // 2. Iniciar execução
             const startRes = await checklistsApi.startExecution(
               item.checklistId,
               item.assetId,
             );
             const executionId = startRes.data.id;
 
-            // 2. Concluir com as respostas salvas offline
+            // 3. Concluir com as respostas salvas offline
             await checklistsApi.submitExecution(
               executionId,
-              item.items,
+              resolvedItems,
               item.notes,
               item.signatureUrl,
             );

@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { checklistsApi, Checklist, ExecutionItemPayload } from '../services/api';
-import { useOfflineStore } from '../stores/offline.store';
+import { useOfflineStore, resolvePendingPhotos } from '../stores/offline.store';
 import { SignaturePad } from './SignaturePad';
 import { PhotoCapture } from './PhotoCapture';
 
@@ -101,9 +101,10 @@ export function ExecutionFlow({
       return;
     }
 
-    // Online — envia para a API
+    // Online — envia fotos pendentes (capturadas offline) e a execução
     try {
-      await checklistsApi.submitExecution(executionId, payload, globalNotes || undefined, sig);
+      const resolvedPayload = await resolvePendingPhotos(payload);
+      await checklistsApi.submitExecution(executionId, resolvedPayload, globalNotes || undefined, sig);
       setSubmitting(false);
       setStep('done');
     } catch {

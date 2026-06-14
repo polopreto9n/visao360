@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { uploadApi } from '../services/api';
+import { useNetwork } from '../hooks/useNetwork';
 
 interface PhotoCaptureProps {
   photos: string[];                         // URLs das fotos já capturadas
@@ -28,6 +29,7 @@ export function PhotoCapture({
   required = false,
 }: PhotoCaptureProps) {
   const [uploading, setUploading] = useState(false);
+  const { isOnline } = useNetwork();
 
   async function pickFromCamera() {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
@@ -68,18 +70,19 @@ export function PhotoCapture({
   }
 
   async function uploadPhoto(uri: string) {
+    if (!isOnline) {
+      // Offline — guarda o arquivo local; o envio é enfileirado e feito na sincronização
+      onPhotosChange([...photos, uri]);
+      return;
+    }
+
     setUploading(true);
     try {
       const url = await uploadApi.uploadPhoto(uri, 'executions');
       onPhotosChange([...photos, url]);
-    } catch (err: unknown) {
-      const msg =
-        err instanceof Error ? err.message : 'Erro desconhecido';
-      Alert.alert(
-        'Falha no envio',
-        `Não foi possível enviar a foto. Verifique a conexão e tente novamente.\n\nDetalhe: ${msg}`,
-        [{ text: 'OK' }],
-      );
+    } catch {
+      // Falha de envio — guarda o arquivo local para reenvio na sincronização
+      onPhotosChange([...photos, uri]);
     } finally {
       setUploading(false);
     }
@@ -124,6 +127,11 @@ export function PhotoCapture({
           {photos.map((uri, i) => (
             <TouchableOpacity key={i} onPress={() => removePhoto(i)} style={s.photoWrapper}>
               <Image source={{ uri }} style={s.photo} resizeMode="cover" />
+              {!uri.startsWith('http') && (
+                <View style={s.pendingBadge}>
+                  <Text style={s.pendingIcon}>📵</Text>
+                </View>
+              )}
               <View style={s.removeOverlay}>
                 <Text style={s.removeIcon}>✕</Text>
               </View>
@@ -202,6 +210,20 @@ const s = StyleSheet.create({
   },
 
   removeIcon: { color: '#fff', fontSize: 10, fontWeight: '700' },
+
+  pendingBadge: {
+    position: 'absolute',
+    bottom: 4,
+    left: 4,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  pendingIcon: { fontSize: 11 },
 
   addBtn: {
     width: PHOTO_SIZE,
