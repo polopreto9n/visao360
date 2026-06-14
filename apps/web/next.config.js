@@ -1,4 +1,4 @@
-function getApiConnectOrigins() {
+function getApiOrigins() {
   const origins = new Set();
 
   if (process.env.NEXT_PUBLIC_API_URL) {
@@ -14,7 +14,16 @@ function getApiConnectOrigins() {
     origins.add('http://127.0.0.1:3001');
   }
 
-  return [...origins].join(' ');
+  return origins;
+}
+
+function getApiConnectOrigins() {
+  return [...getApiOrigins()].join(' ');
+}
+
+// Fotos enviadas (incidentes, OS, etc.) ficam servidas pela própria API quando não há Supabase configurado
+function getApiImageOrigins() {
+  return [...getApiOrigins()].join(' ');
 }
 
 function shouldUpgradeInsecureRequests() {
@@ -51,7 +60,7 @@ const nextConfig = {
               "default-src 'self'",
               "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' blob: data: https://*.supabase.co",
+              `img-src 'self' blob: data: https://*.supabase.co ${getApiImageOrigins()}`,
               "font-src 'self'",
               // Usa apenas a origin (sem path) — CSP sem trailing slash faz match exato
               // https://example.com/api/v1 bloquearia /api/v1/auth/login (path diferente)
