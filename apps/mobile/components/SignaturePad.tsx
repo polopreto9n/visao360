@@ -9,6 +9,7 @@ import {
   GestureResponderEvent,
 } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
+import * as Haptics from 'expo-haptics';
 
 const { width: SCREEN_W } = Dimensions.get('window');
 const PAD_WIDTH = SCREEN_W - 48;
@@ -109,6 +110,7 @@ export function SignaturePad({ onSave, onCancel }: SignaturePadProps) {
 
   function handleSave() {
     if (strokes.length === 0) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     const dataUrl = strokesToDataUrl(strokes);
     onSave(dataUrl);
   }

@@ -168,9 +168,18 @@ export interface AssetWorkOrder {
   assignee: { id: string; name: string } | null;
 }
 
+export interface ItemHistoryEntry {
+  checklistItemId: string;
+  checklistId: string;
+  question: string;
+  expectedAnswer: boolean;
+  results: { completedAt: string | null; answer: boolean | null }[];
+}
+
 export interface AssetHistory {
   executions: AssetExecution[];
   workOrders: AssetWorkOrder[];
+  itemHistory: ItemHistoryEntry[];
 }
 
 export const assetsApi = {

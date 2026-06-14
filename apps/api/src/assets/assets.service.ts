@@ -227,8 +227,63 @@ export class AssetsService {
     ]);
 
     const totalCost = workOrders.reduce((sum, wo) => sum + (wo.cost ?? 0), 0);
+    const itemHistory = await this.getItemHistory(executions);
 
-    return { executions, workOrders, totalCost };
+    return { executions, workOrders, totalCost, itemHistory };
+  }
+
+  /** Histórico de respostas por item de checklist, para alimentar alertas de itens recorrentes */
+  private async getItemHistory(
+    executions: { id: string; completedAt: Date | null }[],
+  ) {
+    if (executions.length === 0) return [];
+
+    const completedAtByExecution = new Map(executions.map((e) => [e.id, e.completedAt]));
+
+    const items = await this.prisma.executionItem.findMany({
+      where: { executionId: { in: executions.map((e) => e.id) } },
+      select: {
+        executionId: true,
+        answer: true,
+        checklistItem: {
+          select: { id: true, checklistId: true, question: true, expectedAnswer: true },
+        },
+      },
+    });
+
+    const byChecklistItem = new Map<
+      string,
+      {
+        checklistItemId: string;
+        checklistId: string;
+        question: string;
+        expectedAnswer: boolean;
+        results: { completedAt: Date | null; answer: boolean | null }[];
+      }
+    >();
+
+    for (const item of items) {
+      const ci = item.checklistItem;
+      if (!byChecklistItem.has(ci.id)) {
+        byChecklistItem.set(ci.id, {
+          checklistItemId: ci.id,
+          checklistId: ci.checklistId,
+          question: ci.question,
+          expectedAnswer: ci.expectedAnswer,
+          results: [],
+        });
+      }
+      byChecklistItem.get(ci.id)!.results.push({
+        completedAt: completedAtByExecution.get(item.executionId) ?? null,
+        answer: item.answer,
+      });
+    }
+
+    for (const entry of byChecklistItem.values()) {
+      entry.results.sort((a, b) => (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0));
+    }
+
+    return Array.from(byChecklistItem.values());
   }
 
   async getRecurringIssues(companyId: string, userId?: string, userRole?: string, months = 6) {

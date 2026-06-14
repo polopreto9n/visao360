@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Animated, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useOfflineStore } from '../stores/offline.store';
 import { useNetwork } from '../hooks/useNetwork';
 
@@ -7,6 +7,14 @@ export function OfflineBanner() {
   const { isOnline, isChecking } = useNetwork();
   const { queue, syncStatus, syncAll, lastSyncAt } = useOfflineStore();
   const pendingCount = queue.length;
+  const failedItems = queue.filter((e) => e.attempts > 0 && e.lastError);
+
+  function showSyncErrors() {
+    const msg = failedItems
+      .map((e) => `• ${e.checklistName}: ${e.lastError} (${e.attempts}x)`)
+      .join('\n');
+    Alert.alert('Erros de sincronização', msg || 'Nenhum erro registrado.');
+  }
   const translateY = useRef(new Animated.Value(-80)).current;
 
   const shouldShow = !isOnline || pendingCount > 0;
@@ -44,22 +52,33 @@ export function OfflineBanner() {
           </View>
         </View>
       ) : pendingCount > 0 ? (
-        <View style={[s.band, s.syncing]}>
+        <View style={[s.band, syncStatus === 'error' ? s.error : s.syncing]}>
           {syncStatus === 'syncing' ? (
             <ActivityIndicator color="#fff" size="small" />
           ) : (
-            <Text style={s.icon}>☁️</Text>
+            <Text style={s.icon}>{syncStatus === 'error' ? '⚠️' : '☁️'}</Text>
           )}
           <View style={s.texts}>
             <Text style={s.title}>
               {syncStatus === 'syncing'
                 ? 'Sincronizando...'
-                : `${pendingCount} item(ns) pendente(s)`}
+                : syncStatus === 'error'
+                  ? `${failedItems.length} item(ns) com erro de sincronização`
+                  : `${pendingCount} item(ns) pendente(s)`}
             </Text>
             {syncStatus !== 'syncing' && (
-              <Text style={s.sub}>Toque para sincronizar agora</Text>
+              <Text style={s.sub}>
+                {syncStatus === 'error'
+                  ? 'Toque em "Detalhes" para ver o motivo'
+                  : 'Toque para sincronizar agora'}
+              </Text>
             )}
           </View>
+          {syncStatus === 'error' && (
+            <TouchableOpacity style={s.syncBtn} onPress={showSyncErrors}>
+              <Text style={s.syncBtnText}>Detalhes</Text>
+            </TouchableOpacity>
+          )}
           {syncStatus !== 'syncing' && (
             <TouchableOpacity style={s.syncBtn} onPress={syncAll}>
               <Text style={s.syncBtnText}>Sync</Text>
@@ -91,6 +110,7 @@ const s = StyleSheet.create({
 
   offline: { backgroundColor: '#dc2626' },
   syncing: { backgroundColor: '#2563eb' },
+  error: { backgroundColor: '#b45309' },
 
   icon: { fontSize: 18 },
 

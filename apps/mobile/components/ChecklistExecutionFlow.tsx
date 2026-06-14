@@ -12,10 +12,12 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import { checklistsApi, Checklist, ExecutionItemPayload } from '../services/api';
 import { useOfflineStore, resolvePendingPhotos } from '../stores/offline.store';
 import { SignaturePad } from './SignaturePad';
 import { PhotoCapture } from './PhotoCapture';
+import { RiskItem } from '../utils/assetIntelligence';
 
 interface ItemState {
   answer: boolean | null;
@@ -30,11 +32,15 @@ export function ExecutionFlow({
   executionId,
   isOnline,
   onClose,
+  riskItems,
+  suggestedAnswers,
 }: {
   checklist: Checklist;
   executionId: string | null;
   isOnline: boolean;
   onClose: () => void;
+  riskItems?: Map<string, RiskItem>;
+  suggestedAnswers?: Map<string, boolean>;
 }) {
   const sortedItems = [...checklist.items].sort((a, b) => a.order - b.order);
   const [step, setStep] = useState<Step>('items');
@@ -54,7 +60,13 @@ export function ExecutionFlow({
   const progressPct = (answeredCount / totalItems) * 100;
 
   function setAnswer(id: string, answer: boolean) {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     setItemStates((p) => ({ ...p, [id]: { ...p[id], answer } }));
+  }
+
+  /** Retorna o índice do primeiro item com resposta pendente, ou -1 se todos respondidos */
+  function firstPendingIndex(): number {
+    return sortedItems.findIndex((i) => itemStates[i.id].answer === null);
   }
   function setNote(id: string, notes: string) {
     setItemStates((p) => ({ ...p, [id]: { ...p[id], notes } }));
@@ -105,9 +117,11 @@ export function ExecutionFlow({
     try {
       const resolvedPayload = await resolvePendingPhotos(payload);
       await checklistsApi.submitExecution(executionId, resolvedPayload, globalNotes || undefined, sig);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setSubmitting(false);
       setStep('done');
     } catch {
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Erro', 'Falha ao enviar. Salvando offline...', [{ text: 'OK' }]);
       enqueue({
         checklistId: checklist.id,
@@ -171,10 +185,28 @@ export function ExecutionFlow({
               <Text style={exec.questionDesc}>{item.description}</Text>
             ) : null}
 
+            {/* Alerta de histórico recorrente */}
+            {riskItems?.has(item.id) && (
+              <View style={exec.riskBanner}>
+                <Ionicons name="alert-circle" size={16} color="#b45309" />
+                <Text style={exec.riskBannerText}>
+                  ⚠️ {riskItems.get(item.id)!.message} — confira com atenção
+                </Text>
+              </View>
+            )}
+
+            {/* Sugestão baseada no histórico */}
+            {itemStates[item.id].answer === null && suggestedAnswers?.has(item.id) && (
+              <Text style={exec.suggestionText}>
+                💡 Sugestão: {suggestedAnswers.get(item.id) ? 'Sim / OK' : 'Não / NOK'} (com base no histórico)
+              </Text>
+            )}
+
             {/* Sim / Não */}
             <View style={exec.answerRow}>
               {[true, false].map((val) => {
                 const selected = itemStates[item.id].answer === val;
+                const suggested = itemStates[item.id].answer === null && suggestedAnswers?.get(item.id) === val;
                 return (
                   <TouchableOpacity
                     key={String(val)}
@@ -182,6 +214,7 @@ export function ExecutionFlow({
                     style={[
                       exec.answerBtn,
                       selected && (val ? exec.answerYes : exec.answerNo),
+                      suggested && exec.answerSuggested,
                     ]}
                   >
                     <Ionicons
@@ -248,7 +281,16 @@ export function ExecutionFlow({
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
-                onPress={() => setStep('notes')}
+                onPress={() => {
+                  const pending = firstPendingIndex();
+                  if (pending !== -1) {
+                    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+                    setCurrent(pending);
+                    Alert.alert('Item pendente', 'Responda todos os itens antes de finalizar.');
+                    return;
+                  }
+                  setStep('notes');
+                }}
                 style={exec.navBtnFinish}
               >
                 <Text style={exec.navBtnNextText}>Finalizar →</Text>
@@ -262,10 +304,14 @@ export function ExecutionFlow({
               <TouchableOpacity
                 key={si.id}
                 onPress={() => setCurrent(idx)}
+                hitSlop={{ top: 12, bottom: 12, left: 6, right: 6 }}
                 style={[
                   exec.dot,
-                  idx === current && exec.dotActive,
                   itemStates[si.id].answer !== null && exec.dotAnswered,
+                  itemStates[si.id].answer === null &&
+                    (si.requiresPhoto || si.requiresNote) &&
+                    exec.dotPendingRequired,
+                  idx === current && exec.dotActive,
                 ]}
               />
             ))}
@@ -513,7 +559,8 @@ const exec = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingVertical: 14,
+    minHeight: 58,
+    paddingVertical: 18,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: '#e2e8f0',
@@ -521,7 +568,20 @@ const exec = StyleSheet.create({
   },
   answerYes: { backgroundColor: '#16a34a', borderColor: '#16a34a' },
   answerNo: { backgroundColor: '#dc2626', borderColor: '#dc2626' },
-  answerBtnText: { fontSize: 13, fontWeight: '700', color: '#374151' },
+  answerSuggested: { borderColor: '#2563eb', borderStyle: 'dashed', borderWidth: 2 },
+  answerBtnText: { fontSize: 14, fontWeight: '700', color: '#374151' },
+
+  riskBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: '#fef3c7',
+    borderRadius: 10,
+    padding: 10,
+  },
+  riskBannerText: { flex: 1, fontSize: 12, fontWeight: '600', color: '#92400e' },
+
+  suggestionText: { fontSize: 12, color: '#2563eb', fontWeight: '600' },
 
   noteInput: {
     borderWidth: 1.5,
@@ -537,17 +597,20 @@ const exec = StyleSheet.create({
   navRow: { flexDirection: 'row', gap: 10 },
   navBtn: {
     flex: 1,
-    paddingVertical: 14,
+    minHeight: 56,
+    paddingVertical: 16,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: '#2563eb',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   navBtnDisabled: { borderColor: '#e2e8f0' },
   navBtnText: { fontSize: 14, fontWeight: '600', color: '#2563eb' },
   navBtnNext: {
     flex: 2,
-    paddingVertical: 14,
+    minHeight: 56,
+    paddingVertical: 16,
     borderRadius: 12,
     backgroundColor: '#2563eb',
     alignItems: 'center',
@@ -556,12 +619,14 @@ const exec = StyleSheet.create({
     gap: 6,
   },
   navBtnFinish: {
-    paddingVertical: 14,
+    minHeight: 56,
+    paddingVertical: 16,
     borderRadius: 12,
     backgroundColor: '#2563eb',
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  navBtnNextText: { fontSize: 14, fontWeight: '700', color: '#fff' },
+  navBtnNextText: { fontSize: 15, fontWeight: '700', color: '#fff' },
 
   dots: {
     flexDirection: 'row',
@@ -573,6 +638,7 @@ const exec = StyleSheet.create({
   dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#e2e8f0' },
   dotActive: { backgroundColor: '#2563eb', transform: [{ scale: 1.3 }] },
   dotAnswered: { backgroundColor: '#86efac' },
+  dotPendingRequired: { backgroundColor: '#fb923c' },
 
   // Summary
   summaryCard: {

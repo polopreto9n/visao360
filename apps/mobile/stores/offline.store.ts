@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { checklistsApi, assetsApi, uploadApi, ExecutionItemPayload, Asset } from '../services/api';
+import { checklistsApi, assetsApi, uploadApi, ExecutionItemPayload, Asset, Checklist } from '../services/api';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -29,6 +29,7 @@ export interface QueuedExecution {
   queuedAt: string;
   attempts: number;
   lastError?: string;
+  executionId?: string;
 }
 
 export type SyncStatus = 'idle' | 'syncing' | 'error';
@@ -39,6 +40,7 @@ interface OfflineState {
   lastSyncAt: string | null;
   assetCache: Asset[];
   assetCacheAt: string | null;
+  checklistsCache: Record<string, Checklist[]>;
 
   // Actions
   enqueue: (execution: Omit<QueuedExecution, 'localId' | 'queuedAt' | 'attempts'>) => string;
@@ -50,6 +52,10 @@ interface OfflineState {
   // Asset cache
   refreshAssetCache: () => Promise<void>;
   findAssetByQR: (qrCode: string) => Asset | null;
+
+  // Checklists cache por ativo
+  cacheChecklistsForAsset: (assetId: string, checklists: Checklist[]) => void;
+  getCachedChecklists: (assetId: string) => Checklist[];
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
@@ -62,6 +68,7 @@ export const useOfflineStore = create<OfflineState>()(
       lastSyncAt: null,
       assetCache: [],
       assetCacheAt: null,
+      checklistsCache: {},
 
       enqueue: (execution) => {
         const localId = `offline_${Date.now()}_${Math.random().toString(36).slice(2)}`;
@@ -93,12 +100,20 @@ export const useOfflineStore = create<OfflineState>()(
             // 1. Enviar fotos pendentes (capturadas offline) e obter URLs definitivas
             const resolvedItems = await resolvePendingPhotos(item.items);
 
-            // 2. Iniciar execução
-            const startRes = await checklistsApi.startExecution(
-              item.checklistId,
-              item.assetId,
-            );
-            const executionId = startRes.data.id;
+            // 2. Reutiliza a execução já iniciada em tentativa anterior (evita duplicidade)
+            let executionId = item.executionId;
+            if (!executionId) {
+              const startRes = await checklistsApi.startExecution(
+                item.checklistId,
+                item.assetId,
+              );
+              executionId = startRes.data.id;
+              set((s) => ({
+                queue: s.queue.map((e) =>
+                  e.localId === item.localId ? { ...e, executionId } : e,
+                ),
+              }));
+            }
 
             // 3. Concluir com as respostas salvas offline
             await checklistsApi.submitExecution(
@@ -153,6 +168,14 @@ export const useOfflineStore = create<OfflineState>()(
 
       findAssetByQR: (qrCode: string) => {
         return get().assetCache.find((a) => a.qrCode === qrCode) ?? null;
+      },
+
+      cacheChecklistsForAsset: (assetId, checklists) => {
+        set((s) => ({ checklistsCache: { ...s.checklistsCache, [assetId]: checklists } }));
+      },
+
+      getCachedChecklists: (assetId) => {
+        return get().checklistsCache[assetId] ?? [];
       },
     }),
     {

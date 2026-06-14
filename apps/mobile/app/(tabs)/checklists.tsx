@@ -64,13 +64,34 @@ export default function ChecklistsScreen() {
     st: getScheduleStatus(sch),
   }));
 
-  // Filtra agendas pela tab ativa
-  const filteredSchedules = schedulesWithStatus.filter(({ st }) => {
-    if (filterTab === 'available') return st.canExecute && (st.status === 'AVAILABLE' || st.status === 'DUE_SOON');
-    if (filterTab === 'overdue') return st.status === 'OVERDUE' || st.status === 'EXPIRED';
-    if (filterTab === 'blocked') return st.status === 'BLOCKED';
-    return true;
-  });
+  // Ordem de urgência para ordenação da agenda (mais urgente primeiro)
+  const STATUS_PRIORITY: Record<ScheduleStatus, number> = {
+    OVERDUE: 0,
+    DUE_SOON: 1,
+    AVAILABLE: 2,
+    BLOCKED: 3,
+    EXPIRED: 4,
+    NO_SCHEDULE: 5,
+  };
+
+  // Filtra agendas pela tab ativa e ordena por urgência
+  const filteredSchedules = schedulesWithStatus
+    .filter(({ st }) => {
+      if (filterTab === 'available') return st.canExecute && (st.status === 'AVAILABLE' || st.status === 'DUE_SOON');
+      if (filterTab === 'overdue') return st.status === 'OVERDUE' || st.status === 'EXPIRED';
+      if (filterTab === 'blocked') return st.status === 'BLOCKED';
+      return true;
+    })
+    .sort((a, b) => {
+      const prioDiff = STATUS_PRIORITY[a.st.status] - STATUS_PRIORITY[b.st.status];
+      if (prioDiff !== 0) return prioDiff;
+
+      // Dentro do mesmo status: mais atrasado ou mais próximo do vencimento primeiro
+      if (a.st.status === 'OVERDUE') {
+        return (b.st.daysOverdue ?? 0) - (a.st.daysOverdue ?? 0);
+      }
+      return (a.st.daysToDue ?? Infinity) - (b.st.daysToDue ?? Infinity);
+    });
 
   // Contadores para badges das tabs
   const counts = {

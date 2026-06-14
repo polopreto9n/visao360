@@ -6,6 +6,7 @@ import {
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
+import * as Haptics from 'expo-haptics';
 import {
   assetsApi, checklistsApi, workOrdersApi, uploadApi,
   Asset, Checklist, AssetHistory,
@@ -14,6 +15,7 @@ import { useAuthStore } from '../../stores/auth.store';
 import { useOfflineStore } from '../../stores/offline.store';
 import { useNetwork } from '../../hooks/useNetwork';
 import { ExecutionFlow } from '../../components/ChecklistExecutionFlow';
+import { analyzeScoreTrend, getRiskItems, getSuggestedAnswers } from '../../utils/assetIntelligence';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -63,12 +65,17 @@ export default function ScanScreen() {
 
   const scanAnim = useRef(new Animated.Value(0)).current;
   const { isOnline } = useNetwork();
-  const { findAssetByQR, refreshAssetCache } = useOfflineStore();
+  const { findAssetByQR, refreshAssetCache, cacheChecklistsForAsset, getCachedChecklists } = useOfflineStore();
   const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
     if (isOnline) refreshAssetCache();
   }, [isOnline]);
+
+  // Carrega histórico do equipamento em segundo plano (alimenta os alertas inteligentes)
+  useEffect(() => {
+    if (asset && isOnline && !history) loadHistory();
+  }, [asset, isOnline]);
 
   useEffect(() => {
     Animated.loop(
@@ -107,6 +114,7 @@ export default function ScanScreen() {
 
     try {
       let foundAsset = isOnline ? null : findAssetByQR(qrCode);
+      let fetchedChecklists: Checklist[] = [];
 
       if (isOnline) {
         const assetRes = await assetsApi.findByQRCode(qrCode).catch(() => null);
@@ -125,8 +133,17 @@ export default function ScanScreen() {
 
         // Buscar checklists específicos do ativo
         const clRes = await assetsApi.getChecklists(foundAsset.id).catch(() => null);
-        if (clRes) setChecklists(clRes.data);
+        if (clRes) {
+          fetchedChecklists = clRes.data;
+          setChecklists(fetchedChecklists);
+          cacheChecklistsForAsset(foundAsset.id, fetchedChecklists);
+        } else {
+          fetchedChecklists = getCachedChecklists(foundAsset.id);
+          setChecklists(fetchedChecklists);
+        }
       } else if (foundAsset) {
+        fetchedChecklists = getCachedChecklists(foundAsset.id);
+        setChecklists(fetchedChecklists);
         Alert.alert('Modo offline', 'Usando dados salvos.', [{ text: 'OK' }]);
       } else {
         Alert.alert('Sem conexão', 'Conecte-se e tente novamente.',
@@ -140,7 +157,15 @@ export default function ScanScreen() {
         return;
       }
 
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       setAsset(foundAsset);
+
+      // Equipamento com apenas 1 checklist disponível: pula a tela de detalhes e inicia direto
+      if (fetchedChecklists.length === 1) {
+        await startChecklist(fetchedChecklists[0], foundAsset.id);
+        return;
+      }
+
       setView('asset');
     } catch {
       Alert.alert('Erro', 'Falha ao buscar equipamento.',
@@ -196,12 +221,12 @@ export default function ScanScreen() {
 
   // ── Executar checklist ─────────────────────────────────────────────────────
 
-  async function startChecklist(cl: Checklist) {
+  async function startChecklist(cl: Checklist, assetIdOverride?: string) {
     setLoading(true);
     setActiveChecklist(cl);
     if (isOnline) {
       try {
-        const res = await checklistsApi.startExecution(cl.id, asset?.id);
+        const res = await checklistsApi.startExecution(cl.id, assetIdOverride ?? asset?.id);
         setExecutionId(res.data.id);
       } catch {
         setExecutionId(null);
@@ -391,6 +416,24 @@ export default function ScanScreen() {
           {/* ── Tab: Checklists ── */}
           {activeTab === 'checklists' && (
             <>
+              {/* Alerta de tendência de score */}
+              {(() => {
+                const trend = history ? analyzeScoreTrend(history.executions) : null;
+                if (!trend) return null;
+                return (
+                  <View style={[s.scoreTrendBanner, trend.level === 'danger' ? s.scoreTrendDanger : s.scoreTrendWarning]}>
+                    <Ionicons
+                      name={trend.level === 'danger' ? 'alert-circle' : 'trending-down'}
+                      size={18}
+                      color={trend.level === 'danger' ? '#dc2626' : '#ca8a04'}
+                    />
+                    <Text style={[s.scoreTrendText, { color: trend.level === 'danger' ? '#dc2626' : '#ca8a04' }]}>
+                      {trend.message}
+                    </Text>
+                  </View>
+                );
+              })()}
+
               {checklists.length === 0 ? (
                 <View style={s.emptyBox}>
                   <Ionicons name="clipboard-outline" size={40} color="#d1d5db" />
@@ -610,11 +653,14 @@ export default function ScanScreen() {
   // ─── Render: Executando checklist ──────────────────────────────────────────
 
   if (view === 'executing' && activeChecklist) {
+    const itemHistory = history?.itemHistory ?? [];
     return (
       <ExecutionFlow
         checklist={activeChecklist}
         executionId={executionId}
         isOnline={isOnline}
+        riskItems={getRiskItems(itemHistory, activeChecklist.id)}
+        suggestedAnswers={getSuggestedAnswers(itemHistory, activeChecklist.id)}
         onClose={() => {
           setActiveChecklist(null);
           setExecutionId(null);
@@ -672,6 +718,11 @@ const s = StyleSheet.create({
   emptyBox: { alignItems: 'center', justifyContent: 'center', paddingVertical: 40, gap: 8 },
   emptyText: { fontSize: 15, fontWeight: '600', color: '#9ca3af' },
   emptySubtext: { fontSize: 13, color: '#d1d5db', textAlign: 'center' },
+
+  scoreTrendBanner: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 12, borderWidth: 1 },
+  scoreTrendDanger: { backgroundColor: '#fee2e2', borderColor: '#fecaca' },
+  scoreTrendWarning: { backgroundColor: '#fef9c3', borderColor: '#fde68a' },
+  scoreTrendText: { flex: 1, fontSize: 13, fontWeight: '700' },
 
   checklistRow: { backgroundColor: '#fff', borderRadius: 12, padding: 14, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: '#e2e8f0' },
   checklistIcon: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center' },
