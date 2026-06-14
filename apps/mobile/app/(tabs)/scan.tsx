@@ -13,17 +13,12 @@ import {
 import { useAuthStore } from '../../stores/auth.store';
 import { useOfflineStore } from '../../stores/offline.store';
 import { useNetwork } from '../../hooks/useNetwork';
+import { ExecutionFlow } from '../../components/ChecklistExecutionFlow';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-type ScanView = 'camera' | 'asset' | 'executing' | 'done' | 'reporting';
+type ScanView = 'camera' | 'asset' | 'executing' | 'reporting';
 type AssetTab = 'checklists' | 'history' | 'actions';
-
-interface ExecutionStep {
-  checklistItemId: string;
-  answer: boolean | null;
-  notes: string;
-}
 
 const STATUS_LABELS: Record<string, string> = {
   ACTIVE: 'Ativo', INACTIVE: 'Inativo', MAINTENANCE: 'Em manutenção', DECOMMISSIONED: 'Desativado',
@@ -60,11 +55,6 @@ export default function ScanScreen() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [activeChecklist, setActiveChecklist] = useState<Checklist | null>(null);
   const [executionId, setExecutionId] = useState<string | null>(null);
-  const [steps, setSteps] = useState<ExecutionStep[]>([]);
-  const [currentStep, setCurrentStep] = useState(0);
-  const [globalNotes, setGlobalNotes] = useState('');
-  const [finalScore, setFinalScore] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
 
   // Reportar problema
   const [reportDescription, setReportDescription] = useState('');
@@ -73,7 +63,7 @@ export default function ScanScreen() {
 
   const scanAnim = useRef(new Animated.Value(0)).current;
   const { isOnline } = useNetwork();
-  const { enqueue, findAssetByQR, refreshAssetCache } = useOfflineStore();
+  const { findAssetByQR, refreshAssetCache } = useOfflineStore();
   const user = useAuthStore((s) => s.user);
 
   useEffect(() => {
@@ -97,9 +87,6 @@ export default function ScanScreen() {
     setHistory(null);
     setActiveChecklist(null);
     setExecutionId(null);
-    setSteps([]);
-    setCurrentStep(0);
-    setGlobalNotes('');
     setActiveTab('checklists');
     setReportDescription('');
     setReportPhoto(null);
@@ -212,9 +199,6 @@ export default function ScanScreen() {
   async function startChecklist(cl: Checklist) {
     setLoading(true);
     setActiveChecklist(cl);
-    const sorted = [...cl.items].sort((a, b) => a.order - b.order);
-    setSteps(sorted.map((i) => ({ checklistItemId: i.id, answer: null, notes: '' })));
-    setCurrentStep(0);
     if (isOnline) {
       try {
         const res = await checklistsApi.startExecution(cl.id, asset?.id);
@@ -297,39 +281,6 @@ export default function ScanScreen() {
         },
       },
     ]);
-  }
-
-  // ── Execução ──────────────────────────────────────────────────────────────
-
-  function setAnswer(idx: number, answer: boolean) {
-    setSteps((prev) => prev.map((s, i) => i === idx ? { ...s, answer } : s));
-  }
-
-  function setNote(idx: number, notes: string) {
-    setSteps((prev) => prev.map((s, i) => i === idx ? { ...s, notes } : s));
-  }
-
-  async function submitExecution() {
-    if (!activeChecklist) return;
-    setSubmitting(true);
-    const payload = steps.map((s) => ({
-      checklistItemId: s.checklistItemId,
-      answer: s.answer ?? false,
-      notes: s.notes || undefined,
-    }));
-    const score = Math.round((steps.filter((s) => s.answer === true).length / steps.length) * 100);
-    setFinalScore(score);
-    if (isOnline && executionId) {
-      try {
-        await checklistsApi.submitExecution(executionId, payload, globalNotes || undefined);
-      } catch {
-        enqueue({ checklistId: activeChecklist.id, checklistName: activeChecklist.name, items: payload, notes: globalNotes || undefined });
-      }
-    } else {
-      enqueue({ checklistId: activeChecklist.id, checklistName: activeChecklist.name, items: payload, notes: globalNotes || undefined });
-    }
-    setSubmitting(false);
-    setView('done');
   }
 
   // ─── Render: Camera ────────────────────────────────────────────────────────
@@ -659,140 +610,19 @@ export default function ScanScreen() {
   // ─── Render: Executando checklist ──────────────────────────────────────────
 
   if (view === 'executing' && activeChecklist) {
-    const sortedItems = [...activeChecklist.items].sort((a, b) => a.order - b.order);
-    const item = sortedItems[currentStep];
-    const step = steps[currentStep];
-    const isLast = currentStep === sortedItems.length - 1;
-    const progress = ((currentStep + 1) / sortedItems.length) * 100;
-
     return (
-      <View style={{ flex: 1, backgroundColor: '#f8fafc' }}>
-        <View style={s.header}>
-          <TouchableOpacity onPress={() => Alert.alert('Cancelar?', 'As respostas serão perdidas.', [
-            { text: 'Continuar', style: 'cancel' },
-            { text: 'Cancelar', style: 'destructive', onPress: resetScan },
-          ])} style={s.closeBtn}>
-            <Ionicons name="close" size={20} color="#fff" />
-          </TouchableOpacity>
-          <View>
-            <Text style={s.headerTitle} numberOfLines={1}>{activeChecklist.name}</Text>
-            <Text style={[s.headerTitle, { fontSize: 12, fontWeight: '400', opacity: 0.8 }]}>
-              Item {currentStep + 1} de {sortedItems.length}
-            </Text>
-          </View>
-          <View style={{ width: 36 }} />
-        </View>
-
-        <View style={s.progressBar}>
-          <View style={[s.progressFill, { width: `${progress}%` as `${number}%` }]} />
-        </View>
-
-        <ScrollView contentContainerStyle={{ padding: 16, gap: 14, paddingBottom: 40 }}>
-          <View style={s.card}>
-            <View style={s.stepNum}><Text style={s.stepNumText}>{item.order}</Text></View>
-            <Text style={s.questionText}>{item.question}</Text>
-            {item.description && <Text style={s.questionDesc}>{item.description}</Text>}
-
-            <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
-              {[true, false].map((val) => (
-                <TouchableOpacity key={String(val)} onPress={() => setAnswer(currentStep, val)}
-                  style={[s.ansBtn, step?.answer === val && (val ? s.ansBtnYes : s.ansBtnNo)]}>
-                  <Ionicons name={val ? 'checkmark-circle' : 'close-circle'} size={22}
-                    color={step?.answer === val ? '#fff' : val ? '#16a34a' : '#dc2626'} />
-                  <Text style={[s.ansBtnText, step?.answer === val && { color: '#fff' }]}>
-                    {val ? 'Sim / OK' : 'Não / NOK'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            {(item.requiresNote || step?.answer === false) && (
-              <TextInput
-                style={[s.textArea, { marginTop: 12, minHeight: 72 }]}
-                placeholder={item.requiresNote ? 'Observação obrigatória...' : 'Descreva o problema...'}
-                placeholderTextColor="#9ca3af"
-                multiline
-                value={step?.notes}
-                onChangeText={(t) => setNote(currentStep, t)}
-                textAlignVertical="top"
-              />
-            )}
-          </View>
-
-          {isLast && (
-            <View style={s.card}>
-              <Text style={s.questionText}>Observações gerais (opcional)</Text>
-              <TextInput
-                style={[s.textArea, { marginTop: 8 }]}
-                placeholder="Adicionar observações finais..."
-                placeholderTextColor="#9ca3af"
-                multiline
-                value={globalNotes}
-                onChangeText={setGlobalNotes}
-                textAlignVertical="top"
-              />
-            </View>
-          )}
-
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            <TouchableOpacity disabled={currentStep === 0} onPress={() => setCurrentStep(c => c - 1)}
-              style={[s.navBtn, currentStep === 0 && { opacity: 0.3 }]}>
-              <Text style={s.navBtnText}>← Anterior</Text>
-            </TouchableOpacity>
-
-            {!isLast ? (
-              <TouchableOpacity onPress={() => setCurrentStep(c => c + 1)} style={s.navBtnNext}>
-                <Text style={s.navBtnNextText}>Próximo →</Text>
-              </TouchableOpacity>
-            ) : (
-              <TouchableOpacity onPress={submitExecution} disabled={submitting}
-                style={[s.navBtnNext, { backgroundColor: '#16a34a' }]}>
-                {submitting ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={s.navBtnNextText}>✓ Concluir</Text>}
-              </TouchableOpacity>
-            )}
-          </View>
-
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center' }}>
-            {sortedItems.map((_, idx) => (
-              <TouchableOpacity key={idx} onPress={() => setCurrentStep(idx)}
-                style={[s.dot,
-                  idx === currentStep && s.dotActive,
-                  steps[idx]?.answer !== null && s.dotAnswered,
-                ]} />
-            ))}
-          </View>
-        </ScrollView>
-      </View>
-    );
-  }
-
-  // ─── Render: Concluído ─────────────────────────────────────────────────────
-
-  if (view === 'done') {
-    const savedOffline = !isOnline || !executionId;
-    return (
-      <View style={s.doneContainer}>
-        <Text style={{ fontSize: 72 }}>{finalScore >= 80 ? '✅' : finalScore >= 60 ? '⚠️' : '❌'}</Text>
-        <Text style={s.doneTitle}>{savedOffline ? 'Salvo offline!' : 'Checklist concluído!'}</Text>
-        <View style={{ alignItems: 'center', marginVertical: 8 }}>
-          <Text style={[s.assetName, { fontSize: 48, color: '#2563eb' }]}>{finalScore}%</Text>
-          <Text style={{ color: '#6b7280', fontSize: 14 }}>de conformidade</Text>
-        </View>
-        <Text style={{ fontSize: 15, fontWeight: '600', textAlign: 'center', color: finalScore >= 80 ? '#16a34a' : finalScore >= 60 ? '#ca8a04' : '#dc2626' }}>
-          {finalScore >= 80 ? 'Excelente conformidade' : finalScore >= 60 ? 'Atenção: itens pendentes' : 'Crítico: intervenção necessária'}
-        </Text>
-        {savedOffline && (
-          <View style={{ backgroundColor: '#eff6ff', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#bfdbfe', marginTop: 8 }}>
-            <Text style={{ color: '#1e40af', fontSize: 13, textAlign: 'center' }}>
-              📵 Dados salvos localmente e serão sincronizados ao reconectar.
-            </Text>
-          </View>
-        )}
-        <TouchableOpacity style={[s.submitBtn, { marginTop: 12 }]} onPress={resetScan}>
-          <Text style={s.submitBtnText}>🔄 Escanear outro equipamento</Text>
-        </TouchableOpacity>
-      </View>
+      <ExecutionFlow
+        checklist={activeChecklist}
+        executionId={executionId}
+        isOnline={isOnline}
+        onClose={() => {
+          setActiveChecklist(null);
+          setExecutionId(null);
+          setHistory(null);
+          setActiveTab('history');
+          setView('asset');
+        }}
+      />
     );
   }
 
@@ -867,29 +697,6 @@ const s = StyleSheet.create({
   photoBtn: { flexDirection: 'row', alignItems: 'center', gap: 8, borderWidth: 1.5, borderColor: '#2563eb', borderRadius: 10, padding: 12, marginTop: 8, justifyContent: 'center' },
   photoThumb: { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, padding: 12, marginTop: 8, justifyContent: 'center' },
 
-  progressBar: { height: 4, backgroundColor: '#e2e8f0' },
-  progressFill: { height: 4, backgroundColor: '#2563eb' },
-
-  stepNum: { width: 32, height: 32, borderRadius: 8, backgroundColor: '#eff6ff', alignItems: 'center', justifyContent: 'center', alignSelf: 'flex-start' },
-  stepNumText: { fontSize: 14, fontWeight: '700', color: '#2563eb' },
-
-  ansBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingVertical: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#e2e8f0', backgroundColor: '#f8fafc' },
-  ansBtnYes: { backgroundColor: '#16a34a', borderColor: '#16a34a' },
-  ansBtnNo: { backgroundColor: '#dc2626', borderColor: '#dc2626' },
-  ansBtnText: { fontSize: 13, fontWeight: '700', color: '#374151' },
-
-  navBtn: { flex: 1, paddingVertical: 14, borderRadius: 12, borderWidth: 1.5, borderColor: '#2563eb', alignItems: 'center' },
-  navBtnText: { fontSize: 14, fontWeight: '600', color: '#2563eb' },
-  navBtnNext: { flex: 2, paddingVertical: 14, borderRadius: 12, backgroundColor: '#2563eb', alignItems: 'center', justifyContent: 'center' },
-  navBtnNextText: { fontSize: 14, fontWeight: '700', color: '#fff' },
-
-  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: '#e2e8f0' },
-  dotActive: { backgroundColor: '#2563eb', transform: [{ scale: 1.3 }] },
-  dotAnswered: { backgroundColor: '#86efac' },
-
   submitBtn: { backgroundColor: '#dc2626', borderRadius: 14, paddingVertical: 15, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
   submitBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-
-  doneContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 16, backgroundColor: '#fff' },
-  doneTitle: { fontSize: 24, fontWeight: '800', color: '#111827', textAlign: 'center' },
 });
