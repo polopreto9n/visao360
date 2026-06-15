@@ -34,6 +34,8 @@ type UnitRankingMetrics = {
   activeAssets: number;
   checklistExecutions: number;
   completedChecklistExecutions: number;
+  conformityScoreSum: number;
+  conformityScoreCount: number;
   workOrdersCreated: number;
   openWorkOrders: number;
   overdueWorkOrders: number;
@@ -569,6 +571,8 @@ export class DashboardService {
           activeAssets: 0,
           checklistExecutions: 0,
           completedChecklistExecutions: 0,
+          conformityScoreSum: 0,
+          conformityScoreCount: 0,
           workOrdersCreated: 0,
           openWorkOrders: 0,
           overdueWorkOrders: 0,
@@ -617,6 +621,7 @@ export class DashboardService {
         select: {
           status: true,
           completedAt: true,
+          score: true,
           checklist: { select: { unitId: true } },
           asset: { select: { unitId: true } },
         },
@@ -669,6 +674,10 @@ export class DashboardService {
         execution.completedAt <= period.to
       ) {
         unit.completedChecklistExecutions += 1;
+        if (execution.score !== null) {
+          unit.conformityScoreSum += execution.score;
+          unit.conformityScoreCount += 1;
+        }
       }
     }
 
@@ -753,8 +762,8 @@ export class DashboardService {
     maxIncidentRate: number,
   ) {
     const components: Array<{ weight: number; score: number }> = [];
-    const conformityRate = metric.checklistExecutions > 0
-      ? metric.completedChecklistExecutions / metric.checklistExecutions
+    const conformityRate = metric.conformityScoreCount > 0
+      ? (metric.conformityScoreSum / metric.conformityScoreCount) / 100
       : null;
     const slaRate = metric.slaWorkOrders > 0
       ? metric.onTimeWorkOrders / metric.slaWorkOrders
