@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Modal,
   ScrollView,
+  RefreshControl,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
@@ -37,6 +38,7 @@ export default function ChecklistsScreen() {
   const [executing, setExecuting] = useState<Checklist | null>(null);
   const [executionId, setExecutionId] = useState<string | null>(null);
   const [filterTab, setFilterTab] = useState<FilterTab>('all');
+  const [refreshing, setRefreshing] = useState(false);
   const { isOnline } = useNetwork();
   const pendingCount = useOfflineStore((s) => s.queue.length);
 
@@ -52,6 +54,12 @@ export default function ChecklistsScreen() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await load();
+    setRefreshing(false);
+  }
 
   // Mapeia checklistId → schedule para lookup rápido
   const scheduleByChecklistId = Object.fromEntries(
@@ -124,7 +132,7 @@ export default function ChecklistsScreen() {
       return;
     }
     try {
-      const res = await checklistsApi.startExecution(cl.id);
+      const res = await checklistsApi.startExecution(cl.id, cl.asset?.id);
       setExecutionId(res.data.id);
       setExecuting(cl);
     } catch {
@@ -161,7 +169,7 @@ export default function ChecklistsScreen() {
       <ScrollView
         style={{ flex: 1 }}
         contentContainerStyle={{ paddingBottom: 32 }}
-        refreshControl={undefined}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
         {/* ── Seção de agenda ── */}
         {schedules.length > 0 && (

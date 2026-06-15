@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { authApi, AuthUser, Company } from '../services/api';
+import { useOfflineStore } from './offline.store';
 
 const TOKEN_KEY = 'visao360_token';
 const USER_KEY = 'visao360_user';
@@ -80,6 +81,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       SecureStore.deleteItemAsync(USER_KEY),
       SecureStore.deleteItemAsync(REFRESH_KEY),
     ]);
+    useOfflineStore.getState().clearAll();
     set({ token: null, user: null, companies: [] });
   },
 
