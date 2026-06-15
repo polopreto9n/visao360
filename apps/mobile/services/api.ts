@@ -270,7 +270,7 @@ export const workOrdersApi = {
     priority?: string;
     photoUrls?: string[];
   }) => api.post<WorkOrder>('/work-orders', data),
-  updateStatus: (id: string, status: string, notes?: string, extra?: { photoUrls?: string[] }) =>
+  updateStatus: (id: string, status: string, notes?: string, extra?: { photoUrls?: string[]; cost?: number }) =>
     api.patch(`/work-orders/${id}/status`, { status, notes, ...extra }),
 };
 

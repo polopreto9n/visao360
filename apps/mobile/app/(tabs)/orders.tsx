@@ -217,12 +217,19 @@ function CompleteOrderForm({
   onCompleted: () => void;
 }) {
   const [notes, setNotes] = useState('');
+  const [cost, setCost] = useState('');
   const [photos, setPhotos] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
   async function submit() {
     if (!notes.trim()) { Alert.alert('Atenção', 'Descreva o serviço realizado.'); return; }
     if (photos.length === 0) { Alert.alert('Atenção', 'Adicione ao menos uma foto do serviço concluído.'); return; }
+
+    const parsedCost = cost.trim() ? Number(cost.replace(',', '.')) : undefined;
+    if (cost.trim() && (parsedCost === undefined || Number.isNaN(parsedCost))) {
+      Alert.alert('Atenção', 'Informe um valor de custo válido.');
+      return;
+    }
 
     setSubmitting(true);
     try {
@@ -238,7 +245,7 @@ function CompleteOrderForm({
         return;
       }
 
-      await workOrdersApi.updateStatus(order.id, 'COMPLETED', notes.trim(), { photoUrls });
+      await workOrdersApi.updateStatus(order.id, 'COMPLETED', notes.trim(), { photoUrls, cost: parsedCost });
       Alert.alert('✅ OS concluída', 'A OS foi marcada como concluída.', [{ text: 'OK', onPress: onCompleted }]);
     } catch {
       Alert.alert('Erro', 'Não foi possível concluir a OS. Tente novamente.');
@@ -272,6 +279,18 @@ function CompleteOrderForm({
             placeholderTextColor="#9ca3af"
             multiline
             maxLength={2000}
+          />
+        </View>
+
+        <View style={f.field}>
+          <Text style={f.label}>Custo (R$)</Text>
+          <TextInput
+            style={f.input}
+            value={cost}
+            onChangeText={setCost}
+            placeholder="Ex: 150,00"
+            placeholderTextColor="#9ca3af"
+            keyboardType="decimal-pad"
           />
         </View>
 
