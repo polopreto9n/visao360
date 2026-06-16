@@ -18,6 +18,7 @@ interface KPI {
   icon: keyof typeof Ionicons.glyphMap;
   color: string;
   bg: string;
+  onPress: () => void;
 }
 
 export default function DashboardScreen() {
@@ -63,6 +64,7 @@ export default function DashboardScreen() {
       icon: 'construct-outline',
       color: '#d97706',
       bg: '#fef3c7',
+      onPress: () => router.push('/(tabs)/orders?filter=active'),
     },
     {
       label: 'OS Críticas',
@@ -70,6 +72,7 @@ export default function DashboardScreen() {
       icon: 'alert-circle-outline',
       color: '#dc2626',
       bg: '#fee2e2',
+      onPress: () => router.push('/(tabs)/orders?filter=critical'),
     },
     {
       label: 'Checklists',
@@ -77,6 +80,7 @@ export default function DashboardScreen() {
       icon: 'clipboard-outline',
       color: '#2563eb',
       bg: '#dbeafe',
+      onPress: () => router.push('/(tabs)/checklists?filter=all'),
     },
     {
       label: 'Concluídas',
@@ -84,6 +88,7 @@ export default function DashboardScreen() {
       icon: 'checkmark-circle-outline',
       color: '#16a34a',
       bg: '#dcfce7',
+      onPress: () => router.push('/(tabs)/orders?filter=completed'),
     },
   ];
 
@@ -116,11 +121,16 @@ export default function DashboardScreen() {
       {/* KPIs */}
       <View style={styles.kpiGrid}>
         {kpis.map((kpi) => (
-          <View key={kpi.label} style={[styles.kpiCard, { backgroundColor: kpi.bg }]}>
+          <TouchableOpacity
+            key={kpi.label}
+            style={[styles.kpiCard, { backgroundColor: kpi.bg }]}
+            onPress={kpi.onPress}
+            activeOpacity={0.7}
+          >
             <Ionicons name={kpi.icon} size={24} color={kpi.color} />
             <Text style={[styles.kpiValue, { color: kpi.color }]}>{kpi.value}</Text>
             <Text style={styles.kpiLabel}>{kpi.label}</Text>
-          </View>
+          </TouchableOpacity>
         ))}
       </View>
 

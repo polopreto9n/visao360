@@ -12,6 +12,7 @@ import {
   TextInput,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import { workOrdersApi, WorkOrder, uploadApi } from '../../services/api';
 import { PhotoCapture } from '../../components/PhotoCapture';
 
@@ -31,11 +32,33 @@ const PRIORITY_CONFIG: Record<string, { label: string; color: string }> = {
   CRITICAL: { label: 'Crítica', color: '#dc2626' },
 };
 
+const CONTEXT_BANNER: Record<string, { label: string; icon: string; color: string; bg: string; border: string }> = {
+  critical: { label: 'Filtrando: OS Críticas', icon: 'alert-circle', color: '#dc2626', bg: '#fff1f1', border: '#fecaca' },
+  completed: { label: 'Filtrando: OS Concluídas', icon: 'checkmark-circle', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' },
+};
+
+type FilterKey = 'active' | 'all' | 'critical' | 'completed';
+
 export default function OrdersScreen() {
+  const params = useLocalSearchParams<{ filter?: string }>();
+  const initialFilter: FilterKey =
+    params.filter === 'critical' || params.filter === 'completed' || params.filter === 'all'
+      ? params.filter
+      : 'active';
+
   const [orders, setOrders] = useState<WorkOrder[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'active' | 'all'>('active');
+  const [filter, setFilter] = useState<FilterKey>(initialFilter);
+  const [search, setSearch] = useState('');
   const [completing, setCompleting] = useState<WorkOrder | null>(null);
+
+  useEffect(() => {
+    const f = params.filter;
+    if (f === 'critical' || f === 'completed' || f === 'all' || f === 'active') {
+      setFilter(f);
+      setSearch('');
+    }
+  }, [params.filter]);
 
   async function load() {
     try {
@@ -96,9 +119,26 @@ export default function OrdersScreen() {
     );
   }
 
-  const displayed = filter === 'active'
-    ? orders.filter((o) => !['COMPLETED', 'CANCELLED'].includes(o.status))
-    : orders;
+  const activeOrders = orders.filter((o) => !['COMPLETED', 'CANCELLED'].includes(o.status));
+
+  const baseList =
+    filter === 'active' ? activeOrders :
+    filter === 'critical' ? activeOrders.filter((o) => o.priority === 'CRITICAL') :
+    filter === 'completed' ? orders.filter((o) => o.status === 'COMPLETED') :
+    orders;
+
+  const q = search.trim().toLowerCase();
+  const displayed = q
+    ? baseList.filter(
+        (o) =>
+          o.code.toLowerCase().includes(q) ||
+          o.title.toLowerCase().includes(q) ||
+          o.unit.name.toLowerCase().includes(q),
+      )
+    : baseList;
+
+  const isContextFilter = filter === 'critical' || filter === 'completed';
+  const banner = isContextFilter ? CONTEXT_BANNER[filter] : null;
 
   if (loading) {
     return <View style={s.center}><ActivityIndicator size="large" color="#2563eb" /></View>;
@@ -106,24 +146,52 @@ export default function OrdersScreen() {
 
   return (
     <View style={s.container}>
-      {/* Filtro */}
-      <View style={s.filterRow}>
-        {(['active', 'all'] as const).map((f) => (
-          <TouchableOpacity
-            key={f}
-            style={[s.filterBtn, filter === f && s.filterBtnActive]}
-            onPress={() => setFilter(f)}
-          >
-            <Text style={[s.filterBtnText, filter === f && s.filterBtnTextActive]}>
-              {f === 'active' ? 'Ativas' : 'Todas'}{' '}
-              <Text style={s.filterCount}>
-                ({f === 'active'
-                  ? orders.filter((o) => !['COMPLETED', 'CANCELLED'].includes(o.status)).length
-                  : orders.length})
-              </Text>
-            </Text>
+      {/* Banner contextual (vindo do dashboard) ou chips de filtro */}
+      {banner ? (
+        <View style={[s.banner, { backgroundColor: banner.bg, borderColor: banner.border }]}>
+          <Ionicons name={banner.icon as any} size={16} color={banner.color} />
+          <Text style={[s.bannerText, { color: banner.color }]}>{banner.label}</Text>
+          <TouchableOpacity onPress={() => setFilter('active')} style={s.bannerClose}>
+            <Ionicons name="close-circle" size={18} color={banner.color} />
           </TouchableOpacity>
-        ))}
+        </View>
+      ) : (
+        <View style={s.filterRow}>
+          {(['active', 'all'] as const).map((f) => {
+            const count = f === 'active' ? activeOrders.length : orders.length;
+            return (
+              <TouchableOpacity
+                key={f}
+                style={[s.filterBtn, filter === f && s.filterBtnActive]}
+                onPress={() => setFilter(f)}
+              >
+                <Text style={[s.filterBtnText, filter === f && s.filterBtnTextActive]}>
+                  {f === 'active' ? 'Ativas' : 'Todas'}{' '}
+                  <Text style={s.filterCount}>({count})</Text>
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
+
+      {/* Barra de busca */}
+      <View style={s.searchRow}>
+        <Ionicons name="search-outline" size={16} color="#9ca3af" style={s.searchIcon} />
+        <TextInput
+          style={s.searchInput}
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Buscar por código, título ou condomínio..."
+          placeholderTextColor="#9ca3af"
+          returnKeyType="search"
+          clearButtonMode="while-editing"
+        />
+        {search.length > 0 && (
+          <TouchableOpacity onPress={() => setSearch('')} style={s.searchClear}>
+            <Ionicons name="close-circle" size={16} color="#9ca3af" />
+          </TouchableOpacity>
+        )}
       </View>
 
       <FlatList
@@ -132,10 +200,13 @@ export default function OrdersScreen() {
         contentContainerStyle={s.list}
         refreshing={loading}
         onRefresh={load}
+        keyboardShouldPersistTaps="handled"
         ListEmptyComponent={
           <View style={s.empty}>
             <Ionicons name="construct-outline" size={56} color="#cbd5e1" />
-            <Text style={s.emptyTitle}>Nenhuma OS encontrada</Text>
+            <Text style={s.emptyTitle}>
+              {q ? 'Nenhuma OS encontrada para essa busca' : 'Nenhuma OS encontrada'}
+            </Text>
           </View>
         }
         renderItem={({ item }) => {
@@ -342,6 +413,19 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8fafc' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
+  // Banner contextual (vindo de navegação do dashboard)
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    gap: 8,
+  },
+  bannerText: { flex: 1, fontSize: 13, fontWeight: '600' },
+  bannerClose: { padding: 2 },
+
+  // Chips padrão
   filterRow: {
     flexDirection: 'row',
     padding: 12,
@@ -362,10 +446,29 @@ const s = StyleSheet.create({
   filterBtnTextActive: { color: '#fff' },
   filterCount: { fontWeight: '400' },
 
+  // Barra de busca
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e2e8f0',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+  },
+  searchIcon: { marginRight: 8 },
+  searchInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#111827',
+    paddingVertical: 4,
+  },
+  searchClear: { padding: 4 },
+
   list: { padding: 12, gap: 10 },
 
   empty: { alignItems: 'center', paddingTop: 80, gap: 12 },
-  emptyTitle: { fontSize: 16, fontWeight: '600', color: '#6b7280' },
+  emptyTitle: { fontSize: 16, fontWeight: '600', color: '#6b7280', textAlign: 'center' },
 
   card: {
     backgroundColor: '#fff',

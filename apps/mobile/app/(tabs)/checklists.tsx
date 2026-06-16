@@ -12,6 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { useLocalSearchParams } from 'expo-router';
 import { checklistsApi, schedulesApi, Checklist, ChecklistSchedule } from '../../services/api';
 import { useOfflineStore } from '../../stores/offline.store';
 import { useNetwork } from '../../hooks/useNetwork';
@@ -32,13 +33,25 @@ const TYPE_ICON: Record<string, string> = {
 // ─── Tela de checklists ───────────────────────────────────────────────────────
 
 export default function ChecklistsScreen() {
+  const params = useLocalSearchParams<{ filter?: string }>();
+  const initialFilterTab: FilterTab =
+    params.filter === 'available' || params.filter === 'overdue' || params.filter === 'blocked'
+      ? params.filter
+      : 'all';
+
   const [checklists, setChecklists] = useState<Checklist[]>([]);
   const [schedules, setSchedules] = useState<ChecklistSchedule[]>([]);
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState<Checklist | null>(null);
   const [executionId, setExecutionId] = useState<string | null>(null);
-  const [filterTab, setFilterTab] = useState<FilterTab>('all');
+  const [filterTab, setFilterTab] = useState<FilterTab>(initialFilterTab);
   const [refreshing, setRefreshing] = useState(false);
+
+  useEffect(() => {
+    if (params.filter === 'available' || params.filter === 'overdue' || params.filter === 'blocked' || params.filter === 'all') {
+      setFilterTab(params.filter);
+    }
+  }, [params.filter]);
   const { isOnline } = useNetwork();
   const pendingCount = useOfflineStore((s) => s.queue.length);
 
