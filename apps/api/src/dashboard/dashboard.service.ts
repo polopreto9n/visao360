@@ -239,7 +239,7 @@ export class DashboardService {
       maintenanceCostAgg, prevMaintenanceCostAgg,
     ] = await Promise.all([
       this.prisma.asset.count({
-        where: { companyId, createdAt: inPeriod, ...unitFilter },
+        where: { companyId, status: { not: 'INACTIVE' }, createdAt: inPeriod, ...unitFilter },
       }),
       this.prisma.asset.count({
         where: { companyId, status: 'ACTIVE', createdAt: inPeriod, ...unitFilter },
