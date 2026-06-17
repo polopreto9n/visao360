@@ -920,7 +920,7 @@ export class DashboardService {
   }
 
   private isScopedDashboardRole(userRole?: string) {
-    return userRole === 'GESTOR' || userRole === 'TECNICO' || userRole === 'CLIENTE';
+    return userRole === 'TECNICO' || userRole === 'CLIENTE';
   }
 
   private relatedUnitConditions(unitIds?: string[]) {
