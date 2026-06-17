@@ -254,7 +254,7 @@ export class DashboardService {
       this.prisma.workOrder.count({
         where: {
           companyId,
-          status: { in: ['OPEN', 'ASSIGNED'] },
+          status: { in: ['OPEN', 'ASSIGNED', 'WAITING_PARTS'] },
           createdAt: inPeriod,
           ...unitFilter,
         },
