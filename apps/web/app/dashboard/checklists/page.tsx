@@ -265,15 +265,13 @@ export default function ChecklistsPage() {
                       >
                         Editar
                       </button>
-                      {isAdmin && (
-                        <button
-                          onClick={() => setDeletingCl(cl)}
-                          className="fluent-button fluent-button-ghost h-10 px-3 text-xs text-red-600 hover:!border-red-200 hover:!bg-red-50"
-                          title="Excluir checklist"
-                        >
-                          Excluir
-                        </button>
-                      )}
+                      <button
+                        onClick={() => setDeletingCl(cl)}
+                        className="fluent-button fluent-button-ghost h-10 px-3 text-xs text-red-600 hover:!border-red-200 hover:!bg-red-50"
+                        title="Excluir checklist"
+                      >
+                        Excluir
+                      </button>
                     </>
                   )}
                 </div>
