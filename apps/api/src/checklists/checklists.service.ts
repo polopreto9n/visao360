@@ -82,12 +82,8 @@ export class ChecklistsService {
       if (allowedChecklistIds.length === 0) {
         return paginated([], 0, dto);
       }
-    } else if (userRole === 'GESTOR' && userId) {
-      // GESTOR com unidades atribuídas vê apenas as suas; sem atribuição vê todas da empresa
-      const ids = await this.units.getUserUnitIds(userId);
-      if (ids.length > 0) unitIds = ids;
-      // ids.length === 0 → unitIds permanece undefined → sem filtro de unidade
     }
+    // GESTOR vê todos os checklists da empresa (sem escopo por unidade)
 
     const where = {
       companyId, isActive: true,
