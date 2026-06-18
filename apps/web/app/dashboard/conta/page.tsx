@@ -5,6 +5,11 @@ import Link from 'next/link';
 import { subscriptionsApi, SubscriptionStatus } from '../../../lib/api';
 import { SUBSCRIPTION_LABELS, PLAN_LABELS, formatDate } from '../../../lib/auth';
 
+async function openBillingPortal() {
+  const res = await subscriptionsApi.billingPortal();
+  window.location.href = res.data.url;
+}
+
 const STATUS_CONFIG: Record<string, { color: string; icon: string; bg: string }> = {
   TRIAL:     { color: 'text-blue-700',  icon: '🎯', bg: 'bg-blue-50 border-blue-200' },
   ACTIVE:    { color: 'text-green-700', icon: '✅', bg: 'bg-green-50 border-green-200' },
@@ -24,6 +29,7 @@ export default function ContaPage() {
   const [sub, setSub] = useState<SubscriptionStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [portalLoading, setPortalLoading] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -152,12 +158,21 @@ export default function ContaPage() {
         )}
 
         {sub?.subscriptionStatus === 'ACTIVE' && sub.stripeCustomerId && (
-          <a
-            href="#"
-            className="flex items-center justify-center gap-2 w-full border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold py-3 rounded-xl transition"
+          <button
+            onClick={async () => {
+              setPortalLoading(true);
+              try { await openBillingPortal(); }
+              catch { setError('Não foi possível abrir o portal de pagamento. Tente novamente.'); }
+              finally { setPortalLoading(false); }
+            }}
+            disabled={portalLoading}
+            className="flex items-center justify-center gap-2 w-full border-2 border-blue-600 text-blue-600 hover:bg-blue-50 font-semibold py-3 rounded-xl transition disabled:opacity-50"
           >
-            💳 Gerenciar forma de pagamento
-          </a>
+            {portalLoading ? (
+              <span className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+            ) : '💳'}
+            Gerenciar forma de pagamento
+          </button>
         )}
 
         {(sub?.subscriptionStatus === 'SUSPENDED' || sub?.subscriptionStatus === 'CANCELLED') && (

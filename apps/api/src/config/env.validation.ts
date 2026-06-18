@@ -80,6 +80,24 @@ class EnvironmentVariables {
   @IsString()
   @IsOptional()
   STRIPE_WEBHOOK_SECRET: string = '';
+
+  // Price IDs dos planos no Stripe (obrigatórios em produção)
+  @IsString()
+  @IsOptional()
+  STRIPE_PRICE_STARTER: string = '';
+
+  @IsString()
+  @IsOptional()
+  STRIPE_PRICE_PROFESSIONAL: string = '';
+
+  @IsString()
+  @IsOptional()
+  STRIPE_PRICE_ENTERPRISE: string = '';
+
+  // URL pública do frontend (usada nos redirects do Stripe)
+  @IsString()
+  @IsOptional()
+  FRONTEND_URL: string = 'http://localhost:3000';
 }
 
 export function envValidation(config: Record<string, unknown>): EnvironmentVariables {

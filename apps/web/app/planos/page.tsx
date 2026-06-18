@@ -1,12 +1,15 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { subscriptionsApi } from '../../lib/api';
 
 const PLANS = [
   {
     id: 'STARTER',
     name: 'Inicial',
-    price: 'R$ 149',
+    price: 'R$ 149',
     period: '/mês',
     description: 'Ideal para síndicos independentes com poucos condomínios.',
     color: 'border-gray-200',
@@ -22,12 +25,12 @@ const PLANS = [
       'Suporte por e-mail',
     ],
     cta: 'Começar com Inicial',
-    ctaClass: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white',
+    ctaClass: 'border-2 border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white disabled:opacity-50',
   },
   {
     id: 'PROFESSIONAL',
     name: 'Profissional',
-    price: 'R$ 349',
+    price: 'R$ 349',
     period: '/mês',
     description: 'Para administradoras com múltiplos condomínios e equipes.',
     color: 'border-blue-600 ring-2 ring-blue-600',
@@ -43,12 +46,12 @@ const PLANS = [
       'Suporte prioritário',
     ],
     cta: 'Começar com Profissional',
-    ctaClass: 'bg-blue-600 text-white hover:bg-blue-700',
+    ctaClass: 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50',
   },
   {
     id: 'ENTERPRISE',
     name: 'Corporativo',
-    price: 'R$ 799',
+    price: 'R$ 799',
     period: '/mês',
     description: 'Para grandes administradoras com demandas complexas.',
     color: 'border-gray-200',
@@ -64,11 +67,49 @@ const PLANS = [
       'Gerente de conta dedicado',
     ],
     cta: 'Falar com vendas',
-    ctaClass: 'border-2 border-gray-300 text-gray-700 hover:bg-gray-50',
+    ctaClass: 'border-2 border-gray-300 text-gray-700 hover:bg-gray-50 disabled:opacity-50',
   },
 ];
 
 export default function PlanosPage() {
+  const router = useRouter();
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+  const [error, setError] = useState('');
+
+  const handlePlanClick = async (planId: string) => {
+    setError('');
+
+    // ENTERPRISE sempre vai para contato (sem checkout self-service)
+    if (planId === 'ENTERPRISE') {
+      router.push('/cadastro');
+      return;
+    }
+
+    // Verifica se o usuário está logado (token no localStorage)
+    const token = typeof window !== 'undefined' ? localStorage.getItem('visao360_token') : null;
+
+    if (!token) {
+      // Não logado → cadastro (começa trial gratuito)
+      router.push('/cadastro');
+      return;
+    }
+
+    // Logado → inicia checkout Stripe diretamente
+    setLoadingPlan(planId);
+    try {
+      const res = await subscriptionsApi.checkout(planId);
+      window.location.href = res.data.url;
+    } catch (err: unknown) {
+      const msg =
+        (err as { response?: { data?: { message?: string } } })?.response?.data?.message ??
+        'Erro ao iniciar checkout. Tente novamente.';
+      setError(msg);
+      setLoadingPlan(null);
+    }
+  };
+
+  const anyLoading = loadingPlan !== null;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 px-4 py-16">
       <div className="max-w-5xl mx-auto">
@@ -95,6 +136,12 @@ export default function PlanosPage() {
             </span>
           </div>
         </div>
+
+        {error && (
+          <div className="mb-6 bg-red-900/50 border border-red-500 rounded-xl p-4 text-center">
+            <p className="text-red-300 text-sm">{error}</p>
+          </div>
+        )}
 
         {/* Cards */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
@@ -130,12 +177,20 @@ export default function PlanosPage() {
                 ))}
               </ul>
 
-              <Link
-                href="/cadastro"
+              <button
+                onClick={() => handlePlanClick(plan.id)}
+                disabled={anyLoading}
                 className={`block w-full font-semibold py-3 rounded-xl text-center transition ${plan.ctaClass}`}
               >
-                {plan.cta}
-              </Link>
+                {loadingPlan === plan.id ? (
+                  <span className="flex items-center justify-center gap-2">
+                    <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
+                    Aguarde...
+                  </span>
+                ) : (
+                  plan.cta
+                )}
+              </button>
             </div>
           ))}
         </div>

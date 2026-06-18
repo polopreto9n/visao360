@@ -411,6 +411,8 @@ export const authApi = {
 
 export const subscriptionsApi = {
   status: () => api.get<SubscriptionStatus>('/subscriptions/status'),
+  checkout: (plan: string) => api.post<{ url: string }>('/subscriptions/checkout', { plan }),
+  billingPortal: () => api.get<{ url: string }>('/subscriptions/billing-portal'),
   recover: (email: string, companyId: string, password: string) =>
     rawApi.post<RecoverResult>('/subscriptions/recover', { email, companyId, password }),
 };

@@ -1,6 +1,10 @@
-import { Injectable, Logger, BadRequestException, ForbiddenException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable, Logger, BadRequestException, ForbiddenException,
+  UnauthorizedException, NotFoundException, InternalServerErrorException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
+import Stripe from 'stripe';
 import { PrismaService } from '../prisma/prisma.service';
 import { EmailService } from '../email/email.service';
 
@@ -17,42 +21,34 @@ import { EmailService } from '../email/email.service';
 @Injectable()
 export class SubscriptionsService {
   private readonly logger = new Logger(SubscriptionsService.name);
-  private readonly stripeSecret: string | undefined;
+  private readonly stripe: Stripe | null;
+  private readonly webhookSecret: string | undefined;
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly config: ConfigService,
     private readonly email: EmailService,
   ) {
-    this.stripeSecret = this.config.get<string>('STRIPE_WEBHOOK_SECRET');
+    const stripeKey = this.config.get<string>('STRIPE_SECRET_KEY');
+    this.stripe = stripeKey ? new Stripe(stripeKey) : null;
+    this.webhookSecret = this.config.get<string>('STRIPE_WEBHOOK_SECRET');
   }
 
-  /**
-   * Valida a assinatura do webhook Stripe (garante que o request veio do Stripe).
-   * Retorna o evento parseado ou lança BadRequestException.
-   */
-  async parseAndVerifyWebhook(rawBody: Buffer, signature: string): Promise<{ id: string; type: string; data: Record<string, unknown> }> {
-    // Sem secret configurado → rejeitar imediatamente.
-    // Aceitar webhook sem verificação de assinatura abre spoofing total.
-    if (!this.stripeSecret) {
-      this.logger.error(
-        'STRIPE_WEBHOOK_SECRET não está configurado. ' +
-        'Configure a variável de ambiente para habilitar webhooks.',
-      );
-      throw new ForbiddenException(
-        'Webhook desabilitado: STRIPE_WEBHOOK_SECRET não configurado',
-      );
-    }
+  // ─── Webhook ──────────────────────────────────────────────────────────────
 
+  async parseAndVerifyWebhook(rawBody: Buffer, signature: string): Promise<{ id: string; type: string; data: Record<string, unknown> }> {
+    if (!this.webhookSecret) {
+      this.logger.error('STRIPE_WEBHOOK_SECRET não configurado.');
+      throw new ForbiddenException('Webhook desabilitado: STRIPE_WEBHOOK_SECRET não configurado');
+    }
     if (!rawBody || rawBody.length === 0) {
       throw new BadRequestException('rawBody vazio — certifique-se que rawBody: true está no NestFactory.create()');
     }
-
+    if (!this.stripe) {
+      throw new ForbiddenException('Stripe não configurado: STRIPE_SECRET_KEY ausente');
+    }
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const Stripe = require('stripe');
-      const stripe = new Stripe(this.config.getOrThrow('STRIPE_SECRET_KEY'));
-      const event = stripe.webhooks.constructEvent(rawBody, signature, this.stripeSecret);
+      const event = this.stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret);
       return event as { id: string; type: string; data: Record<string, unknown> };
     } catch (err) {
       this.logger.error(`Webhook com assinatura inválida: ${String(err)}`);
@@ -61,12 +57,8 @@ export class SubscriptionsService {
   }
 
   async handleWebhookEvent(eventId: string, type: string, data: Record<string, unknown>): Promise<void> {
-    // ── Idempotência: rejeita eventos já processados ─────────────────────────
-    // Stripe entrega at-least-once. Sem esta verificação, um retry duplicaria
-    // activações, cancelamentos e mudanças de status — efeito direto no billing.
-    const alreadyProcessed = await this.prisma.stripeEvent.findUnique({
-      where: { id: eventId },
-    });
+    // Idempotência: rejeita eventos já processados
+    const alreadyProcessed = await this.prisma.stripeEvent.findUnique({ where: { id: eventId } });
     if (alreadyProcessed) {
       this.logger.debug(`Stripe webhook ignorado (duplicado): ${eventId} (${type})`);
       return;
@@ -94,17 +86,91 @@ export class SubscriptionsService {
         this.logger.debug(`Evento Stripe ignorado: ${type}`);
     }
 
-    // Marca como processado APÓS execução bem-sucedida
-    // Se o handler lançar exceção, o evento não é marcado → Stripe vai retentar → correto
     await this.prisma.stripeEvent.create({
       data: { id: eventId, type },
     }).catch(() => {
-      // Falha silenciosa: possível corrida entre duas instâncias — ambas processaram,
-      // a segunda falhou no INSERT (constraint). Nenhum dado foi corrompido.
+      // Corrida entre instâncias — ambas processaram, segunda falhou no INSERT. OK.
     });
   }
 
-  /** checkout.session.completed → ativa assinatura após primeiro pagamento */
+  // ─── Checkout ─────────────────────────────────────────────────────────────
+
+  async createCheckoutSession(companyId: string, plan: string): Promise<{ url: string }> {
+    if (!this.stripe) {
+      throw new ForbiddenException('Pagamentos não configurados neste ambiente');
+    }
+
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { id: true, name: true, email: true, stripeCustomerId: true, subscriptionStatus: true },
+    });
+    if (!company) throw new NotFoundException('Empresa não encontrada');
+
+    if (company.subscriptionStatus === 'ACTIVE') {
+      throw new ForbiddenException('Assinatura já ativa. Use o portal de billing para alterar o plano.');
+    }
+    if (company.subscriptionStatus === 'SUSPENDED' || company.subscriptionStatus === 'CANCELLED') {
+      throw new ForbiddenException('Use o fluxo de recuperação (/recuperar) para reativar a conta.');
+    }
+
+    const priceId = this.getPriceId(plan);
+
+    // Reutiliza customer existente ou cria novo
+    let customerId = company.stripeCustomerId ?? undefined;
+    if (!customerId) {
+      const customer = await this.stripe.customers.create({
+        email: company.email,
+        name: company.name,
+        metadata: { companyId },
+      });
+      customerId = customer.id;
+      // Persiste imediatamente para evitar duplicatas em retrys
+      await this.prisma.company.update({ where: { id: companyId }, data: { stripeCustomerId: customerId } });
+    }
+
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+
+    const session = await this.stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      line_items: [{ price: priceId, quantity: 1 }],
+      metadata: { companyId, plan },
+      subscription_data: { metadata: { companyId, plan } },
+      success_url: `${frontendUrl}/planos/sucesso?session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${frontendUrl}/planos/cancelado`,
+      allow_promotion_codes: true,
+    });
+
+    if (!session.url) throw new InternalServerErrorException('Stripe não retornou URL de checkout');
+    return { url: session.url };
+  }
+
+  async createBillingPortalSession(companyId: string): Promise<{ url: string }> {
+    if (!this.stripe) {
+      throw new ForbiddenException('Pagamentos não configurados neste ambiente');
+    }
+
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { stripeCustomerId: true },
+    });
+
+    if (!company?.stripeCustomerId) {
+      throw new ForbiddenException('Nenhuma assinatura Stripe associada a esta conta');
+    }
+
+    const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+
+    const session = await this.stripe.billingPortal.sessions.create({
+      customer: company.stripeCustomerId,
+      return_url: `${frontendUrl}/dashboard/conta`,
+    });
+
+    return { url: session.url };
+  }
+
+  // ─── Webhook handlers ─────────────────────────────────────────────────────
+
   private async handleCheckoutCompleted(data: Record<string, unknown>) {
     const session = data['object'] as Record<string, unknown>;
     const companyId = (session['metadata'] as Record<string, string>)?.['companyId'];
@@ -132,16 +198,13 @@ export class SubscriptionsService {
       },
     });
 
-    // Audit log — pagamento inicial registrado
     await this.prisma.auditLog.create({
-      data: { companyId, action: 'SUBSCRIPTION_ACTIVATED', resource: 'subscription',
-              resourceId: stripeSubscriptionId },
+      data: { companyId, action: 'SUBSCRIPTION_ACTIVATED', resource: 'subscription', resourceId: stripeSubscriptionId },
     });
 
     this.logger.log(`Assinatura ativada: empresa ${companyId}`);
   }
 
-  /** invoice.payment_succeeded → renova período */
   private async handlePaymentSucceeded(data: Record<string, unknown>) {
     const invoice = data['object'] as Record<string, unknown>;
     const stripeCustomerId = invoice['customer'] as string;
@@ -170,7 +233,6 @@ export class SubscriptionsService {
     this.logger.log(`Pagamento confirmado: customer ${stripeCustomerId}`);
   }
 
-  /** invoice.payment_failed → PAST_DUE + registra pastDueSince para safety-net scheduler */
   private async handlePaymentFailed(data: Record<string, unknown>) {
     const invoice = data['object'] as Record<string, unknown>;
     const stripeCustomerId = invoice['customer'] as string;
@@ -185,10 +247,7 @@ export class SubscriptionsService {
     const db = this.prisma as any; // eslint-disable-line @typescript-eslint/no-explicit-any
     await db.company.update({
       where: { id: company.id },
-      data: {
-        subscriptionStatus: 'PAST_DUE',
-        pastDueSince: new Date(), // safety-net: scheduler usa este campo para PAST_DUE → SUSPENDED
-      },
+      data: { subscriptionStatus: 'PAST_DUE', pastDueSince: new Date() },
     });
 
     await this.prisma.auditLog.create({
@@ -202,14 +261,12 @@ export class SubscriptionsService {
       });
       if (owners.length > 0) {
         this.logger.warn(`Pagamento falhou para ${company.name} — ${owners.length} contato(s) a notificar`);
-        // Email: template de cobrança pendente enviado aqui
       }
     }
 
     this.logger.warn(`Pagamento falhou: empresa ${company.id} → PAST_DUE`);
   }
 
-  /** customer.subscription.deleted → SUSPENDED ou CANCELLED */
   private async handleSubscriptionDeleted(data: Record<string, unknown>) {
     const sub = data['object'] as Record<string, unknown>;
     const stripeSubscriptionId = sub['id'] as string;
@@ -240,7 +297,6 @@ export class SubscriptionsService {
     this.logger.log(`Assinatura encerrada: ${stripeSubscriptionId} → ${newStatus}`);
   }
 
-  /** customer.subscription.updated → atualiza status e plano */
   private async handleSubscriptionUpdated(data: Record<string, unknown>) {
     const sub = data['object'] as Record<string, unknown>;
     const stripeSubscriptionId = sub['id'] as string;
@@ -268,19 +324,8 @@ export class SubscriptionsService {
     });
   }
 
-  /** Extrai o plano do metadata ou do price_id do Stripe */
-  private extractPlan(obj: Record<string, unknown>): string {
-    const meta = obj['metadata'] as Record<string, string> | undefined;
-    return meta?.['plan'] ?? 'STARTER';
-  }
+  // ─── Recover ──────────────────────────────────────────────────────────────
 
-  /**
-   * Endpoint de recuperação para tenants SUSPENDED/CANCELLED/trial-expirado.
-   * Valida credenciais manualmente (sem JWT, que estaria bloqueado),
-   * retorna o status atual e o link do Stripe Customer Portal.
-   *
-   * SEGURANÇA: mesmo timing protection do login (bcrypt + dummy hash).
-   */
   async recover(email: string, companyId: string, password: string) {
     const user = await this.prisma.user.findFirst({
       where: { email: email.toLowerCase().trim(), companyId, isActive: true },
@@ -290,8 +335,7 @@ export class SubscriptionsService {
           select: {
             id: true, name: true, email: true,
             subscriptionStatus: true, trialEndsAt: true,
-            currentPeriodEnd: true, stripeCustomerId: true,
-            plan: true,
+            currentPeriodEnd: true, stripeCustomerId: true, plan: true,
           },
         },
       },
@@ -299,10 +343,7 @@ export class SubscriptionsService {
 
     const dummyHash = await bcrypt.hash('recover-timing-protection', 10);
     const isValid = await bcrypt.compare(password, user?.passwordHash ?? dummyHash);
-
-    if (!user || !isValid) {
-      throw new UnauthorizedException('Credenciais inválidas');
-    }
+    if (!user || !isValid) throw new UnauthorizedException('Credenciais inválidas');
 
     const company = user.company;
     const now = new Date();
@@ -310,19 +351,15 @@ export class SubscriptionsService {
       ? Math.max(0, Math.ceil((new Date(company.trialEndsAt).getTime() - now.getTime()) / 86_400_000))
       : null;
 
-    // Gera URL do Stripe Customer Portal (self-service billing)
     let billingPortalUrl: string | null = null;
-    const stripeKey = this.config.get<string>('STRIPE_SECRET_KEY');
-    if (stripeKey && company.stripeCustomerId) {
+    if (this.stripe && company.stripeCustomerId) {
       try {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const Stripe = require('stripe');
-        const stripe = new Stripe(stripeKey);
-        const session = await stripe.billingPortal.sessions.create({
+        const frontendUrl = this.config.get<string>('FRONTEND_URL', 'http://localhost:3000');
+        const session = await this.stripe.billingPortal.sessions.create({
           customer: company.stripeCustomerId,
-          return_url: this.config.get('FRONTEND_URL', 'http://localhost:3000') + '/dashboard',
+          return_url: `${frontendUrl}/dashboard`,
         });
-        billingPortalUrl = session.url as string;
+        billingPortalUrl = session.url;
       } catch (err) {
         this.logger.error(`Erro ao criar Stripe Portal: ${String(err)}`);
       }
@@ -339,6 +376,39 @@ export class SubscriptionsService {
       billingPortalUrl,
       message: this.getStatusMessage(company.subscriptionStatus as string, trialDaysLeft),
     };
+  }
+
+  async getSubscriptionStatus(companyId: string) {
+    const company = await this.prisma.company.findUnique({
+      where: { id: companyId },
+      select: { plan: true, subscriptionStatus: true, trialEndsAt: true, currentPeriodEnd: true, stripeCustomerId: true },
+    });
+    if (!company) return null;
+
+    const now = new Date();
+    const daysLeft = company.trialEndsAt
+      ? Math.max(0, Math.ceil((company.trialEndsAt.getTime() - now.getTime()) / 86_400_000))
+      : null;
+
+    return { ...company, trialDaysLeft: daysLeft };
+  }
+
+  // ─── Helpers ──────────────────────────────────────────────────────────────
+
+  private getPriceId(plan: string): string {
+    const prices: Record<string, string> = {
+      STARTER:      this.config.get<string>('STRIPE_PRICE_STARTER', ''),
+      PROFESSIONAL: this.config.get<string>('STRIPE_PRICE_PROFESSIONAL', ''),
+      ENTERPRISE:   this.config.get<string>('STRIPE_PRICE_ENTERPRISE', ''),
+    };
+    const priceId = prices[plan];
+    if (!priceId) throw new BadRequestException(`Price ID não configurado para o plano: ${plan}`);
+    return priceId;
+  }
+
+  private extractPlan(obj: Record<string, unknown>): string {
+    const meta = obj['metadata'] as Record<string, string> | undefined;
+    return meta?.['plan'] ?? 'STARTER';
   }
 
   private getStatusMessage(status: string, trialDaysLeft: number | null): string {
@@ -358,28 +428,5 @@ export class SubscriptionsService {
       default:
         return 'Status desconhecido.';
     }
-  }
-
-  /** Retorna status de assinatura de uma empresa (para uso interno) */
-  async getSubscriptionStatus(companyId: string) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const company = await (this.prisma as any).company.findUnique({
-      where: { id: companyId },
-      select: {
-        plan: true,
-        subscriptionStatus: true,
-        trialEndsAt: true,
-        currentPeriodEnd: true,
-        stripeCustomerId: true,
-      },
-    });
-    if (!company) return null;
-
-    const now = new Date();
-    const daysLeft = company.trialEndsAt
-      ? Math.max(0, Math.ceil((company.trialEndsAt.getTime() - now.getTime()) / 86_400_000))
-      : null;
-
-    return { ...company, trialDaysLeft: daysLeft };
   }
 }
