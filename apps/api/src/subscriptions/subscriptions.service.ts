@@ -18,10 +18,12 @@ import { EmailService } from '../email/email.service';
  *   → invoice.payment_failed → PAST_DUE (grace 7 dias)
  *   → customer.subscription.deleted → SUSPENDED/CANCELLED
  */
+type StripeClient = InstanceType<typeof Stripe>;
+
 @Injectable()
 export class SubscriptionsService {
   private readonly logger = new Logger(SubscriptionsService.name);
-  private readonly stripe: Stripe | null;
+  private readonly stripe: StripeClient | null;
   private readonly webhookSecret: string | undefined;
 
   constructor(
@@ -49,7 +51,7 @@ export class SubscriptionsService {
     }
     try {
       const event = this.stripe.webhooks.constructEvent(rawBody, signature, this.webhookSecret);
-      return event as { id: string; type: string; data: Record<string, unknown> };
+      return event as unknown as { id: string; type: string; data: Record<string, unknown> };
     } catch (err) {
       this.logger.error(`Webhook com assinatura inválida: ${String(err)}`);
       throw new BadRequestException('Webhook signature inválida');
