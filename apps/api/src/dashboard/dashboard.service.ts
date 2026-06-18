@@ -237,6 +237,7 @@ export class DashboardService {
       prevCompletedThisMonth, prevNewWOs, prevNewIncidents,
       newWOsThisMonth, newIncidentsThisMonth,
       maintenanceCostAgg, prevMaintenanceCostAgg,
+      activeChecklists,
     ] = await Promise.all([
       this.prisma.asset.count({
         where: { companyId, status: { not: 'INACTIVE' }, createdAt: inPeriod, ...unitFilter },
@@ -445,6 +446,9 @@ export class DashboardService {
         where: { companyId, status: 'COMPLETED', completedAt: inPreviousPeriod, ...unitFilter },
         _sum: { cost: true },
       }),
+      this.prisma.checklist.count({
+        where: { companyId, isActive: true, ...unitFilter },
+      }),
     ]);
 
     const maintenanceCostThisMonth = maintenanceCostAgg._sum.cost ?? 0;
@@ -475,6 +479,7 @@ export class DashboardService {
         checklistCompletionRate,
         openIncidents,
         criticalIncidents,
+        activeChecklists,
         maintenanceCostThisMonth,
         trends: {
           newWorkOrders: { pct: trendPct(newWOsThisMonth, prevNewWOs), prev: prevNewWOs },
@@ -873,6 +878,7 @@ export class DashboardService {
         checklistCompletionRate: 0,
         openIncidents: 0,
         criticalIncidents: 0,
+        activeChecklists: 0,
         maintenanceCostThisMonth: 0,
         trends: {
           newWorkOrders: { pct: 0, prev: 0 },

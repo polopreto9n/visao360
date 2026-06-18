@@ -822,7 +822,9 @@ export default function DashboardPage() {
     setLoading(true);
     load();
     const interval = setInterval(load, 30000);
-    return () => clearInterval(interval);
+    const onVisible = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => { clearInterval(interval); document.removeEventListener('visibilitychange', onVisible); };
   }, [load]);
 
   useEffect(() => {
@@ -1051,7 +1053,7 @@ export default function DashboardPage() {
       )}
 
       {!isTecnico && (
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <KPICard
           label="Equipamentos Ativos"
           value={summary.activeAssets}
@@ -1061,11 +1063,10 @@ export default function DashboardPage() {
           tileClassName="bg-indigo-100 text-indigo-600"
         />
         <KPICard
-          label="Checklists (Período)"
-          value={summary.checklistsThisMonth}
-          fallback="Execuções registradas no período"
+          label="Checklists Ativos"
+          value={summary.activeChecklists}
+          fallback={`${summary.checklistsThisMonth} execuções no período`}
           href="/dashboard/checklists"
-          trend={trends?.checklistsThisMonth}
           icon={CheckSquare2}
           tileClassName="bg-emerald-100 text-emerald-600"
         />
@@ -1078,6 +1079,15 @@ export default function DashboardPage() {
           positiveIsGood={false}
           icon={ClipboardCheck}
           tileClassName="bg-orange-100 text-orange-600"
+        />
+        <KPICard
+          label="Ocorrências Abertas"
+          value={summary.openIncidents}
+          fallback={`${summary.criticalIncidents} crítica(s)`}
+          href="/dashboard/incidents"
+          positiveIsGood={false}
+          icon={TriangleAlert}
+          tileClassName="bg-red-100 text-red-600"
         />
         <KPICard
           label="Conformidade de Checklists"

@@ -253,6 +253,7 @@ export interface DashboardKPIs {
     overdueWorkOrders: number; completedThisMonth: number;
     checklistsThisMonth: number; checklistCompletionRate: number;
     openIncidents: number; criticalIncidents: number;
+    activeChecklists: number;
     maintenanceCostThisMonth: number;
     trends?: {
       newWorkOrders: KPITrend;
