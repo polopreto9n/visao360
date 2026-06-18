@@ -1,15 +1,25 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Bell, Building2, ClipboardCheck, TriangleAlert, Wrench } from 'lucide-react';
 import { api } from '../../lib/api';
 import { formatDateTime } from '../../lib/auth';
+
+interface NotificationData {
+  workOrderId?: string;
+  incidentId?: string;
+  checklistId?: string;
+  assetId?: string;
+  screen?: string;
+}
 
 interface Notification {
   id: string;
   type: string;
   title: string;
   body: string;
+  data: NotificationData | null;
   isRead: boolean;
   readAt: string | null;
   createdAt: string;
@@ -23,7 +33,25 @@ const TYPE_ICONS = {
   SYSTEM: Bell,
 };
 
+function getHref(type: string, data: NotificationData | null): string {
+  switch (type) {
+    case 'WORK_ORDER_ASSIGNED':
+      return data?.workOrderId
+        ? `/dashboard/work-orders/${data.workOrderId}`
+        : '/dashboard/work-orders';
+    case 'CHECKLIST_DUE':
+      return '/dashboard/checklists';
+    case 'INCIDENT_OPENED':
+      return '/dashboard/incidents';
+    case 'ASSET_ALERT':
+      return '/dashboard/assets';
+    default:
+      return '/dashboard';
+  }
+}
+
 export function NotificationBell() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unread, setUnread] = useState(0);
@@ -62,7 +90,6 @@ export function NotificationBell() {
     function handleClick(event: MouseEvent) {
       if (dropRef.current && !dropRef.current.contains(event.target as Node)) setOpen(false);
     }
-
     document.addEventListener('mousedown', handleClick);
     return () => document.removeEventListener('mousedown', handleClick);
   }, []);
@@ -72,14 +99,22 @@ export function NotificationBell() {
     setOpen(!open);
   }
 
-  async function markRead(id: string) {
-    try {
-      await api.patch(`/notifications/${id}/read`);
-      setNotifications((current) => current.map((item) => (
-        item.id === id ? { ...item, isRead: true, readAt: new Date().toISOString() } : item
-      )));
+  function handleNotificationClick(notification: Notification) {
+    // Atualização otimista — não bloqueia a navegação
+    if (!notification.isRead) {
+      setNotifications((current) =>
+        current.map((item) =>
+          item.id === notification.id
+            ? { ...item, isRead: true, readAt: new Date().toISOString() }
+            : item,
+        ),
+      );
       setUnread((count) => Math.max(0, count - 1));
-    } catch {}
+      api.patch(`/notifications/${notification.id}/read`).catch(() => {});
+    }
+
+    setOpen(false);
+    router.push(getHref(notification.type, notification.data));
   }
 
   async function markAllRead() {
@@ -111,7 +146,10 @@ export function NotificationBell() {
           <div className="flex items-center justify-between border-b border-blue-100/80 px-4 py-3">
             <h3 className="text-[13px] font-bold text-slate-950">Notificações</h3>
             {unread > 0 && (
-              <button onClick={markAllRead} className="text-[11px] font-bold text-blue-700 transition-opacity hover:opacity-70">
+              <button
+                onClick={markAllRead}
+                className="text-[11px] font-bold text-blue-700 transition-opacity hover:opacity-70"
+              >
                 Marcar todas como lidas
               </button>
             )}
@@ -120,7 +158,10 @@ export function NotificationBell() {
           <div className="max-h-80 overflow-y-auto">
             {loading ? (
               <div className="flex justify-center py-8">
-                <div className="h-5 w-5 animate-spin rounded-full border-2 border-t-transparent" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+                <div
+                  className="h-5 w-5 animate-spin rounded-full border-2 border-t-transparent"
+                  style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }}
+                />
               </div>
             ) : loadError ? (
               <div className="px-4 py-6 text-center">
@@ -145,9 +186,10 @@ export function NotificationBell() {
                 const Icon = TYPE_ICONS[notification.type as keyof typeof TYPE_ICONS] ?? Bell;
 
                 return (
-                  <div
+                  <button
                     key={notification.id}
-                    className="flex items-start gap-3 border-b border-blue-100/70 px-4 py-3 transition-colors last:border-b-0 hover:bg-white/60"
+                    onClick={() => handleNotificationClick(notification)}
+                    className="flex w-full items-start gap-3 border-b border-blue-100/70 px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-blue-50/60 active:bg-blue-100/60"
                     style={{ background: !notification.isRead ? 'var(--accent-soft)' : 'transparent' }}
                   >
                     <span className="mt-0.5 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl bg-blue-100 text-blue-700">
@@ -161,14 +203,9 @@ export function NotificationBell() {
                       <p className="mt-1 text-[10px] text-slate-500">{formatDateTime(notification.createdAt)}</p>
                     </div>
                     {!notification.isRead && (
-                      <button
-                        onClick={() => markRead(notification.id)}
-                        title="Marcar como lida"
-                        aria-label="Marcar como lida"
-                        className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-blue-500 transition-colors hover:bg-blue-700"
-                      />
+                      <span className="mt-1.5 h-2.5 w-2.5 flex-shrink-0 rounded-full bg-blue-500" />
                     )}
-                  </div>
+                  </button>
                 );
               })
             )}
@@ -176,7 +213,10 @@ export function NotificationBell() {
 
           {notifications.length > 0 && (
             <div className="border-t border-blue-100/80 px-4 py-2 text-center">
-              <button onClick={() => setOpen(false)} className="text-[11px] font-bold text-blue-700 transition-opacity hover:opacity-70">
+              <button
+                onClick={() => setOpen(false)}
+                className="text-[11px] font-bold text-blue-700 transition-opacity hover:opacity-70"
+              >
                 Fechar
               </button>
             </div>
