@@ -53,7 +53,7 @@ export class ChecklistsController {
 
   @Delete(':id')
   @Roles(Role.ADMIN, Role.GESTOR)
-  @ApiOperation({ summary: 'Desativar checklist (ADMIN, GESTOR)' }}
+  @ApiOperation({ summary: 'Desativar checklist (ADMIN, GESTOR)' })
   remove(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser) {
     return this.svc.deleteChecklist(id, u.companyId);
   }
