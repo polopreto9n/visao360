@@ -52,6 +52,7 @@ export default function WorkOrdersPage() {
   const [creating, setCreating] = useState(false);
   const [updating, setUpdating] = useState<WorkOrder | null>(null);
   const [statusNote, setStatusNote] = useState('');
+  const [editing, setEditing] = useState<WorkOrder | null>(null);
   const [deleting, setDeleting] = useState<WorkOrder | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [units, setUnits] = useState<Unit[]>([]);
@@ -253,6 +254,15 @@ export default function WorkOrdersPage() {
                         Atualizar status
                       </button>
                     )}
+                    {canCreate && !['COMPLETED', 'CANCELLED'].includes(wo.status) && (
+                      <button
+                        onClick={() => setEditing(wo)}
+                        className="fluent-button fluent-button-ghost h-10 justify-center px-3 text-xs"
+                        title="Editar OS"
+                      >
+                        Editar
+                      </button>
+                    )}
                     {isAdmin && (
                       <button
                         onClick={() => setDeleting(wo)}
@@ -344,11 +354,105 @@ export default function WorkOrdersPage() {
         )}
       </Modal>
 
+      {/* Modal de edição */}
+      <Modal open={!!editing} onClose={() => setEditing(null)} title={`Editar OS ${editing?.code ?? ''}`} size="lg">
+        {editing && (
+          <EditWOForm
+            workOrder={editing}
+            users={techUsers}
+            onSuccess={() => { setEditing(null); load(); }}
+          />
+        )}
+      </Modal>
+
       {/* Modal de criação */}
       <Modal open={creating} onClose={() => setCreating(false)} title="Nova Ordem de Serviço" size="lg">
         <CreateWOForm units={units} users={techUsers} onSuccess={() => { setCreating(false); load(); }} />
       </Modal>
     </div>
+  );
+}
+
+function EditWOForm({ workOrder, users, onSuccess }: { workOrder: WorkOrder; users: User[]; onSuccess: () => void }) {
+  const [form, setForm] = useState({
+    title: workOrder.title,
+    description: workOrder.description,
+    priority: workOrder.priority,
+    assigneeId: workOrder.assignee?.id ?? '',
+    dueDate: workOrder.dueDate ? workOrder.dueDate.split('T')[0] : '',
+  });
+  const [saving, setSaving] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await workOrdersApi.update(workOrder.id, {
+        title: form.title,
+        description: form.description,
+        priority: form.priority,
+        assigneeId: form.assigneeId || null,
+        dueDate: form.dueDate ? new Date(form.dueDate).toISOString() : null,
+      });
+      onSuccess();
+    } catch (err: unknown) {
+      alert((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar OS');
+    } finally { setSaving(false); }
+  }
+
+  const PRIORITY_LABELS: Record<string, string> = { LOW: 'Baixa', MEDIUM: 'Média', HIGH: 'Alta', CRITICAL: 'Crítica' };
+  const inputStyle = { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
+  const labelStyle = { color: 'var(--text-secondary)' };
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div>
+        <label className="block text-xs font-semibold mb-1" style={labelStyle}>Título *</label>
+        <input required className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          style={inputStyle}
+          value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} />
+      </div>
+      <div>
+        <label className="block text-xs font-semibold mb-1" style={labelStyle}>Descrição *</label>
+        <textarea required rows={3} className="w-full rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-blue-500 outline-none"
+          style={inputStyle}
+          value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Prioridade</label>
+          <select className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
+            value={form.priority} onChange={(e) => setForm(f => ({ ...f, priority: e.target.value }))}>
+            {['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].map((p) => (
+              <option key={p} value={p}>{PRIORITY_LABELS[p]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-xs font-semibold mb-1" style={labelStyle}>Prazo</label>
+          <input type="date" className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+            style={inputStyle}
+            value={form.dueDate} onChange={(e) => setForm(f => ({ ...f, dueDate: e.target.value }))} />
+        </div>
+      </div>
+      <div>
+        <label className="block text-xs font-semibold mb-1" style={labelStyle}>Técnico responsável</label>
+        <select className="w-full rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+          style={inputStyle}
+          value={form.assigneeId} onChange={(e) => setForm(f => ({ ...f, assigneeId: e.target.value }))}>
+          <option value="">Não atribuído</option>
+          {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+        </select>
+      </div>
+      <div className="rounded-xl px-3 py-2 text-xs" style={{ background: 'var(--surface-2)', color: 'var(--text-muted)' }}>
+        Unidade: <strong style={{ color: 'var(--text-secondary)' }}>{workOrder.unit.name}</strong>
+        {workOrder.asset && <> · Equipamento: <strong style={{ color: 'var(--text-secondary)' }}>{workOrder.asset.name}</strong></>}
+      </div>
+      <button type="submit" disabled={saving} className="fluent-button fluent-button-primary h-12 w-full text-sm">
+        {saving ? 'Salvando...' : '✓ Salvar alterações'}
+      </button>
+    </form>
   );
 }
 

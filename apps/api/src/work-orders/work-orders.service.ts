@@ -207,6 +207,29 @@ export class WorkOrdersService {
     return { deleted: true };
   }
 
+  async update(id: string, companyId: string, dto: Partial<{ title: string; description: string; priority: string; assigneeId: string | null; dueDate: string; assetId: string | null }>) {
+    const wo = await this.findOne(id, companyId);
+    if (['COMPLETED', 'CANCELLED'].includes(wo.status)) {
+      throw new BadRequestException('Não é possível editar uma OS concluída ou cancelada');
+    }
+    if (dto.assigneeId) {
+      const assignee = await this.prisma.user.findFirst({ where: { id: dto.assigneeId, companyId } });
+      if (!assignee) throw new NotFoundException('Técnico não encontrado');
+    }
+    return this.prisma.workOrder.update({
+      where: { id },
+      data: {
+        ...(dto.title !== undefined && { title: dto.title }),
+        ...(dto.description !== undefined && { description: dto.description }),
+        ...(dto.priority !== undefined && { priority: dto.priority as any }),
+        ...(dto.assigneeId !== undefined && { assigneeId: dto.assigneeId }),
+        ...(dto.dueDate !== undefined && { dueDate: dto.dueDate ? new Date(dto.dueDate) : null }),
+        ...(dto.assetId !== undefined && { assetId: dto.assetId }),
+      },
+      include: WO_INCLUDE,
+    });
+  }
+
   async assign(id: string, companyId: string, assigneeId: string) {
     const wo = await this.findOne(id, companyId);
     const assignee = await this.prisma.user.findFirst({ where: { id: assigneeId, companyId } });

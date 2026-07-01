@@ -4,6 +4,7 @@ import { Role } from '@prisma/client';
 import { WorkOrdersService } from './work-orders.service';
 import { CreateWorkOrderDto } from './dto/create-work-order.dto';
 import { UpdateStatusDto } from './dto/update-status.dto';
+import { UpdateWorkOrderDto } from './dto/update-work-order.dto';
 import { ListWorkOrdersDto } from './dto/list-work-orders.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -51,6 +52,17 @@ export class WorkOrdersController {
     @Body() dto: UpdateStatusDto,
   ) {
     return this.svc.updateStatus(id, u.companyId, u.id, u.role as Role, dto);
+  }
+
+  @Patch(':id')
+  @Roles(Role.ADMIN, Role.GESTOR)
+  @ApiOperation({ summary: 'Editar campos da OS (ADMIN, GESTOR)' })
+  update(
+    @Param('id') id: string,
+    @CurrentUser() u: AuthenticatedUser,
+    @Body() dto: UpdateWorkOrderDto,
+  ) {
+    return this.svc.update(id, u.companyId, dto);
   }
 
   @Delete(':id')
