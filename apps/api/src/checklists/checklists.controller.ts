@@ -1,6 +1,7 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Role } from '@prisma/client';
+import { IsOptional, IsString } from 'class-validator';
 import { ChecklistsService } from './checklists.service';
 import { CreateChecklistDto } from './dto/create-checklist.dto';
 import { UpdateChecklistDto } from './dto/update-checklist.dto';
@@ -10,6 +11,13 @@ import { RolesGuard } from '../auth/guards/roles.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { Roles } from '../common/decorators/roles.decorator';
 import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+
+class CreateFromTemplateDto {
+  @IsString() @IsOptional() name?: string;
+  @IsString() @IsOptional() unitId?: string;
+  @IsString() @IsOptional() assetId?: string;
+  @IsOptional() intervalDays?: number;
+}
 
 @ApiTags('Checklists')
 @ApiBearerAuth('jwt')
@@ -29,6 +37,30 @@ export class ChecklistsController {
   @ApiOperation({ summary: 'Listar checklists ativos (filtros: type, unitId, assetId)' })
   findAll(@CurrentUser() u: AuthenticatedUser, @Query() q: ListChecklistsDto) {
     return this.svc.findAll(u.companyId, q, u.id, u.role);
+  }
+
+  // Rotas fixas DEVEM vir antes das rotas com parâmetro dinâmico (:id)
+  @Get('templates')
+  @ApiOperation({ summary: 'Listar templates de checklist por norma (NR, ABNT)' })
+  getTemplates(@Query('category') category?: string, @Query('norm') norm?: string) {
+    return this.svc.getTemplates(category, norm);
+  }
+
+  @Get('templates/:templateId')
+  @ApiOperation({ summary: 'Obter um template específico por ID' })
+  getTemplate(@Param('templateId') templateId: string) {
+    return this.svc.getTemplate(templateId);
+  }
+
+  @Post('from-template/:templateId')
+  @Roles(Role.ADMIN, Role.GESTOR)
+  @ApiOperation({ summary: 'Criar checklist a partir de um template predefinido' })
+  createFromTemplate(
+    @Param('templateId') templateId: string,
+    @CurrentUser() u: AuthenticatedUser,
+    @Body() dto: CreateFromTemplateDto,
+  ) {
+    return this.svc.createFromTemplate(u.companyId, templateId, dto);
   }
 
   @Get(':id')

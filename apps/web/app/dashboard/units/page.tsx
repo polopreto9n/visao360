@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { unitsApi, usersApi, reportsApi, Unit, User } from '../../../lib/api';
 import { Modal } from '../../../components/ui/Modal';
 import { canManage, getUser } from '../../../lib/auth';
@@ -167,7 +168,12 @@ export default function UnitsPage() {
                 )}
               </div>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                <Link href={`/dashboard/units/${unit.id}`}
+                  className="flex-1 text-center text-sm font-semibold py-2 rounded-xl transition-colors"
+                  style={{ background: 'var(--accent)', color: '#fff', textDecoration: 'none' }}>
+                  🏢 Portal
+                </Link>
                 {canCreate && (
                   <button onClick={() => setEditing(unit)}
                     className="flex-1 border text-sm font-semibold py-2 rounded-xl transition-colors"

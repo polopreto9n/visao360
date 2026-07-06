@@ -131,11 +131,39 @@ export interface UnitOption {
 
 export const unitsApi = {
   list: () => api.get<Paginated<Unit>>('/units'),
+  get: (id: string) => api.get<Unit>(`/units/${id}`),
   options: () => api.get<UnitOption[]>('/units/options'),
   assignUser: (unitId: string, userId: string) =>
     api.post<Unit>(`/units/${unitId}/users/${userId}`),
   removeUser: (unitId: string, userId: string) =>
     api.delete<Unit>(`/units/${unitId}/users/${userId}`),
+};
+
+export interface Incident {
+  id: string;
+  title: string;
+  description: string;
+  severity: string;
+  status: string;
+  createdAt: string;
+  resolvedAt: string | null;
+  photoUrls: string[];
+  unit: { id: string; name: string };
+  reporter: { id: string; name: string; email: string };
+  assignee?: { id: string; name: string; email: string } | null;
+  comments?: { id: string; body: string; createdAt: string; user: { id: string; name: string } }[];
+}
+
+export const incidentsApi = {
+  list: (params?: Record<string, unknown>) => api.get<Paginated<Incident>>('/incidents', { params }),
+  get: (id: string) => api.get<Incident>(`/incidents/${id}`),
+  create: (data: Record<string, unknown>) => api.post<Incident>('/incidents', data),
+  updateStatus: (id: string, data: Record<string, unknown>) => api.patch<Incident>(`/incidents/${id}/status`, data),
+  assign: (id: string, assigneeId: string | null) => api.patch<Incident>(`/incidents/${id}/assign`, { assigneeId }),
+  addComment: (id: string, body: string) => api.post(`/incidents/${id}/comments`, { body }),
+  deleteComment: (id: string, commentId: string) => api.delete(`/incidents/${id}/comments/${commentId}`),
+  convertToWO: (id: string, data: Record<string, unknown>) => api.post(`/incidents/${id}/convert-to-wo`, data),
+  remove: (id: string) => api.delete(`/incidents/${id}`),
 };
 
 export interface Supplier {
@@ -450,6 +478,24 @@ export const assetsApi = {
     api.get<RecurringIssueAsset[]>('/assets/recurring-issues', { params: months ? { months } : undefined }),
 };
 
+export interface ChecklistTemplate {
+  id: string;
+  name: string;
+  description: string;
+  norm: string;
+  category: string;
+  type: string;
+  intervalDays: number;
+  items: Array<{
+    order: number;
+    question: string;
+    description?: string;
+    requiresPhoto?: boolean;
+    requiresNote?: boolean;
+    expectedAnswer?: boolean;
+  }>;
+}
+
 export const checklistsApi = {
   list: (params?: Record<string, unknown>) => api.get<Paginated<Checklist>>('/checklists', { params }),
   get: (id: string) => api.get<Checklist>(`/checklists/${id}`),
@@ -462,6 +508,11 @@ export const checklistsApi = {
   executions: (params?: Record<string, unknown>) => api.get<Paginated<Execution>>('/executions', { params }),
   getExecution: (id: string) => api.get<ExecutionDetail>(`/executions/${id}`),
   deleteExecution: (id: string) => api.delete(`/executions/${id}`),
+  templates: (params?: { category?: string; norm?: string }) =>
+    api.get<ChecklistTemplate[]>('/checklists/templates', { params }),
+  getTemplate: (id: string) => api.get<ChecklistTemplate>(`/checklists/templates/${id}`),
+  createFromTemplate: (templateId: string, data: { name?: string; unitId?: string; assetId?: string; intervalDays?: number }) =>
+    api.post<Checklist>(`/checklists/from-template/${templateId}`, data),
 };
 
 export const workOrdersApi = {

@@ -44,6 +44,7 @@ import {
 } from '../../lib/api';
 import { canManage, formatDate, formatDateTime, getUser } from '../../lib/auth';
 import { Badge } from '../../components/ui/Badge';
+import { OnboardingWizard } from '../../components/onboarding/OnboardingWizard';
 
 const CHECKLIST_COLORS: Record<string, string> = {
   PREVENTIVE: '#2563EB',
@@ -759,6 +760,10 @@ export default function DashboardPage() {
   const [unitOptions, setUnitOptions] = useState<UnitOption[]>([]);
   const [unitOptionsLoading, setUnitOptionsLoading] = useState(true);
   const [unitOptionsError, setUnitOptionsError] = useState(false);
+  const [onboardingDismissed, setOnboardingDismissed] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return localStorage.getItem('visao360_onboarding_dismissed') === '1';
+  });
   const user = getUser();
   const role = user?.role ?? '';
   const isAdminDashboard = role === 'OWNER' || role === 'ADMIN';
@@ -860,6 +865,16 @@ export default function DashboardPage() {
     syncUnitUrl(unitId);
   };
 
+  const dismissOnboarding = () => {
+    localStorage.setItem('visao360_onboarding_dismissed', '1');
+    setOnboardingDismissed(true);
+  };
+
+  const showOnboarding = isAdminDashboard && !onboardingDismissed;
+  const hasUnits = unitOptions.length > 0;
+  const hasAssets = (kpis?.summary?.totalAssets ?? 0) > 0;
+  const hasChecklists = (kpis?.summary?.activeChecklists ?? 0) > 0;
+
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -924,6 +939,15 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-3 pb-1 sm:space-y-4">
+      {showOnboarding && (
+        <OnboardingWizard
+          hasUnits={hasUnits}
+          hasAssets={hasAssets}
+          hasTeam={true}
+          hasChecklists={hasChecklists}
+          onDismiss={dismissOnboarding}
+        />
+      )}
       {!isTecnico && <AlertStrip summary={summary} overdueMaintenance={overdueMaintenance} />}
 
       <section className="fluent-surface flex flex-col gap-3 rounded-[18px] p-3 lg:flex-row lg:items-center">

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { checklistsApi, schedulesApi, usersApi, unitsApi, Checklist, ChecklistSchedule, Execution, Unit, User } from '../../../lib/api';
+import { checklistsApi, schedulesApi, usersApi, unitsApi, Checklist, ChecklistSchedule, ChecklistTemplate, Execution, Unit, User } from '../../../lib/api';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { formatDateTime, getUser, canManage, canAdmin, ROLE_LABELS } from '../../../lib/auth';
@@ -30,7 +30,17 @@ export default function ChecklistsPage() {
   const [loading, setLoading] = useState(true);
   const [executing, setExecuting] = useState<Checklist | null>(null);
   const [executionId, setExecutionId] = useState<string | null>(null);
-  const [tab, setTab] = useState<'templates' | 'history'>('templates');
+  const [tab, setTab] = useState<'templates' | 'history' | 'biblioteca'>(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('templates') === '1') {
+      return 'biblioteca';
+    }
+    return 'templates';
+  });
+  const [normTemplates, setNormTemplates] = useState<ChecklistTemplate[]>([]);
+  const [fromTemplate, setFromTemplate] = useState<ChecklistTemplate | null>(null);
+  const [fromTplUnitId, setFromTplUnitId] = useState('');
+  const [fromTplName, setFromTplName] = useState('');
+  const [fromTplLoading, setFromTplLoading] = useState(false);
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<Checklist | null>(null);
   const [scheduling, setScheduling] = useState<Checklist | null>(null);
@@ -71,6 +81,7 @@ export default function ChecklistsPage() {
   useEffect(() => {
     unitsApi.list().then((r) => setUnits(r.data.data)).catch(() => {});
     usersApi.list({ limit: 100 }).then((r) => setUsers(r.data.data)).catch(() => {});
+    checklistsApi.templates().then((r) => setNormTemplates(r.data)).catch(() => {});
   }, []);
 
   async function startExecution(cl: Checklist) {
@@ -92,6 +103,23 @@ export default function ChecklistsPage() {
     } catch (e: unknown) {
       error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir execução');
     } finally { setDeleteExLoading(false); }
+  }
+
+  async function handleCreateFromTemplate() {
+    if (!fromTemplate) return;
+    setFromTplLoading(true);
+    try {
+      await checklistsApi.createFromTemplate(fromTemplate.id, {
+        name: fromTplName || undefined,
+        unitId: fromTplUnitId || undefined,
+      });
+      setFromTemplate(null);
+      setFromTplUnitId('');
+      setFromTplName('');
+      load();
+    } catch (e: unknown) {
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao criar checklist');
+    } finally { setFromTplLoading(false); }
   }
 
   async function handleDeleteChecklist(cl: Checklist) {
@@ -145,18 +173,55 @@ export default function ChecklistsPage() {
 
       {/* Tabs */}
       <div className="fluent-filter-bar w-fit !gap-1 !p-1">
-        {(['templates', 'history'] as const).map((t) => (
+        {([
+          { key: 'templates', label: 'Meus Modelos' },
+          { key: 'biblioteca', label: '📋 Biblioteca (NR/ABNT)' },
+          { key: 'history', label: 'Histórico' },
+        ] as const).map((t) => (
           <button
-            key={t}
-            onClick={() => setTab(t)}
-            className={`fluent-filter-chip px-4 text-sm ${tab === t ? 'fluent-filter-chip-active' : ''}`}
+            key={t.key}
+            onClick={() => setTab(t.key)}
+            className={`fluent-filter-chip px-4 text-sm ${tab === t.key ? 'fluent-filter-chip-active' : ''}`}
           >
-            {t === 'templates' ? 'Modelos' : 'Histórico'}
+            {t.label}
           </button>
         ))}
       </div>
 
-      {loading ? (
+      {tab === 'biblioteca' ? (
+        <div className="space-y-4">
+          <div className="rounded-xl bg-blue-50 border border-blue-200 px-5 py-3 text-sm text-blue-800">
+            Selecione um template pré-pronto baseado em normas brasileiras (NR, ABNT) para criar rapidamente um checklist de inspeção.
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {normTemplates.map((tpl) => (
+              <div key={tpl.id} className="fluent-card flex flex-col gap-3 p-5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <p className="font-bold text-sm" style={{ color: 'var(--text-primary)' }}>{tpl.name}</p>
+                    <p className="text-xs mt-0.5 font-semibold text-blue-600">{tpl.norm}</p>
+                  </div>
+                  <span className="flex-shrink-0 rounded-full bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-600">{tpl.category}</span>
+                </div>
+                <p className="text-xs leading-relaxed" style={{ color: 'var(--text-muted)' }}>{tpl.description}</p>
+                <div className="flex items-center gap-3 text-xs" style={{ color: 'var(--text-muted)' }}>
+                  <span>{tpl.items.length} itens</span>
+                  <span>·</span>
+                  <span>A cada {tpl.intervalDays} dias</span>
+                </div>
+                {canCreate && (
+                  <button
+                    onClick={() => { setFromTemplate(tpl); setFromTplName(tpl.name); setFromTplUnitId(''); }}
+                    className="mt-auto fluent-button fluent-button-primary h-9 w-full text-sm"
+                  >
+                    Usar este template
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : loading ? (
         <div className="flex justify-center py-20">
           <div className="w-8 h-8 border-4 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
         </div>
@@ -463,6 +528,60 @@ export default function ChecklistsPage() {
             users={users}
             onSuccess={() => { setScheduling(null); load(); }}
           />
+        )}
+      </Modal>
+
+      {/* Modal criar a partir do template */}
+      <Modal
+        open={!!fromTemplate}
+        onClose={() => setFromTemplate(null)}
+        title={`Criar a partir de: ${fromTemplate?.name ?? ''}`}
+        size="md"
+      >
+        {fromTemplate && (
+          <div className="space-y-4">
+            <div className="rounded-lg bg-blue-50 border border-blue-200 p-3 text-sm text-blue-800">
+              <p className="font-semibold">{fromTemplate.norm}</p>
+              <p className="mt-0.5 text-xs">{fromTemplate.description}</p>
+              <p className="mt-1 text-xs text-blue-600">{fromTemplate.items.length} itens · A cada {fromTemplate.intervalDays} dias</p>
+            </div>
+            <div className="space-y-3">
+              <label className="block text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                Nome do checklist
+                <input
+                  type="text"
+                  value={fromTplName}
+                  onChange={(e) => setFromTplName(e.target.value)}
+                  placeholder={fromTemplate.name}
+                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/30"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                />
+              </label>
+              <label className="block text-sm font-semibold" style={{ color: 'var(--text-secondary)' }}>
+                Unidade (opcional)
+                <select
+                  value={fromTplUnitId}
+                  onChange={(e) => setFromTplUnitId(e.target.value)}
+                  className="mt-1 w-full rounded-xl border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/30"
+                  style={{ background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                >
+                  <option value="">Sem unidade específica</option>
+                  {units.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setFromTemplate(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-semibold transition-colors"
+                style={{ border: '1px solid var(--border)', color: 'var(--text-primary)', background: 'var(--surface)' }}>
+                Cancelar
+              </button>
+              <button onClick={handleCreateFromTemplate} disabled={fromTplLoading}
+                className="flex-1 fluent-button fluent-button-primary py-2.5 rounded-xl text-sm font-semibold disabled:opacity-60">
+                {fromTplLoading ? 'Criando...' : 'Criar Checklist'}
+              </button>
+            </div>
+          </div>
         )}
       </Modal>
     </div>
