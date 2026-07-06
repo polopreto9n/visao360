@@ -5,6 +5,7 @@ import { EmailService } from '../email/email.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PushService } from '../push/push.service';
 import { RedisService } from '../redis/redis.service';
+import { DocumentsService } from '../documents/documents.service';
 import { NotificationType } from '@prisma/client';
 
 /**
@@ -28,6 +29,7 @@ const LOCK_TTL: Record<string, number> = {
   'past-due-expiry': 3 * 60,      // 3 min
   'wo-escalation': 3 * 60,        // 3 min (job horário)
   'critical-overdue': 3 * 60,     // 3 min (job diário)
+  'document-status': 5 * 60,      // 5 min
 };
 
 @Injectable()
@@ -40,6 +42,7 @@ export class SchedulerService {
     private readonly notifications: NotificationsService,
     private readonly push: PushService,
     private readonly redis: RedisService,
+    private readonly documents: DocumentsService,
   ) {}
 
   /**
@@ -547,5 +550,184 @@ export class SchedulerService {
     }
 
     this.logger.log(`[past-due-expiry] ${stale.length} empresa(s) PAST_DUE → SUSPENDED (safety net)`);
+  }
+
+  /** Roda todo dia às 07:00 — atualiza status de documentos e notifica vencimentos */
+  @Cron('0 7 * * *', { name: 'document-status-refresh', timeZone: 'America/Sao_Paulo' })
+  async refreshDocumentStatuses() {
+    if (!await this.acquireLock('document-status')) return;
+    this.logger.log('[document-status] Iniciando atualização de status de documentos...');
+
+    const companies = await this.prisma.company.findMany({
+      where: { isActive: true },
+      select: { id: true },
+    });
+
+    let totalUpdated = 0;
+    for (const company of companies) {
+      try {
+        const result = await this.documents.refreshStatuses(company.id);
+        totalUpdated += result.updated;
+
+        // Notifica gestores sobre documentos EXPIRING_SOON e EXPIRED
+        const alertDocs = await this.prisma.document.findMany({
+          where: {
+            companyId: company.id,
+            isActive: true,
+            status: { in: ['EXPIRING_SOON', 'EXPIRED'] },
+          },
+          select: { id: true, name: true, status: true, expiryDate: true, unitId: true },
+          take: 20,
+        });
+
+        if (alertDocs.length === 0) continue;
+
+        const managers = await this.prisma.user.findMany({
+          where: {
+            companyId: company.id,
+            isActive: true,
+            role: { in: ['OWNER', 'ADMIN', 'GESTOR'] },
+          },
+          select: { id: true },
+        });
+
+        for (const doc of alertDocs) {
+          const isExpired = doc.status === 'EXPIRED';
+          const label = isExpired ? 'VENCIDO' : 'vence em breve';
+          const title = `Documento ${label}: ${doc.name}`;
+          const expiryStr = doc.expiryDate ? doc.expiryDate.toLocaleDateString('pt-BR') : 'sem data';
+          const body = `Validade: ${expiryStr}`;
+          for (const mgr of managers) {
+            await this.notifications.create({
+              companyId: company.id,
+              userId: mgr.id,
+              type: NotificationType.SYSTEM,
+              title,
+              body,
+              data: { documentId: doc.id },
+            }).catch(() => {});
+          }
+        }
+      } catch (err) {
+        this.logger.error(`[document-status] Erro na empresa ${company.id}: ${err}`);
+      }
+    }
+
+    this.logger.log(`[document-status] ${totalUpdated} documento(s) atualizados em ${companies.length} empresa(s)`);
+  }
+
+  /** Segunda-feira às 09:00 — resumo semanal para OWNERs/ADMINs */
+  @Cron('0 9 * * 1', { name: 'weekly-summary', timeZone: 'America/Sao_Paulo' })
+  async sendWeeklySummaryEmails() {
+    if (!await this.acquireLock('document-status')) return; // reusar lock key simplificada
+    this.logger.log('[weekly-summary] Iniciando envio de resumos semanais...');
+
+    const companies = await this.prisma.company.findMany({
+      where: { isActive: true, subscriptionStatus: { in: ['TRIAL', 'ACTIVE', 'PAST_DUE'] } },
+      select: { id: true, name: true },
+    });
+
+    let sent = 0;
+    for (const company of companies) {
+      try {
+        const [openWOs, completedWOs, overdueWOs, openIncidents, pendingChecklists, owners] = await Promise.all([
+          this.prisma.workOrder.count({
+            where: { companyId: company.id, deletedAt: null, status: { notIn: ['COMPLETED', 'CANCELLED'] } },
+          }),
+          this.prisma.workOrder.count({
+            where: {
+              companyId: company.id,
+              status: 'COMPLETED',
+              completedAt: { gte: new Date(Date.now() - 7 * 24 * 3600000) },
+            },
+          }),
+          this.prisma.workOrder.count({
+            where: {
+              companyId: company.id,
+              deletedAt: null,
+              dueDate: { lt: new Date() },
+              status: { notIn: ['COMPLETED', 'CANCELLED'] },
+            },
+          }),
+          this.prisma.incident.count({
+            where: { companyId: company.id, status: { notIn: ['RESOLVED', 'CLOSED'] } },
+          }),
+          this.prisma.checklistSchedule.count({
+            where: {
+              companyId: company.id,
+              isActive: true,
+              nextDueAt: {
+                gte: new Date(),
+                lte: new Date(Date.now() + 7 * 24 * 3600000),
+              },
+            },
+          }),
+          this.prisma.user.findMany({
+            where: {
+              companyId: company.id,
+              isActive: true,
+              role: { in: ['OWNER', 'ADMIN'] },
+            },
+            select: { id: true, name: true, email: true },
+          }),
+        ]);
+
+        for (const owner of owners) {
+          await this.email.sendWeeklySummary({
+            to: owner.email,
+            name: owner.name,
+            companyName: company.name,
+            openWOs, completedWOs, overdueWOs, openIncidents, pendingChecklists,
+          }).catch(() => {});
+          sent++;
+        }
+      } catch (err) {
+        this.logger.error(`[weekly-summary] Erro empresa ${company.id}: ${err}`);
+      }
+    }
+
+    this.logger.log(`[weekly-summary] Resumos enviados para ${sent} usuário(s)`);
+  }
+
+  /** Diariamente às 10:00 — alertas de trial expirando (7, 3, 1 dias) */
+  @Cron('0 10 * * *', { name: 'trial-expiry-email', timeZone: 'America/Sao_Paulo' })
+  async sendTrialExpiryEmails() {
+    const alertDays = [7, 3, 1];
+    const now = new Date();
+
+    for (const days of alertDays) {
+      const from = new Date(now);
+      from.setDate(from.getDate() + days);
+      from.setHours(0, 0, 0, 0);
+      const to = new Date(from);
+      to.setHours(23, 59, 59, 999);
+
+      const companies = await this.prisma.company.findMany({
+        where: {
+          subscriptionStatus: 'TRIAL',
+          trialEndsAt: { gte: from, lte: to },
+          isActive: true,
+        },
+        select: { id: true, name: true },
+      });
+
+      for (const company of companies) {
+        const owners = await this.prisma.user.findMany({
+          where: { companyId: company.id, role: 'OWNER', isActive: true },
+          select: { name: true, email: true },
+        });
+
+        for (const owner of owners) {
+          await this.email.sendTrialExpiring({
+            to: owner.email,
+            name: owner.name,
+            companyName: company.name,
+            daysLeft: days,
+          }).catch(() => {});
+        }
+      }
+    }
+
+    this.logger.log('[trial-expiry-email] Alertas de trial processados');
   }
 }

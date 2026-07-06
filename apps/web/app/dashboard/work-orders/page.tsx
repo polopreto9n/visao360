@@ -6,6 +6,7 @@ import { workOrdersApi, unitsApi, usersApi, WorkOrder, Unit, User } from '../../
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { formatDate, isOverdue, getUser, canManage, canAdmin } from '../../../lib/auth';
+import { useToast } from '../../../components/ui/Toast';
 import { downloadCsv } from '../../../lib/csv';
 
 const STATUS_CSV_LABELS: Record<string, string> = {
@@ -61,6 +62,7 @@ export default function WorkOrdersPage() {
   const user = getUser();
   const canCreate = canManage(user?.role ?? '');
   const isAdmin = canAdmin(user?.role ?? '');
+  const { error } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -93,7 +95,7 @@ export default function WorkOrdersPage() {
       setDeleting(null);
       load();
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir OS');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir OS');
     } finally { setDeleteLoading(false); }
   }
 
@@ -134,7 +136,7 @@ export default function WorkOrdersPage() {
       setStatusNote('');
       load();
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao atualizar OS');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao atualizar OS');
     }
   }
 
@@ -374,6 +376,7 @@ export default function WorkOrdersPage() {
 }
 
 function EditWOForm({ workOrder, users, onSuccess }: { workOrder: WorkOrder; users: User[]; onSuccess: () => void }) {
+  const { error } = useToast();
   const [form, setForm] = useState({
     title: workOrder.title,
     description: workOrder.description,
@@ -396,7 +399,7 @@ function EditWOForm({ workOrder, users, onSuccess }: { workOrder: WorkOrder; use
       });
       onSuccess();
     } catch (err: unknown) {
-      alert((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar OS');
+      error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar OS');
     } finally { setSaving(false); }
   }
 
@@ -457,6 +460,7 @@ function EditWOForm({ workOrder, users, onSuccess }: { workOrder: WorkOrder; use
 }
 
 function CreateWOForm({ units, users, onSuccess }: { units: Unit[]; users: User[]; onSuccess: () => void }) {
+  const { error } = useToast();
   const [form, setForm] = useState({ title: '', description: '', unitId: '', priority: 'MEDIUM', assigneeId: '', dueDate: '' });
   const [saving, setSaving] = useState(false);
   const [suggestions, setSuggestions] = useState<WorkOrder[]>([]);
@@ -487,7 +491,7 @@ function CreateWOForm({ units, users, onSuccess }: { units: Unit[]; users: User[
       });
       onSuccess();
     } catch (err: unknown) {
-      alert((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao criar OS');
+      error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao criar OS');
     } finally { setSaving(false); }
   }
 

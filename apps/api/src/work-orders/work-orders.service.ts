@@ -25,6 +25,10 @@ const WO_INCLUDE = {
   creator: { select: { id: true, name: true, email: true } },
   assignee: { select: { id: true, name: true, email: true } },
   supplier: { select: { id: true, name: true, category: true, phone: true } },
+  comments: {
+    orderBy: { createdAt: 'asc' as const },
+    include: { user: { select: { id: true, name: true } } },
+  },
 } as const;
 
 @Injectable()
@@ -129,6 +133,7 @@ export class WorkOrdersService {
 
     const where: Record<string, unknown> = {
       companyId,
+      deletedAt: null,
       ...(dto.status ? { status: dto.status } : {}),
       ...(dto.unitId ? { unitId: dto.unitId } : scopedUnitIds ? { unitId: { in: scopedUnitIds } } : {}),
       ...(dto.assetId ? { assetId: dto.assetId } : {}),
@@ -147,14 +152,14 @@ export class WorkOrdersService {
 
   async findMyOrders(companyId: string, userId: string) {
     return this.prisma.workOrder.findMany({
-      where: { companyId, assigneeId: userId, status: { notIn: [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED] } },
+      where: { companyId, assigneeId: userId, deletedAt: null, status: { notIn: [WorkOrderStatus.COMPLETED, WorkOrderStatus.CANCELLED] } },
       include: WO_INCLUDE,
       orderBy: [{ priority: 'desc' }, { dueDate: 'asc' }],
     });
   }
 
   async findOne(id: string, companyId: string, userId?: string, userRole?: string) {
-    const wo = await this.prisma.workOrder.findFirst({ where: { id, companyId }, include: WO_INCLUDE });
+    const wo = await this.prisma.workOrder.findFirst({ where: { id, companyId, deletedAt: null }, include: WO_INCLUDE });
     if (!wo) throw new NotFoundException('Ordem de servico nao encontrada');
     const scopedUnitIds = await this.getScopedUnitIds(userId, userRole);
     if (scopedUnitIds && !scopedUnitIds.includes(wo.unitId)) {
@@ -203,7 +208,7 @@ export class WorkOrdersService {
 
   async delete(id: string, companyId: string) {
     await this.findOne(id, companyId);
-    await this.prisma.workOrder.delete({ where: { id } });
+    await this.prisma.workOrder.update({ where: { id }, data: { deletedAt: new Date() } });
     return { deleted: true };
   }
 
@@ -228,6 +233,26 @@ export class WorkOrdersService {
       },
       include: WO_INCLUDE,
     });
+  }
+
+  async addComment(id: string, companyId: string, userId: string, body: string) {
+    await this.findOne(id, companyId);
+    return this.prisma.workOrderComment.create({
+      data: { workOrderId: id, userId, body },
+      include: { user: { select: { id: true, name: true } } },
+    });
+  }
+
+  async deleteComment(id: string, commentId: string, _companyId: string, userId: string, userRole: string) {
+    const comment = await this.prisma.workOrderComment.findFirst({
+      where: { id: commentId, workOrderId: id },
+    });
+    if (!comment) throw new NotFoundException('Comentário não encontrado');
+    const isOwner = comment.userId === userId;
+    const isAdmin = userRole === 'ADMIN' || userRole === 'OWNER';
+    if (!isOwner && !isAdmin) throw new ForbiddenException('Sem permissão para excluir este comentário');
+    await this.prisma.workOrderComment.delete({ where: { id: commentId } });
+    return { deleted: true };
   }
 
   async assign(id: string, companyId: string, assigneeId: string) {

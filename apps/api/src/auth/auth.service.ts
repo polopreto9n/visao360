@@ -12,6 +12,8 @@ import * as bcrypt from 'bcryptjs';
 import { createHash, randomUUID } from 'crypto';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { EmailService } from '../email/email.service';
+import { PlanLimitsService } from '../plans/plan-limits.service';
 import { LoginDto } from './dto/login.dto';
 import { RegisterDto } from './dto/register.dto';
 import { RegisterTenantDto } from './dto/register-tenant.dto';
@@ -38,6 +40,8 @@ export class AuthService {
     private readonly jwt: JwtService,
     private readonly config: ConfigService,
     private readonly redis: RedisService,
+    private readonly email: EmailService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   private getRefreshSecret(): string {
@@ -413,6 +417,14 @@ export class AuthService {
     };
     await this.redis.set(`refresh:family:${familyId}`, family, REFRESH_FAMILY_TTL);
 
+    // Email de boas-vindas — fire-and-forget
+    this.email.sendWelcome({
+      to: result.user.email,
+      name: result.user.name,
+      companyName: result.company.name,
+      trialDays: 14,
+    }).catch(() => {});
+
     return {
       accessToken,
       refreshToken,
@@ -436,6 +448,7 @@ export class AuthService {
 
   /** Cria novo usuário na empresa do solicitante */
   async register(dto: RegisterDto, companyId: string, requestingRole: Role) {
+    await this.planLimits.checkUserLimit(companyId);
     // OWNER só pode ser criado via registerTenant (signup público)
     if ((dto.role as string) === 'OWNER') {
       throw new ForbiddenException('O role OWNER é atribuído automaticamente ao fundador do tenant');
@@ -530,5 +543,70 @@ export class AuthService {
     await this.logout(currentAccessToken);
 
     return { message: 'Senha atualizada. Faça login novamente com a nova senha.' };
+  }
+
+  async forgotPassword(emailInput: string) {
+    const email = emailInput.toLowerCase().trim();
+    // Sempre retorna sucesso para não vazar quais emails existem
+    const users = await this.prisma.user.findMany({
+      where: { email, isActive: true },
+      select: { id: true, name: true, email: true },
+    });
+
+    if (users.length > 0) {
+      const token = randomUUID();
+      const tokenHash = createHash('sha256').update(token).digest('hex');
+      const TTL = 3600; // 1 hora
+
+      await this.redis.set(`reset:${tokenHash}`, { email }, TTL);
+
+      const appUrl = this.config.get<string>('APP_URL', 'http://localhost:3000');
+      const resetUrl = `${appUrl}/reset-password?token=${token}`;
+
+      await this.email.send({
+        to: email,
+        subject: 'Redefinição de senha — Visão360',
+        html: `
+          <div style="font-family: Inter, sans-serif; max-width: 480px; margin: 0 auto;">
+            <h2 style="color: #1d4ed8;">Redefinir sua senha</h2>
+            <p>Olá, ${users[0].name}!</p>
+            <p>Recebemos uma solicitação para redefinir a senha da sua conta no Visão360.</p>
+            <p style="margin: 24px 0;">
+              <a href="${resetUrl}"
+                style="background: #2563eb; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600;">
+                Redefinir senha
+              </a>
+            </p>
+            <p style="color: #6b7280; font-size: 14px;">
+              Este link expira em 1 hora. Se você não solicitou a redefinição, ignore este e-mail.
+            </p>
+            <p style="color: #9ca3af; font-size: 12px;">
+              Ou copie e cole este link no navegador:<br/>
+              <span style="word-break: break-all;">${resetUrl}</span>
+            </p>
+          </div>
+        `,
+      });
+    }
+
+    return { message: 'Se este e-mail estiver cadastrado, você receberá as instruções em breve.' };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const tokenHash = createHash('sha256').update(token).digest('hex');
+    const data = await this.redis.get<{ email: string }>(`reset:${tokenHash}`);
+    if (!data) throw new UnauthorizedException('Link inválido ou expirado');
+
+    const { email } = data;
+
+    const passwordHash = await bcrypt.hash(newPassword, 12);
+    await this.prisma.user.updateMany({
+      where: { email, isActive: true },
+      data: { passwordHash },
+    });
+
+    await this.redis.del(`reset:${tokenHash}`);
+
+    return { message: 'Senha redefinida com sucesso. Você já pode fazer login.' };
   }
 }

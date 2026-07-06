@@ -6,6 +6,7 @@ import { checklistsApi, schedulesApi, usersApi, unitsApi, Checklist, ChecklistSc
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { formatDateTime, getUser, canManage, canAdmin, ROLE_LABELS } from '../../../lib/auth';
+import { useToast } from '../../../components/ui/Toast';
 import { api } from '../../../lib/api';
 import { downloadCsv } from '../../../lib/csv';
 
@@ -36,6 +37,7 @@ export default function ChecklistsPage() {
   const user = getUser();
   const canCreate = canManage(user?.role ?? '');
   const isAdmin = canAdmin(user?.role ?? '');
+  const { error, warning } = useToast();
   const [deletingCl, setDeletingCl] = useState<Checklist | null>(null);
   const [deleteClLoading, setDeleteClLoading] = useState(false);
   const [deletingEx, setDeletingEx] = useState<Execution | null>(null);
@@ -77,7 +79,7 @@ export default function ChecklistsPage() {
       setExecutionId(res.data.id);
       setExecuting(cl);
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao iniciar checklist');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao iniciar checklist');
     }
   }
 
@@ -88,7 +90,7 @@ export default function ChecklistsPage() {
       setDeletingEx(null);
       load();
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir execução');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir execução');
     } finally { setDeleteExLoading(false); }
   }
 
@@ -99,7 +101,7 @@ export default function ChecklistsPage() {
       setDeletingCl(null);
       load();
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir checklist');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir checklist');
     } finally { setDeleteClLoading(false); }
   }
 
@@ -497,6 +499,7 @@ function CreateChecklistForm({
   );
 
   const [saving, setSaving] = useState(false);
+  const { error, warning } = useToast();
 
   function addItem() { setItems([...items, { question: '', requiresPhoto: false, requiresNote: false, expectedAnswer: true }]); }
   function removeItem(i: number) { if (items.length > 1) setItems(items.filter((_, idx) => idx !== i)); }
@@ -514,7 +517,7 @@ function CreateChecklistForm({
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     const emptyItems = items.filter((i) => !i.question.trim());
-    if (emptyItems.length > 0) { alert('Preencha todas as perguntas'); return; }
+    if (emptyItems.length > 0) { warning('Preencha todas as perguntas'); return; }
     setSaving(true);
 
     const payload = {
@@ -532,7 +535,7 @@ function CreateChecklistForm({
       }
       onSuccess();
     } catch (err: unknown) {
-      alert((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar');
+      error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar');
     } finally { setSaving(false); }
   }
 
@@ -697,6 +700,7 @@ function ScheduleForm({
   });
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
+  const { error } = useToast();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -719,7 +723,7 @@ function ScheduleForm({
       }
       onSuccess();
     } catch (err: unknown) {
-      alert((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar agenda');
+      error((err as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar agenda');
     } finally { setSaving(false); }
   }
 
@@ -883,6 +887,7 @@ interface ItemAnswer { answer: boolean | null; notes: string; }
 function ExecutionModal({ checklist, executionId, onClose }: {
   checklist: Checklist; executionId: string; onClose: () => void;
 }) {
+  const { error } = useToast();
   const items = [...checklist.items].sort((a, b) => a.order - b.order);
   const [current, setCurrent] = useState(0);
   const [answers, setAnswers] = useState<Record<string, ItemAnswer>>(
@@ -917,7 +922,7 @@ function ExecutionModal({ checklist, executionId, onClose }: {
       setScore(data.score ?? 0);
       setDone(true);
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao concluir');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao concluir');
     } finally { setSubmitting(false); }
   }
 

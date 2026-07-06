@@ -3,12 +3,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
-import { workOrdersApi, usersApi, suppliersApi, WorkOrder, User, SupplierOption } from '../../../../lib/api';
+import { workOrdersApi, usersApi, suppliersApi, WorkOrder, WorkOrderComment, User, SupplierOption } from '../../../../lib/api';
 import { Badge } from '../../../../components/ui/Badge';
 import { Modal } from '../../../../components/ui/Modal';
 import {
   formatDate, formatDateTime, isOverdue, canManage, getUser, ROLE_LABELS,
 } from '../../../../lib/auth';
+import { useToast } from '../../../../components/ui/Toast';
 
 const TRANSITIONS: Record<string, { status: string; label: string; color: string }[]> = {
   OPEN: [{ status: 'ASSIGNED', label: 'Atribuir técnico', color: 'purple' }, { status: 'CANCELLED', label: 'Cancelar', color: 'red' }],
@@ -42,7 +43,11 @@ export default function WorkOrderDetailPage() {
   const [suppliers, setSuppliers] = useState<SupplierOption[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [saving, setSaving] = useState(false);
+  const [lightbox, setLightbox] = useState<string | null>(null);
+  const [commentBody, setCommentBody] = useState('');
+  const [commentSaving, setCommentSaving] = useState(false);
   const user = getUser();
+  const { error, success } = useToast();
 
   const load = useCallback(async () => {
     try {
@@ -76,7 +81,7 @@ export default function WorkOrderDetailPage() {
       setStatusMaterials('');
       setStatusSupplierId('');
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro');
     } finally { setSaving(false); }
   }
 
@@ -88,12 +93,38 @@ export default function WorkOrderDetailPage() {
       setWo(res.data);
       setTechModal(false);
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro');
     } finally { setSaving(false); }
+  }
+
+  async function handleAddComment(e: React.FormEvent) {
+    e.preventDefault();
+    if (!wo || !commentBody.trim()) return;
+    setCommentSaving(true);
+    try {
+      const res = await workOrdersApi.addComment(wo.id, commentBody.trim());
+      setWo((prev) => prev ? { ...prev, comments: [...prev.comments, res.data] } : prev);
+      setCommentBody('');
+    } catch (e: unknown) {
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao comentar');
+    } finally { setCommentSaving(false); }
+  }
+
+  async function handleDeleteComment(commentId: string) {
+    if (!wo) return;
+    try {
+      await workOrdersApi.deleteComment(wo.id, commentId);
+      setWo((prev) => prev ? { ...prev, comments: prev.comments.filter((c) => c.id !== commentId) } : prev);
+      success('Comentário excluído');
+    } catch (e: unknown) {
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir comentário');
+    }
   }
 
   if (loading) return <div className="flex justify-center py-20"><div className="w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full animate-spin" /></div>;
   if (!wo) return <div className="text-center py-20" style={{ color: 'var(--text-muted)' }}>OS não encontrada</div>;
+
+  const canComment = !!user;
 
   const overdue = isOverdue(wo.dueDate) && !['COMPLETED', 'CANCELLED'].includes(wo.status);
   const transitions = TRANSITIONS[wo.status] ?? [];
@@ -203,6 +234,77 @@ export default function WorkOrderDetailPage() {
               <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{wo.notes}</p>
             </div>
           )}
+
+          {/* Fotos */}
+          {wo.photoUrls.length > 0 && (
+            <div className="fluent-card p-5">
+              <h2 className="font-bold mb-3" style={{ color: 'var(--text-primary)' }}>Fotos ({wo.photoUrls.length})</h2>
+              <div className="grid grid-cols-3 gap-2">
+                {wo.photoUrls.map((url, i) => (
+                  <button key={i} onClick={() => setLightbox(url)}
+                    className="aspect-square rounded-xl overflow-hidden border hover:opacity-90 transition-opacity"
+                    style={{ borderColor: 'var(--border)' }}>
+                    <img src={url} alt={`Foto ${i + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Comentários */}
+          <div className="fluent-card p-5">
+            <h2 className="font-bold mb-4" style={{ color: 'var(--text-primary)' }}>
+              Comentários {wo.comments.length > 0 && <span className="text-sm font-normal" style={{ color: 'var(--text-muted)' }}>({wo.comments.length})</span>}
+            </h2>
+
+            {wo.comments.length === 0 && (
+              <p className="text-sm mb-4" style={{ color: 'var(--text-muted)' }}>Nenhum comentário ainda.</p>
+            )}
+
+            <div className="space-y-3 mb-4">
+              {wo.comments.map((c: WorkOrderComment) => (
+                <div key={c.id} className="flex gap-3 group">
+                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-bold text-blue-700">{c.user.name.charAt(0)}</span>
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{c.user.name}</span>
+                      <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{formatDateTime(c.createdAt)}</span>
+                      {(user?.id === c.user.id || user?.role === 'ADMIN' || user?.role === 'OWNER') && (
+                        <button onClick={() => handleDeleteComment(c.id)}
+                          className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-xs text-red-500 hover:text-red-700"
+                          title="Excluir comentário">✕</button>
+                      )}
+                    </div>
+                    <p className="text-sm mt-0.5 leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{c.body}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {canComment && (
+              <form onSubmit={handleAddComment} className="flex gap-2">
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">
+                  <span className="text-xs font-bold text-blue-700">{user?.name?.charAt(0) ?? '?'}</span>
+                </div>
+                <div className="flex-1 flex gap-2">
+                  <input
+                    className="flex-1 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    style={{ background: 'var(--surface-2)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                    placeholder="Adicionar comentário..."
+                    value={commentBody}
+                    onChange={(e) => setCommentBody(e.target.value)}
+                  />
+                  <button type="submit" disabled={commentSaving || !commentBody.trim()}
+                    className="px-4 py-2 rounded-xl text-sm font-semibold text-white disabled:opacity-50"
+                    style={{ background: 'var(--accent)' }}>
+                    {commentSaving ? '...' : 'Enviar'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
         </div>
 
         {/* Sidebar de info */}
@@ -241,6 +343,16 @@ export default function WorkOrderDetailPage() {
           </InfoCard>
         </div>
       </div>
+
+      {/* Lightbox de fotos */}
+      {lightbox && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="Foto" className="max-h-[90vh] max-w-[90vw] rounded-2xl shadow-2xl object-contain" />
+          <button className="absolute top-4 right-4 text-white text-2xl font-bold hover:text-gray-300"
+            onClick={() => setLightbox(null)}>✕</button>
+        </div>
+      )}
 
       {/* Modal atualizar status */}
       <Modal open={!!statusModal} onClose={() => { setStatusModal(null); setStatusCost(''); setStatusMaterials(''); setStatusSupplierId(''); }} title={statusModal?.label ?? ''} size="sm">

@@ -215,6 +215,11 @@ export interface ExecutionDetail {
   }[];
 }
 
+export interface WorkOrderComment {
+  id: string; body: string; createdAt: string;
+  user: { id: string; name: string };
+}
+
 export interface WorkOrder {
   id: string; code: string; title: string; description: string;
   status: string; priority: string; dueDate: string | null;
@@ -225,6 +230,7 @@ export interface WorkOrder {
   creator: { id: string; name: string; email: string };
   assignee: { id: string; name: string; email: string } | null;
   supplier: { id: string; name: string; category: string | null; phone: string | null } | null;
+  comments: WorkOrderComment[];
 }
 
 export interface KPITrend { pct: number; prev: number; }
@@ -469,6 +475,8 @@ export const workOrdersApi = {
     api.patch<WorkOrder>(`/work-orders/${id}/assign/${assigneeId}`),
   update: (id: string, data: Record<string, unknown>) => api.patch<WorkOrder>(`/work-orders/${id}`, data),
   delete: (id: string) => api.delete(`/work-orders/${id}`),
+  addComment: (id: string, body: string) => api.post<WorkOrderComment>(`/work-orders/${id}/comments`, { body }),
+  deleteComment: (id: string, commentId: string) => api.delete(`/work-orders/${id}/comments/${commentId}`),
 };
 
 export const usersApi = {
@@ -504,4 +512,34 @@ export const companiesApi = {
 export const reportsApi = {
   monthly: (unitId: string, month: number, year: number) =>
     api.get('/reports/monthly', { params: { unitId, month, year }, responseType: 'blob' }),
+};
+
+export type DocumentStatus = 'VALID' | 'EXPIRING_SOON' | 'EXPIRED';
+
+export interface Document {
+  id: string;
+  companyId: string;
+  unitId: string | null;
+  assetId: string | null;
+  name: string;
+  type: string;
+  fileUrl: string | null;
+  issueDate: string | null;
+  expiryDate: string | null;
+  alertDays: number;
+  status: DocumentStatus;
+  notes: string | null;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  unit: { id: string; name: string } | null;
+  asset: { id: string; name: string; category: string } | null;
+}
+
+export const documentsApi = {
+  list: (params?: Record<string, unknown>) => api.get<Paginated<Document>>('/documents', { params }),
+  get: (id: string) => api.get<Document>(`/documents/${id}`),
+  create: (data: Record<string, unknown>) => api.post<Document>('/documents', data),
+  update: (id: string, data: Record<string, unknown>) => api.patch<Document>(`/documents/${id}`, data),
+  remove: (id: string) => api.delete(`/documents/${id}`),
 };

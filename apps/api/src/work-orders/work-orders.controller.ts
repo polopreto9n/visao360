@@ -72,6 +72,26 @@ export class WorkOrdersController {
     return this.svc.delete(id, u.companyId);
   }
 
+  @Post(':id/comments')
+  @ApiOperation({ summary: 'Adicionar comentário à OS' })
+  addComment(
+    @Param('id') id: string,
+    @CurrentUser() u: AuthenticatedUser,
+    @Body('body') body: string,
+  ) {
+    return this.svc.addComment(id, u.companyId, u.id, body);
+  }
+
+  @Delete(':id/comments/:commentId')
+  @ApiOperation({ summary: 'Excluir comentário (próprio ou ADMIN)' })
+  deleteComment(
+    @Param('id') id: string,
+    @Param('commentId') commentId: string,
+    @CurrentUser() u: AuthenticatedUser,
+  ) {
+    return this.svc.deleteComment(id, commentId, u.companyId, u.id, u.role);
+  }
+
   @Patch(':id/assign/:assigneeId')
   @Roles(Role.ADMIN, Role.GESTOR)
   @ApiOperation({ summary: 'Atribuir técnico a uma OS' })

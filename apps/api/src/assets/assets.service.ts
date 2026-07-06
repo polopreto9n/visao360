@@ -4,6 +4,7 @@ import * as QRCode from 'qrcode';
 import { AssetStatus, Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UnitsService } from '../units/units.service';
+import { PlanLimitsService } from '../plans/plan-limits.service';
 import { paginated } from '../common/dto/pagination.dto';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
@@ -23,6 +24,7 @@ export class AssetsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly units: UnitsService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   private isScopedRole(userRole?: string) {
@@ -35,6 +37,7 @@ export class AssetsService {
   }
 
   async create(companyId: string, dto: CreateAssetDto) {
+    await this.planLimits.checkAssetLimit(companyId);
     // Verificar que a unidade pertence à empresa
     const unit = await this.prisma.unit.findFirst({ where: { id: dto.unitId, companyId } });
     if (!unit) throw new NotFoundException('Unidade não encontrada nesta empresa');

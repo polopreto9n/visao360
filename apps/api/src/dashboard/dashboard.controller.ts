@@ -34,4 +34,11 @@ export class DashboardController {
   myActions(@CurrentUser() u: AuthenticatedUser, @Query() q: DashboardPeriodDto) {
     return this.svc.getMyActions(u.id, u.companyId, u.role, q);
   }
+
+  @Get('operational-metrics')
+  @Roles(Role.ADMIN, Role.GESTOR)
+  @ApiOperation({ summary: 'Métricas operacionais avançadas: MTTR, aging de OS, aderência ao plano' })
+  operationalMetrics(@CurrentUser() u: AuthenticatedUser, @Query() q: DashboardPeriodDto) {
+    return this.svc.getOperationalMetrics(u.companyId, q);
+  }
 }

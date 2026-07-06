@@ -127,6 +127,7 @@ model Company {
   alertReads          AlertRead[]
   checklistSchedules  ChecklistSchedule[]
   suppliers           Supplier[]
+  documents           Document[]
 
   @@map("companies")
 }
@@ -150,11 +151,13 @@ model User {
   createdWorkOrders    WorkOrder[]          @relation("WorkOrderCreator")
   assignedWorkOrders   WorkOrder[]          @relation("WorkOrderAssignee")
   executions           Execution[]
-  incidents            Incident[]
+  reportedIncidents    Incident[]           @relation("IncidentReporter")
+  assignedIncidents    Incident[]           @relation("IncidentAssignee")
   notifications        Notification[]
   alertReads           AlertRead[]
   checklistSchedules   ChecklistSchedule[]  @relation("ScheduleAssignee")
   workOrderComments    WorkOrderComment[]
+  incidentComments     IncidentComment[]
 
   @@unique([email, companyId])
   @@index([companyId])
@@ -179,6 +182,7 @@ model Unit {
   checklists Checklist[]
   workOrders WorkOrder[]
   incidents  Incident[]
+  documents  Document[]
 
   @@unique([code, companyId])
   @@index([companyId])
@@ -214,6 +218,7 @@ model Asset {
   workOrders        WorkOrder[]
   executions        Execution[]
   checklistSchedules ChecklistSchedule[]
+  documents         Document[]
 
   @@index([companyId])
   @@index([unitId])
@@ -308,6 +313,7 @@ model Execution {
   score        Float?
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
+  deletedAt    DateTime?
 
   company   Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   checklist Checklist       @relation(fields: [checklistId], references: [id])
@@ -320,6 +326,7 @@ model Execution {
   @@index([checklistId])
   @@index([userId])
   @@index([completedAt])
+  @@index([companyId, deletedAt])
   @@map("executions")
 }
 
@@ -363,6 +370,7 @@ model WorkOrder {
   materialsUsed String?
   createdAt     DateTime          @default(now())
   updatedAt     DateTime          @updatedAt
+  deletedAt     DateTime?
 
   company  Company            @relation(fields: [companyId], references: [id], onDelete: Cascade)
   unit     Unit               @relation(fields: [unitId], references: [id])
@@ -375,6 +383,7 @@ model WorkOrder {
   @@unique([code, companyId])
   @@index([companyId, status])
   @@index([companyId, assigneeId])
+  @@index([companyId, deletedAt])
   @@index([unitId])
   @@index([assigneeId])
   @@index([dueDate])
@@ -417,27 +426,46 @@ model WorkOrderComment {
 }
 
 model Incident {
-  id          String           @id @default(cuid())
-  companyId   String
-  unitId      String
-  reporterId  String
-  title       String
-  description String
-  severity    IncidentSeverity @default(MEDIUM)
-  status      IncidentStatus   @default(OPEN)
-  resolvedAt  DateTime?
-  photoUrls   String[]         @default([])
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  id             String           @id @default(cuid())
+  companyId      String
+  unitId         String
+  reporterId     String
+  assigneeId     String?
+  workOrderId    String?
+  title          String
+  description    String
+  severity       IncidentSeverity @default(MEDIUM)
+  status         IncidentStatus   @default(OPEN)
+  resolvedAt     DateTime?
+  photoUrls      String[]         @default([])
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
 
-  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  unit     Unit    @relation(fields: [unitId], references: [id])
-  reporter User    @relation(fields: [reporterId], references: [id])
+  company   Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit      Unit              @relation(fields: [unitId], references: [id])
+  reporter  User              @relation("IncidentReporter", fields: [reporterId], references: [id])
+  assignee  User?             @relation("IncidentAssignee", fields: [assigneeId], references: [id])
+  comments  IncidentComment[]
 
   @@index([companyId])
   @@index([unitId])
   @@index([status])
+  @@index([assigneeId])
   @@map("incidents")
+}
+
+model IncidentComment {
+  id         String   @id @default(cuid())
+  incidentId String
+  userId     String
+  body       String
+  createdAt  DateTime @default(now())
+
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id])
+
+  @@index([incidentId])
+  @@map("incident_comments")
 }
 
 model Notification {
@@ -476,6 +504,39 @@ model AlertRead {
   @@index([companyId, userId])
   @@index([fingerprint])
   @@map("alert_reads")
+}
+
+enum DocumentStatus {
+  VALID
+  EXPIRING_SOON  // dentro do período de alerta (ex: 30 dias)
+  EXPIRED
+}
+
+model Document {
+  id          String         @id @default(cuid())
+  companyId   String
+  unitId      String?
+  assetId     String?
+  name        String
+  type        String
+  fileUrl     String?
+  issueDate   DateTime?
+  expiryDate  DateTime?
+  alertDays   Int            @default(30)
+  status      DocumentStatus @default(VALID)
+  notes       String?
+  isActive    Boolean        @default(true)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  unit    Unit?   @relation(fields: [unitId], references: [id])
+  asset   Asset?  @relation(fields: [assetId], references: [id])
+
+  @@index([companyId])
+  @@index([expiryDate])
+  @@index([companyId, status])
+  @@map("documents")
 }
 
 model AuditLog {

@@ -5,6 +5,7 @@ import { suppliersApi, Supplier } from '../../../lib/api';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { canManage, getUser, formatDate } from '../../../lib/auth';
+import { useToast } from '../../../components/ui/Toast';
 
 export default function SuppliersPage() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
@@ -16,6 +17,7 @@ export default function SuppliersPage() {
   const [viewing, setViewing] = useState<Supplier | null>(null);
   const user = getUser();
   const canCreate = canManage(user?.role ?? '');
+  const { error } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -36,7 +38,7 @@ export default function SuppliersPage() {
       await suppliersApi.remove(s.id);
       load();
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao desativar');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao desativar');
     }
   }
 
@@ -180,6 +182,7 @@ export default function SuppliersPage() {
 }
 
 function SupplierForm({ supplier, onSuccess }: { supplier?: Supplier; onSuccess: () => void }) {
+  const { error } = useToast();
   const [form, setForm] = useState({
     name: supplier?.name ?? '', category: supplier?.category ?? '',
     phone: supplier?.phone ?? '', email: supplier?.email ?? '', notes: supplier?.notes ?? '',
@@ -199,7 +202,7 @@ function SupplierForm({ supplier, onSuccess }: { supplier?: Supplier; onSuccess:
       else await suppliersApi.create(payload);
       onSuccess();
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar');
     } finally { setSaving(false); }
   }
 

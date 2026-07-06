@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { unitsApi, usersApi, reportsApi, Unit, User } from '../../../lib/api';
 import { Modal } from '../../../components/ui/Modal';
 import { canManage, getUser } from '../../../lib/auth';
+import { useToast } from '../../../components/ui/Toast';
 import { api } from '../../../lib/api';
 
 const ROLE_LABELS: Record<string, string> = {
@@ -28,6 +29,7 @@ export default function UnitsPage() {
   const [search, setSearch] = useState('');
   const user = getUser();
   const canCreate = canManage(user?.role ?? '');
+  const { error } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -53,7 +55,7 @@ export default function UnitsPage() {
     try {
       await unitsApi.removeUser(unit.id, userId);
       load();
-    } catch { alert('Erro ao remover responsável'); }
+    } catch { error('Erro ao remover responsável'); }
   }
 
   return (
@@ -220,6 +222,7 @@ function MonthlyReportForm({ unit, onClose }: { unit: Unit; onClose: () => void 
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [year, setYear] = useState(now.getFullYear());
   const [downloading, setDownloading] = useState(false);
+  const { error } = useToast();
 
   const inputStyle = { background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-primary)' };
   const labelStyle = { color: 'var(--text-secondary)' };
@@ -236,7 +239,7 @@ function MonthlyReportForm({ unit, onClose }: { unit: Unit; onClose: () => void 
       URL.revokeObjectURL(url);
       onClose();
     } catch {
-      alert('Erro ao gerar relatório');
+      error('Erro ao gerar relatório');
     } finally { setDownloading(false); }
   }
 
@@ -265,6 +268,7 @@ function MonthlyReportForm({ unit, onClose }: { unit: Unit; onClose: () => void 
 }
 
 function UnitForm({ unit, onSuccess }: { unit?: Unit; onSuccess: () => void }) {
+  const { error } = useToast();
   const [form, setForm] = useState({
     name: unit?.name ?? '', code: unit?.code ?? '',
     address: unit?.address ?? '', description: unit?.description ?? '',
@@ -284,7 +288,7 @@ function UnitForm({ unit, onSuccess }: { unit?: Unit; onSuccess: () => void }) {
       else { await api.post('/units', payload); }
       onSuccess();
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar');
     } finally { setSaving(false); }
   }
 
@@ -335,6 +339,7 @@ function UnitForm({ unit, onSuccess }: { unit?: Unit; onSuccess: () => void }) {
 function AssignUserForm({ unit, allUsers, onSuccess }: {
   unit: Unit; allUsers: User[]; onSuccess: () => void;
 }) {
+  const { error } = useToast();
   const assignedIds = new Set((unit.users ?? []).map((u) => u.id));
   const available = allUsers.filter((u) => !assignedIds.has(u.id) && u.isActive);
   const [selectedId, setSelectedId] = useState('');
@@ -351,7 +356,7 @@ function AssignUserForm({ unit, allUsers, onSuccess }: {
       await unitsApi.assignUser(unit.id, selectedId);
       onSuccess();
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao atribuir');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao atribuir');
     } finally { setSaving(false); }
   }
 
@@ -366,7 +371,7 @@ function AssignUserForm({ unit, allUsers, onSuccess }: {
       await unitsApi.assignUser(unit.id, userRes.data.id);
       onSuccess();
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao criar usuário');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao criar usuário');
     } finally { setCreating(false); }
   }
 

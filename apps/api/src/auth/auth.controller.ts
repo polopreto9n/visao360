@@ -111,6 +111,26 @@ export class AuthController {
     return this.authService.me(user.id, user.companyId);
   }
 
+  @Post('forgot-password')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Solicitar redefinição de senha por e-mail' })
+  forgotPassword(@Body('email') email: string) {
+    return this.authService.forgotPassword(email ?? '');
+  }
+
+  @Post('reset-password')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(ThrottlerGuard)
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @ApiOperation({ summary: 'Redefinir senha com token enviado por e-mail' })
+  resetPassword(@Body('token') token: string, @Body('password') password: string) {
+    return this.authService.resetPassword(token ?? '', password ?? '');
+  }
+
   @Patch('change-password')
   @ApiBearerAuth('jwt')
   @ApiOperation({ summary: 'Alterar senha (invalida token atual)' })

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Inter } from 'next/font/google';
 import './globals.css';
 import { ThemeProvider } from '../lib/theme';
+import { ToastProvider } from '../components/ui/Toast';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -32,7 +33,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="pt-BR" className={inter.variable} suppressHydrationWarning>
       <body className="min-h-screen antialiased" style={{ background: 'var(--bg)', color: 'var(--text-primary)' }}>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider><ToastProvider>{children}</ToastProvider></ThemeProvider>
       </body>
     </html>
   );

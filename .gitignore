@@ -52,3 +52,25 @@ coverage/
 # Misc
 .eslintcache
 *.tsbuildinfo
+
+# Deployment artifacts & temporary files
+deploy/aws/_ssm-*.txt
+*.dump
+*.apk
+*.tar.gz
+*.tar.bz2
+visao360-deploy*/
+seed-test-data*.json
+seed-test-data.js
+cleanup-*.js
+migrate-prod.js
+railway-postgres-*.dump
+
+# Screenshots e documentos temporários
+s[0-9]*.png
+s[0-9][0-9]*.png
+screen[0-9]*.png
+ui[0-9]*.xml
+ui.xml
+*.docx
+app.json

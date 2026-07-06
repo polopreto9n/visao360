@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { ChecklistType } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { PlanLimitsService } from '../plans/plan-limits.service';
 import { PaginationDto, paginated } from '../common/dto/pagination.dto';
 import { CreateChecklistDto } from './dto/create-checklist.dto';
 import { UpdateChecklistDto } from './dto/update-checklist.dto';
@@ -11,6 +12,7 @@ export class ChecklistsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly units: UnitsService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   private async validateScope(companyId: string, unitId?: string | null, assetId?: string | null) {
@@ -37,6 +39,7 @@ export class ChecklistsService {
   }
 
   async create(companyId: string, dto: CreateChecklistDto) {
+    await this.planLimits.checkChecklistLimit(companyId);
     const { items, ...data } = dto;
     const unitId = await this.validateScope(companyId, data.unitId, data.assetId);
     return this.prisma.checklist.create({

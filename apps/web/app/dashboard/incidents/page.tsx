@@ -5,6 +5,7 @@ import { unitsApi, Unit } from '../../../lib/api';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { formatDateTime, getUser } from '../../../lib/auth';
+import { useToast } from '../../../components/ui/Toast';
 import { api } from '../../../lib/api';
 import { downloadCsv } from '../../../lib/csv';
 
@@ -64,6 +65,7 @@ export default function IncidentsPage() {
   const [exporting, setExporting] = useState(false);
   const user = getUser();
   const canDelete = user?.role === 'OWNER' || user?.role === 'ADMIN';
+  const { error } = useToast();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -88,7 +90,7 @@ export default function IncidentsPage() {
       load();
       setDetail(null);
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir');
     }
   }
 
@@ -121,7 +123,7 @@ export default function IncidentsPage() {
       load();
       setDetail(null);
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro');
     }
   }
 
@@ -315,6 +317,7 @@ function suggestSeverity(text: string): string | null {
 function CreateIncidentForm({ units, onSuccess }: { units: Unit[]; onSuccess: () => void }) {
   const [form, setForm] = useState({ title: '', description: '', unitId: '', severity: 'MEDIUM' });
   const [saving, setSaving] = useState(false);
+  const { error } = useToast();
   const [suggestion, setSuggestion] = useState<string | null>(null);
   const [suggestionDismissed, setSuggestionDismissed] = useState(false);
 
@@ -340,7 +343,7 @@ function CreateIncidentForm({ units, onSuccess }: { units: Unit[]; onSuccess: ()
       await api.post('/incidents', form);
       onSuccess();
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro');
     } finally { setSaving(false); }
   }
 

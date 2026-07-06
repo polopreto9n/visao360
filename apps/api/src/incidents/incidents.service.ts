@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { IncidentSeverity, IncidentStatus, NotificationType, Role } from '@prisma/client';
+import { IncidentSeverity, IncidentStatus, NotificationType, Role, WorkOrderStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { PaginationDto, paginated } from '../common/dto/pagination.dto';
 import { PushService } from '../push/push.service';
@@ -11,6 +11,11 @@ import { UpdateIncidentStatusDto, INCIDENT_TRANSITIONS } from './dto/update-inci
 const INCLUDE = {
   unit: { select: { id: true, name: true } },
   reporter: { select: { id: true, name: true, email: true } },
+  assignee: { select: { id: true, name: true, email: true } },
+  comments: {
+    orderBy: { createdAt: 'asc' as const },
+    include: { user: { select: { id: true, name: true } } },
+  },
 } as const;
 
 const SEVERITY_EMOJI: Record<string, string> = {
@@ -49,9 +54,7 @@ export class IncidentsService {
       include: INCLUDE,
     });
 
-    // Notifica todos os ADMIN/GESTOR/OWNER da empresa (exceto o próprio reporter)
     this.notifyManagers(companyId, reporterId, incident).catch(() => {});
-
     return incident;
   }
 
@@ -62,8 +65,7 @@ export class IncidentsService {
   ) {
     const managers = await this.prisma.user.findMany({
       where: {
-        companyId,
-        isActive: true,
+        companyId, isActive: true,
         role: { in: [Role.OWNER, Role.ADMIN, Role.GESTOR] },
         id: { not: reporterId },
       },
@@ -173,5 +175,83 @@ export class IncidentsService {
       },
       include: INCLUDE,
     });
+  }
+
+  async assign(id: string, companyId: string, assigneeId: string | null) {
+    await this.findOne(id, companyId);
+    if (assigneeId) {
+      const user = await this.prisma.user.findFirst({ where: { id: assigneeId, companyId, isActive: true } });
+      if (!user) throw new NotFoundException('Usuário não encontrado');
+    }
+    return this.prisma.incident.update({
+      where: { id },
+      data: { assigneeId },
+      include: INCLUDE,
+    });
+  }
+
+  async addComment(id: string, companyId: string, userId: string, body: string) {
+    await this.findOne(id, companyId);
+    return this.prisma.incidentComment.create({
+      data: { incidentId: id, userId, body },
+      include: { user: { select: { id: true, name: true } } },
+    });
+  }
+
+  async deleteComment(id: string, commentId: string, _companyId: string, userId: string, userRole: string) {
+    const comment = await this.prisma.incidentComment.findFirst({
+      where: { id: commentId, incidentId: id },
+    });
+    if (!comment) throw new NotFoundException('Comentário não encontrado');
+    const isOwner = comment.userId === userId;
+    const isAdmin = userRole === 'ADMIN' || userRole === 'OWNER';
+    if (!isOwner && !isAdmin) throw new ForbiddenException('Sem permissão para excluir este comentário');
+    await this.prisma.incidentComment.delete({ where: { id: commentId } });
+    return { deleted: true };
+  }
+
+  async convertToWorkOrder(
+    id: string,
+    companyId: string,
+    creatorId: string,
+    dto: { title: string; description: string; priority: string; assigneeId?: string; dueDate?: string },
+  ) {
+    const incident = await this.findOne(id, companyId);
+    const year = new Date().getFullYear();
+    const suffix = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const code = `OS-${year}-${suffix}`;
+
+    const wo = await this.prisma.workOrder.create({
+      data: {
+        companyId,
+        unitId: incident.unitId,
+        creatorId,
+        code,
+        title: dto.title,
+        description: dto.description,
+        priority: dto.priority as any,
+        assigneeId: dto.assigneeId,
+        dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+        status: dto.assigneeId ? WorkOrderStatus.ASSIGNED : WorkOrderStatus.OPEN,
+      },
+    });
+
+    // Atualiza status para INVESTIGATING após criar a OS
+    await this.prisma.incident.update({
+      where: { id },
+      data: { status: IncidentStatus.INVESTIGATING },
+    });
+
+    if (dto.assigneeId) {
+      await this.notifications.create({
+        companyId, userId: dto.assigneeId,
+        type: NotificationType.WORK_ORDER_ASSIGNED,
+        title: `Nova OS atribuída: ${code}`,
+        body: `"${dto.title}" gerada a partir de ocorrência`,
+        data: { workOrderId: wo.id, code },
+      }).catch(() => {});
+    }
+
+    return wo;
   }
 }

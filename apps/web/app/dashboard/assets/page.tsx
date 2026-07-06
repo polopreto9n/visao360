@@ -6,6 +6,7 @@ import { assetsApi, unitsApi, Asset, Unit } from '../../../lib/api';
 import { Badge } from '../../../components/ui/Badge';
 import { Modal } from '../../../components/ui/Modal';
 import { formatDate, isOverdue, canManage, getUser } from '../../../lib/auth';
+import { useToast } from '../../../components/ui/Toast';
 
 const STATUS_FILTER = ['', 'ACTIVE', 'INACTIVE', 'MAINTENANCE', 'DECOMMISSIONED'];
 const STATUS_LABELS_SHORT: Record<string, string> = {
@@ -40,6 +41,7 @@ export default function AssetsPage() {
   const user = getUser();
   const canCreate = canManage(user?.role ?? '');
   const canDelete = user?.role === 'OWNER' || user?.role === 'ADMIN';
+  const { error } = useToast();
 
   async function handleDelete(asset: Asset) {
     if (!confirm(`Excluir o equipamento "${asset.name}"? Esta ação não pode ser desfeita.`)) return;
@@ -47,7 +49,7 @@ export default function AssetsPage() {
       await assetsApi.remove(asset.id);
       load();
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao excluir');
     }
   }
 
@@ -63,7 +65,7 @@ export default function AssetsPage() {
       link.click();
       document.body.removeChild(link);
     } catch {
-      alert('Erro ao gerar QR Code. Tente novamente.');
+      error('Erro ao gerar QR Code', 'Tente novamente.');
     } finally {
       setDownloadingId(null);
     }
@@ -293,6 +295,15 @@ export default function AssetsPage() {
                   <p className="font-semibold" style={{ color: 'var(--text-primary)' }}>{qrAsset.name}</p>
                   <p style={{ color: 'var(--text-muted)' }}>{qrAsset.unit.name}</p>
                   <p className="font-mono text-xs px-3 py-1 rounded-lg" style={{ background: 'var(--surface-2)', color: 'var(--text-secondary)' }}>{qrAsset.qrCode}</p>
+                  <a
+                    href={`/report/${qrAsset.qrCode}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs underline"
+                    style={{ color: 'var(--accent)' }}
+                  >
+                    Abrir página de reporte público →
+                  </a>
                 </div>
                 <div className="flex gap-2 w-full">
                   <a
@@ -303,11 +314,11 @@ export default function AssetsPage() {
                     ⬇ Baixar PNG
                   </a>
                   <button
-                    onClick={() => { navigator.clipboard.writeText(qrAsset.qrCode); }}
+                    onClick={() => { navigator.clipboard.writeText(`${window.location.origin}/report/${qrAsset.qrCode}`); }}
                     className="flex-1 text-sm font-semibold py-2.5 rounded-xl transition-colors"
                     style={{ border: '1px solid var(--border)', color: 'var(--text-primary)', background: 'var(--surface)' }}
                   >
-                    📋 Copiar código
+                    📋 Copiar link
                   </button>
                 </div>
               </div>
@@ -352,10 +363,11 @@ function RegisterMaintenanceForm({ asset, onSuccess }: { asset: Asset; onSuccess
   const [nextDate, setNextDate] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  const { error, warning } = useToast();
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!nextDate) { alert('Informe a data da próxima manutenção'); return; }
+    if (!nextDate) { warning('Informe a data da próxima manutenção'); return; }
     setSaving(true);
     try {
       await assetsApi.update(asset.id, {
@@ -366,7 +378,7 @@ function RegisterMaintenanceForm({ asset, onSuccess }: { asset: Asset; onSuccess
       });
       onSuccess();
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao registrar');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao registrar');
     } finally { setSaving(false); }
   }
 
@@ -412,6 +424,7 @@ function RegisterMaintenanceForm({ asset, onSuccess }: { asset: Asset; onSuccess
 
 function CreateAssetForm({ units, asset, onSuccess }: { units: Unit[]; asset?: Asset; onSuccess: () => void }) {
   const isEditing = !!asset;
+  const { error } = useToast();
   const [form, setForm] = useState({
     name: asset?.name ?? '',
     unitId: asset?.unit?.id ?? '',
@@ -449,7 +462,7 @@ function CreateAssetForm({ units, asset, onSuccess }: { units: Unit[]; asset?: A
       }
       onSuccess();
     } catch (e: unknown) {
-      alert((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar equipamento');
+      error((e as { response?: { data?: { message?: string } } }).response?.data?.message ?? 'Erro ao salvar equipamento');
     } finally { setSaving(false); }
   }
 

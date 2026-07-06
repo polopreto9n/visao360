@@ -183,6 +183,127 @@ export class EmailService {
     });
   }
 
+  async sendWelcome(params: {
+    to: string; name: string; companyName: string; trialDays: number;
+  }) {
+    return this.send({
+      to: params.to,
+      subject: `Bem-vindo ao Visão360, ${params.name}! 🎉`,
+      html: emailLayout({
+        title: `Bem-vindo ao Visão360!`,
+        companyName: params.companyName,
+        body: `
+          <p style="font-size:16px;color:#374151">Olá, <strong>${params.name}</strong>!</p>
+          <p style="color:#6b7280">Sua conta foi criada com sucesso. Você tem <strong>${params.trialDays} dias</strong> para explorar todas as funcionalidades do Visão360 gratuitamente.</p>
+
+          <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:20px;margin:20px 0">
+            <h3 style="color:#1e40af;margin:0 0 12px;font-size:15px">O que você pode fazer:</h3>
+            <ul style="color:#374151;font-size:14px;margin:0;padding-left:20px;line-height:1.8">
+              <li>Cadastrar equipamentos e criar QR Codes</li>
+              <li>Criar checklists de manutenção preventiva</li>
+              <li>Abrir e gerenciar Ordens de Serviço</li>
+              <li>Registrar e acompanhar ocorrências</li>
+              <li>Controlar documentos com vencimento</li>
+            </ul>
+          </div>
+
+          <p style="color:#6b7280">Acesse o painel agora e comece a organizar a gestão do seu condomínio!</p>
+          <div style="text-align:center;margin:24px 0">
+            <a href="https://app.visao360.com.br/dashboard" style="background:#2563eb;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px">Acessar o painel →</a>
+          </div>
+        `,
+      }),
+    });
+  }
+
+  async sendTrialExpiring(params: {
+    to: string; name: string; companyName: string; daysLeft: number;
+  }) {
+    const urgent = params.daysLeft <= 3;
+    return this.send({
+      to: params.to,
+      subject: `${urgent ? '⚠️ ' : ''}Seu período de avaliação encerra em ${params.daysLeft} dia(s)`,
+      html: emailLayout({
+        title: urgent ? 'Avaliação Encerrando!' : 'Período de Avaliação',
+        companyName: params.companyName,
+        body: `
+          <p style="font-size:16px;color:#374151">Olá, <strong>${params.name}</strong>!</p>
+          <div style="background:${urgent ? '#fef2f2' : '#fffbeb'};border:1px solid ${urgent ? '#fecaca' : '#fde68a'};border-radius:12px;padding:20px;margin:20px 0;text-align:center">
+            <div style="font-size:40px;font-weight:900;color:${urgent ? '#dc2626' : '#d97706'}">${params.daysLeft}</div>
+            <div style="color:${urgent ? '#dc2626' : '#92400e'};font-weight:600">dia(s) restante(s) no período gratuito</div>
+          </div>
+          <p style="color:#6b7280">Para continuar usando o Visão360 sem interrupção, escolha o plano ideal para sua operação.</p>
+          <div style="text-align:center;margin:24px 0">
+            <a href="https://app.visao360.com.br/planos" style="background:#2563eb;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px">Ver planos e preços →</a>
+          </div>
+          <p style="color:#9ca3af;font-size:13px;text-align:center">Dúvidas? Responda este email ou acesse nosso suporte.</p>
+        `,
+      }),
+    });
+  }
+
+  async sendWeeklySummary(params: {
+    to: string; name: string; companyName: string;
+    openWOs: number; completedWOs: number; openIncidents: number;
+    overdueWOs: number; pendingChecklists: number;
+  }) {
+    const { openWOs, completedWOs, openIncidents, overdueWOs, pendingChecklists } = params;
+    const hasAlerts = overdueWOs > 0 || openIncidents > 0;
+
+    return this.send({
+      to: params.to,
+      subject: `📊 Resumo semanal — ${params.companyName}`,
+      html: emailLayout({
+        title: 'Resumo da Semana',
+        companyName: params.companyName,
+        body: `
+          <p style="color:#6b7280">Olá, <strong>${params.name}</strong>! Veja o resumo operacional da semana:</p>
+
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin:20px 0">
+            <tr>
+              <td width="50%" style="padding:8px 8px 8px 0">
+                <div style="background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:16px;text-align:center">
+                  <div style="font-size:28px;font-weight:900;color:#16a34a">${completedWOs}</div>
+                  <div style="color:#15803d;font-size:13px;margin-top:4px">OS Concluídas</div>
+                </div>
+              </td>
+              <td width="50%" style="padding:8px 0 8px 8px">
+                <div style="background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:16px;text-align:center">
+                  <div style="font-size:28px;font-weight:900;color:#2563eb">${openWOs}</div>
+                  <div style="color:#1d4ed8;font-size:13px;margin-top:4px">OS Em Aberto</div>
+                </div>
+              </td>
+            </tr>
+            <tr>
+              <td width="50%" style="padding:8px 8px 8px 0">
+                <div style="background:${overdueWOs > 0 ? '#fef2f2' : '#f8fafc'};border:1px solid ${overdueWOs > 0 ? '#fecaca' : '#e2e8f0'};border-radius:12px;padding:16px;text-align:center">
+                  <div style="font-size:28px;font-weight:900;color:${overdueWOs > 0 ? '#dc2626' : '#6b7280'}">${overdueWOs}</div>
+                  <div style="color:${overdueWOs > 0 ? '#dc2626' : '#6b7280'};font-size:13px;margin-top:4px">OS Vencidas</div>
+                </div>
+              </td>
+              <td width="50%" style="padding:8px 0 8px 8px">
+                <div style="background:#fffbeb;border:1px solid #fde68a;border-radius:12px;padding:16px;text-align:center">
+                  <div style="font-size:28px;font-weight:900;color:#d97706">${openIncidents}</div>
+                  <div style="color:#92400e;font-size:13px;margin-top:4px">Ocorrências Abertas</div>
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          ${pendingChecklists > 0 ? `<p style="color:#d97706;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;font-size:14px">
+            📋 <strong>${pendingChecklists} checklist(s)</strong> com execução pendente nesta semana.
+          </p>` : ''}
+
+          ${hasAlerts ? `<p style="color:#dc2626;font-size:14px">⚠️ Sua atenção é necessária nos itens em vermelho acima.</p>` : '<p style="color:#16a34a;font-size:14px">✅ Operação sem pendências críticas esta semana!</p>'}
+
+          <div style="text-align:center;margin:24px 0">
+            <a href="https://app.visao360.com.br/dashboard" style="background:#2563eb;color:white;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:15px">Ver painel completo →</a>
+          </div>
+        `,
+      }),
+    });
+  }
+
   isEnabled(): boolean {
     return this.enabled;
   }

@@ -6,6 +6,7 @@ import { envValidation } from "./config/env.validation";
 import { PrismaModule } from "./prisma/prisma.module";
 import { RedisModule } from "./redis/redis.module";
 import { EmailModule } from "./email/email.module";
+import { PlanLimitsModule } from "./plans/plan-limits.module";
 import { PushModule } from "./push/push.module";
 import { AuthModule } from "./auth/auth.module";
 import { NotificationsModule } from "./notifications/notifications.module";
@@ -27,6 +28,8 @@ import { SchedulerModule } from "./scheduler/scheduler.module";
 import { ChecklistSchedulesModule } from "./checklist-schedules/checklist-schedules.module";
 import { MetricsModule } from "./metrics/metrics.module";
 import { SubscriptionsModule } from "./subscriptions/subscriptions.module";
+import { DocumentsModule } from "./documents/documents.module";
+import { PublicReportModule } from "./public-report/public-report.module";
 import { HealthController } from "./health/health.controller";
 import { TenantMiddleware } from "./common/middleware/tenant.middleware";
 
@@ -50,6 +53,7 @@ import { TenantMiddleware } from "./common/middleware/tenant.middleware";
     PrismaModule,
     RedisModule,
     EmailModule,
+    PlanLimitsModule,
     PushModule,
     NotificationsModule,
     AlertsModule,
@@ -70,6 +74,8 @@ import { TenantMiddleware } from "./common/middleware/tenant.middleware";
     SchedulerModule,
     MetricsModule,
     SubscriptionsModule,
+    DocumentsModule,
+    PublicReportModule,
   ],
   controllers: [HealthController],
 })

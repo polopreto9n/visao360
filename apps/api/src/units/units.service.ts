@@ -2,6 +2,7 @@ import { ConflictException, ForbiddenException, Injectable, NotFoundException } 
 import { Role } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RedisService } from '../redis/redis.service';
+import { PlanLimitsService } from '../plans/plan-limits.service';
 import { PaginationDto, paginated } from '../common/dto/pagination.dto';
 import { CreateUnitDto } from './dto/create-unit.dto';
 import { UpdateUnitDto } from './dto/update-unit.dto';
@@ -17,6 +18,7 @@ export class UnitsService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly redis: RedisService,
+    private readonly planLimits: PlanLimitsService,
   ) {}
 
   private userUnitCacheKey(userId: string) {
@@ -24,6 +26,7 @@ export class UnitsService {
   }
 
   async create(companyId: string, dto: CreateUnitDto) {
+    await this.planLimits.checkUnitLimit(companyId);
     if (dto.code) {
       const exists = await this.prisma.unit.findFirst({ where: { code: dto.code, companyId } });
       if (exists) throw new ConflictException(`Código de unidade "${dto.code}" já existe`);

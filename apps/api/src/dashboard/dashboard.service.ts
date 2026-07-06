@@ -240,13 +240,13 @@ export class DashboardService {
       activeChecklists,
     ] = await Promise.all([
       this.prisma.asset.count({
-        where: { companyId, status: { not: 'INACTIVE' }, createdAt: inPeriod, ...unitFilter },
+        where: { companyId, status: { not: 'INACTIVE' }, ...unitFilter },
       }),
       this.prisma.asset.count({
-        where: { companyId, status: 'ACTIVE', createdAt: inPeriod, ...unitFilter },
+        where: { companyId, status: 'ACTIVE', ...unitFilter },
       }),
       this.prisma.asset.count({
-        where: { companyId, status: 'MAINTENANCE', createdAt: inPeriod, ...unitFilter },
+        where: { companyId, status: 'MAINTENANCE', ...unitFilter },
       }),
 
       this.prisma.workOrder.count({
@@ -291,7 +291,6 @@ export class DashboardService {
         where: {
           companyId,
           status: { notIn: ['RESOLVED', 'CLOSED'] },
-          createdAt: inPeriod,
           ...unitFilter,
         },
       }),
@@ -300,14 +299,13 @@ export class DashboardService {
           companyId,
           severity: 'CRITICAL',
           status: { notIn: ['RESOLVED', 'CLOSED'] },
-          createdAt: inPeriod,
           ...unitFilter,
         },
       }),
 
       this.prisma.asset.groupBy({
         by: ['status'],
-        where: { companyId, createdAt: inPeriod, ...unitFilter },
+        where: { companyId, ...unitFilter },
         _count: { id: true },
       }),
       this.prisma.workOrder.groupBy({
@@ -315,7 +313,6 @@ export class DashboardService {
         where: {
           companyId,
           status: { notIn: ['COMPLETED', 'CANCELLED'] },
-          createdAt: inPeriod,
           ...unitFilter,
         },
         _count: { id: true },
@@ -395,7 +392,7 @@ export class DashboardService {
 
       this.prisma.workOrder.groupBy({
         by: ['status'],
-        where: { companyId, createdAt: inPeriod, ...unitFilter },
+        where: { companyId, ...unitFilter },
         _count: { id: true },
       }),
 
@@ -1042,6 +1039,138 @@ export class DashboardService {
       to: period.to.toISOString(),
       previousFrom: period.previousFrom.toISOString(),
       previousTo: period.previousTo.toISOString(),
+    };
+  }
+
+  async getOperationalMetrics(companyId: string, periodQuery?: DashboardPeriodDto) {
+    const period = this.resolvePeriod(periodQuery);
+    const cacheKey = `dashboard:ops:${companyId}:${this.periodCacheKey(periodQuery, period)}`;
+
+    return this.redis.getOrSet(cacheKey, () => this.computeOperationalMetrics(companyId, period), 60);
+  }
+
+  private async computeOperationalMetrics(companyId: string, period: DashboardPeriod) {
+    const inPeriod = { gte: period.from, lte: period.to };
+    const now = new Date();
+
+    // Busca OS concluídas no período com startedAt para calcular MTTR
+    const [completedWOs, openWOs, checklistSchedules, executions] = await Promise.all([
+      this.prisma.workOrder.findMany({
+        where: {
+          companyId,
+          status: 'COMPLETED',
+          completedAt: inPeriod,
+          deletedAt: null,
+        },
+        select: {
+          id: true,
+          createdAt: true,
+          startedAt: true,
+          completedAt: true,
+          dueDate: true,
+          priority: true,
+        },
+      }),
+
+      // Aging: OS abertas agrupadas por tempo de vida
+      this.prisma.workOrder.findMany({
+        where: {
+          companyId,
+          deletedAt: null,
+          status: { notIn: ['COMPLETED', 'CANCELLED'] },
+        },
+        select: { id: true, createdAt: true, priority: true, status: true },
+      }),
+
+      // Aderência ao plano de manutenção: schedules no período
+      this.prisma.checklistSchedule.findMany({
+        where: {
+          companyId,
+          isActive: true,
+          nextDueAt: inPeriod,
+        },
+        select: { id: true, nextDueAt: true, toleranceDays: true, checklist: { select: { id: true } } },
+      }),
+
+      // Execuções completadas no período
+      this.prisma.execution.findMany({
+        where: {
+          companyId,
+          status: 'COMPLETED',
+          completedAt: inPeriod,
+          deletedAt: null,
+        },
+        select: { id: true, checklistId: true, completedAt: true },
+      }),
+    ]);
+
+    // MTTR: Mean Time To Resolve (horas) — usando createdAt → completedAt
+    const resolvedTimes = completedWOs
+      .filter((wo) => wo.completedAt)
+      .map((wo) => (wo.completedAt!.getTime() - wo.createdAt.getTime()) / (1000 * 60 * 60));
+    const mttrHours = resolvedTimes.length > 0
+      ? Math.round(resolvedTimes.reduce((sum, h) => sum + h, 0) / resolvedTimes.length)
+      : null;
+
+    // SLA compliance (% de OS concluídas dentro do prazo)
+    const withDueDate = completedWOs.filter((wo) => wo.dueDate);
+    const onTime = withDueDate.filter((wo) => wo.completedAt! <= wo.dueDate!);
+    const slaCompliancePct = withDueDate.length > 0
+      ? Math.round((onTime.length / withDueDate.length) * 100)
+      : null;
+
+    // Aging de OS abertas
+    const agingBuckets = { upTo7: 0, from8to30: 0, from31to90: 0, over90: 0 };
+    for (const wo of openWOs) {
+      const daysOpen = Math.floor((now.getTime() - wo.createdAt.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysOpen <= 7) agingBuckets.upTo7++;
+      else if (daysOpen <= 30) agingBuckets.from8to30++;
+      else if (daysOpen <= 90) agingBuckets.from31to90++;
+      else agingBuckets.over90++;
+    }
+
+    // Aderência ao plano de manutenção: % de schedules executados dentro da tolerância
+    const executedChecklistIds = new Set(executions.map((e) => e.checklistId));
+    const onSchedule = checklistSchedules.filter((s) => {
+      if (!executedChecklistIds.has(s.checklist.id)) return false;
+      const tolerance = (s.toleranceDays ?? 2) * 24 * 3600 * 1000;
+      const latestExec = executions
+        .filter((e) => e.checklistId === s.checklist.id && e.completedAt)
+        .sort((a, b) => b.completedAt!.getTime() - a.completedAt!.getTime())[0];
+      if (!latestExec?.completedAt) return false;
+      const deadline = new Date(s.nextDueAt.getTime() + tolerance);
+      return latestExec.completedAt <= deadline;
+    });
+
+    const maintenanceAdherencePct = checklistSchedules.length > 0
+      ? Math.round((onSchedule.length / checklistSchedules.length) * 100)
+      : null;
+
+    return {
+      period: this.serializePeriod(period),
+      mttr: {
+        hours: mttrHours,
+        label: mttrHours !== null ? `${mttrHours}h` : null,
+        sampleSize: resolvedTimes.length,
+      },
+      slaCompliance: {
+        pct: slaCompliancePct,
+        onTime: onTime.length,
+        total: withDueDate.length,
+      },
+      workOrderAging: {
+        openTotal: openWOs.length,
+        buckets: agingBuckets,
+        criticalOpenOver7Days: openWOs.filter((wo) => {
+          const days = Math.floor((now.getTime() - wo.createdAt.getTime()) / 86400000);
+          return wo.priority === 'CRITICAL' && days > 7;
+        }).length,
+      },
+      maintenanceAdherence: {
+        pct: maintenanceAdherencePct,
+        executed: onSchedule.length,
+        scheduled: checklistSchedules.length,
+      },
     };
   }
 }

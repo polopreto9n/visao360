@@ -6,8 +6,40 @@ import { UpdateIncidentStatusDto } from './dto/update-incident.dto';
 import { ListIncidentsDto } from './dto/list-incidents.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
+import { Roles } from '../common/decorators/roles.decorator';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
 import { AuthenticatedUser } from '../auth/strategies/jwt.strategy';
+import { IsOptional, IsString } from 'class-validator';
+
+class AddCommentDto {
+  @IsString()
+  body!: string;
+}
+
+class AssignDto {
+  @IsOptional()
+  @IsString()
+  assigneeId!: string | null;
+}
+
+class ConvertToWoDto {
+  @IsString()
+  title!: string;
+
+  @IsString()
+  description!: string;
+
+  @IsString()
+  priority!: string;
+
+  @IsOptional()
+  @IsString()
+  assigneeId?: string;
+
+  @IsOptional()
+  @IsString()
+  dueDate?: string;
+}
 
 @ApiTags('Incidents')
 @ApiBearerAuth('jwt')
@@ -38,6 +70,32 @@ export class IncidentsController {
   @ApiOperation({ summary: 'Atualizar status do incidente' })
   updateStatus(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser, @Body() dto: UpdateIncidentStatusDto) {
     return this.svc.updateStatus(id, u.companyId, dto, u.id, u.role);
+  }
+
+  @Patch(':id/assign')
+  @Roles('OWNER', 'ADMIN', 'GESTOR')
+  @ApiOperation({ summary: 'Atribuir responsável à ocorrência' })
+  assign(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser, @Body() dto: AssignDto) {
+    return this.svc.assign(id, u.companyId, dto.assigneeId);
+  }
+
+  @Post(':id/comments')
+  @ApiOperation({ summary: 'Adicionar comentário à ocorrência' })
+  addComment(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser, @Body() dto: AddCommentDto) {
+    return this.svc.addComment(id, u.companyId, u.id, dto.body);
+  }
+
+  @Delete(':id/comments/:commentId')
+  @ApiOperation({ summary: 'Excluir comentário da ocorrência' })
+  deleteComment(@Param('id') id: string, @Param('commentId') commentId: string, @CurrentUser() u: AuthenticatedUser) {
+    return this.svc.deleteComment(id, commentId, u.companyId, u.id, u.role);
+  }
+
+  @Post(':id/convert-to-wo')
+  @Roles('OWNER', 'ADMIN', 'GESTOR')
+  @ApiOperation({ summary: 'Converter ocorrência em Ordem de Serviço' })
+  convertToWorkOrder(@Param('id') id: string, @CurrentUser() u: AuthenticatedUser, @Body() dto: ConvertToWoDto) {
+    return this.svc.convertToWorkOrder(id, u.companyId, u.id, dto);
   }
 
   @Delete(':id')
